@@ -1,10 +1,10 @@
-package com.example.nubo_backend;
+package com.nubo;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class NuboBackendApplicationTests {
+class NuboApplicationTests {
 
 	@Test
 	void contextLoads() {
