@@ -1,13 +1,13 @@
-package com.example.nubo_backend;
+package com.nubo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class NuboBackendApplication {
+public class NuboApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(NuboBackendApplication.class, args);
+		SpringApplication.run(NuboApplication.class, args);
 	}
 
 }
