@@ -1,10 +1,12 @@
 package com.nubo.global.config;
 
+import com.nubo.global.jwt.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 public class SecurityConfig {
@@ -18,7 +20,8 @@ public class SecurityConfig {
    * @exception Exception 설정 오류 시 발생
    */
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  public SecurityFilterChain filterChain(HttpSecurity http,
+    JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
     return http
       .csrf(csrf -> csrf.disable())
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -26,6 +29,7 @@ public class SecurityConfig {
         .requestMatchers("/api/auth/**").permitAll()
         .anyRequest().authenticated()
       )
+      .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
       .build();
   }
 }

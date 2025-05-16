@@ -2,8 +2,8 @@ package com.nubo.api.auth.service;
 
 import com.nubo.api.auth.dto.GoogleUserInfoDto;
 import com.nubo.api.auth.dto.LoginResponseDto;
-import com.nubo.api.auth.mapper.UserMapper;
 import com.nubo.domain.user.entity.User;
+import com.nubo.domain.user.mapper.UserMapper;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.jwt.JwtProvider;
 import lombok.RequiredArgsConstructor;

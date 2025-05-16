@@ -1,5 +1,8 @@
 package com.nubo.global.jwt;
 
+import com.nubo.domain.user.entity.User;
+import com.nubo.domain.user.repository.UserRepository;
+import com.nubo.global.auth.CustomUserDetails;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import io.jsonwebtoken.Claims;
@@ -11,11 +14,14 @@ import jakarta.annotation.PostConstruct;
 import java.security.Key;
 import java.util.Date;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 @Component
 public class JwtProvider {
 
+  private final UserRepository userRepository;
   @Value("${jwt.secret}")
   private String secret;
 
@@ -23,6 +29,10 @@ public class JwtProvider {
   private long expirationMs;
 
   private Key key;
+
+  public JwtProvider(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
 
   /**
    * JWT 서명을 위한 키를 초기화한다.
@@ -83,11 +93,38 @@ public class JwtProvider {
     }
   }
 
+  /**
+   * JWT 토큰을 파싱하여 Claims를 반환한다.
+   *
+   * @param token JWT 토큰 문자열
+   * @return 토큰에 포함된 Claims (payload 정보)
+   */
   private Claims parseToken(String token) {
     return Jwts.parserBuilder()
       .setSigningKey(key)
       .build()
       .parseClaimsJws(token)
       .getBody();
+  }
+
+  /**
+   * JWT 토큰으로부터 인증 객체(Authentication)를 생성한다.
+   *
+   * @param token JWT access token
+   * @return Spring Security Authentication 객체
+   */
+  public Authentication getAuthentication(String token) {
+    Long userId = extractUserId(token); // 토큰에서 userId 추출
+
+    User user = userRepository.findById(userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED_CLIENT));
+
+    CustomUserDetails userDetails = new CustomUserDetails(user);
+
+    return new UsernamePasswordAuthenticationToken(
+      userDetails,
+      null,
+      userDetails.getAuthorities()
+    );
   }
 }

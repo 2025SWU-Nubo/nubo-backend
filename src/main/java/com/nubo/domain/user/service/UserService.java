@@ -2,6 +2,8 @@ package com.nubo.domain.user.service;
 
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.repository.UserRepository;
+import com.nubo.global.error.ErrorCode;
+import com.nubo.global.error.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,19 @@ public class UserService {
       userCandidate.getProvider(),
       userCandidate.getProviderUserId()
     ).orElseGet(() -> userRepository.save(userCandidate));
+  }
+
+  /**
+   * 주어진 ID로 사용자를 조회한다.
+   * 사용자가 존재하지 않으면 인증 예외를 발생시킨다.
+   *
+   * @param id 사용자 ID
+   * @return 조회된 사용자 엔티티
+   * @exception ApiException 사용자가 존재하지 않는 경우 UNAUTHORIZED_CLIENT 예외 발생
+   */
+  public User getUserById(Long id) {
+    return userRepository.findById(id)
+      .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED_CLIENT));
   }
 
 }

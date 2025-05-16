@@ -31,12 +31,14 @@ public enum ErrorCode {
   INVALID_FORMAT(400, "V002", "Invalid format", LogLevel.WARN),
 
   /* 필요한 도메인 에러코드 추가 */
-  // SECURITY
-  INVALID_JWT_SECRET(500, "JWT001", "JWT secret key must be at least 32 characters long",
-    LogLevel.ERROR),
-  INVALID_JWT_TOKEN(401, "JWT002", "Invalid or malformed JWT token", LogLevel.WARN),
 
-  UNAUTHENTICATED(401, "SC001", "User not authenticated", LogLevel.WARN);
+  // SECURITY
+  INVALID_JWT_SECRET(500, "SC001", "JWT secret key must be at least 32 characters long",
+    LogLevel.ERROR),
+  INVALID_JWT_TOKEN(401, "SC002", "Invalid or malformed JWT token", LogLevel.WARN),
+  UNAUTHENTICATED(401, "SC003", "User not authenticated", LogLevel.WARN),
+  UNAUTHORIZED_CLIENT(403, "SC004", "User not authorized", LogLevel.WARN),
+  ;
 
   private final int status;
   private final String code;
