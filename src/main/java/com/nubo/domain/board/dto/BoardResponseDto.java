@@ -15,5 +15,6 @@ public class BoardResponseDto {
   private BoardType boardType;
   private BoardSource source;
   private boolean isShared;
+  private boolean isFavorite;
   private LocalDateTime lastVisitedAt;
 }

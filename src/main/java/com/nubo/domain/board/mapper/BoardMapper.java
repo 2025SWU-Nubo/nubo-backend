@@ -20,6 +20,7 @@ public class BoardMapper {
       .boardType(board.getBoardType())
       .source(board.getSource())
       .isShared(board.isShared())
+      .isFavorite(board.isFavorite())
       .lastVisitedAt(board.getLastVisitedAt())
       .build();
   }
@@ -33,6 +34,7 @@ public class BoardMapper {
       .boardType(dto.getBoardType())
       .source(BoardSource.USER)
       .isShared(false)
+      .isFavorite(false)
       .user(user)
       .parentBoard(parentBoard)
       .build();

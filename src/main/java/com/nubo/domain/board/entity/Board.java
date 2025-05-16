@@ -50,6 +50,10 @@ public class Board extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean isShared;
 
+  // 즐겨찾기 여부
+  @Column(nullable = false)
+  private boolean isFavorite = false;
+
   // 마지막 방문일
   private java.time.LocalDateTime lastVisitedAt;
 
