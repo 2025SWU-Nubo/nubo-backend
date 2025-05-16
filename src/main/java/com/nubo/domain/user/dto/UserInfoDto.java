@@ -1,4 +1,4 @@
-package com.nubo.api.auth.dto;
+package com.nubo.domain.user.dto;
 
 import lombok.Builder;
 import lombok.Getter;
