@@ -13,6 +13,7 @@ import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.service.VideoService;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,4 +71,43 @@ public class CardService {
     // 6. 응답 DTO로 변환
     return cardMapper.toResponseDto(savedCard);
   }
+
+  /**
+   * 로그인한 사용자의 전체 카드 목록을 조회한다.
+   *
+   * @param userId 사용자 ID
+   * @return 카드 응답 DTO 리스트
+   */
+  @Transactional(readOnly = true)
+  public List<CardResponseDto> getCardsByUser(Long userId) {
+    // 1. 유저 조회 (정확한 연관 보장을 위해)
+    User user = userService.getUserById(userId);
+
+    // 2. 카드 리스트 조회
+    List<Card> cards = cardRepository.findAllByUser(user);
+
+    // 3. DTO 변환
+    return cards.stream()
+      .map(cardMapper::toResponseDto)
+      .toList();
+  }
+
+  /**
+   * 특정 ID의 카드를 사용자 기준으로 조회한다.
+   *
+   * @param cardId 카드 ID
+   * @param userId 사용자 ID
+   * @return 카드 응답 DTO
+   * @exception ApiException 사용자의 카드가 존재하지 않으면 예외 발생
+   */
+  @Transactional(readOnly = true)
+  public CardResponseDto getCardById(Long cardId, Long userId) {
+    User user = userService.getUserById(userId);
+
+    Card card = cardRepository.findByIdAndUser(cardId, user)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    return cardMapper.toResponseDto(card);
+  }
+
 }
