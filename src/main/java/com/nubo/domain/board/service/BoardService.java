@@ -13,6 +13,7 @@ import com.nubo.global.error.exception.ApiException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +31,7 @@ public class BoardService {
    * @return 생성된 보드 DTO
    * @exception ApiException 필드 누락 또는 상위 보드 미존재 시 예외 발생
    */
+  @Transactional
   public BoardResponseDto createBoard(BoardCreateRequestDto dto, Long userId) {
     Board parentBoard = null;
 
@@ -57,6 +59,7 @@ public class BoardService {
    * @param userId 사용자 ID
    * @return 보드 응답 DTO 리스트
    */
+  @Transactional(readOnly = true)
   public List<BoardResponseDto> getUserBoards(Long userId) {
     List<Board> boards = boardRepository.findByUserIdAndBoardType(userId, BoardType.BOARD);
 
@@ -64,4 +67,11 @@ public class BoardService {
       .map(boardMapper::toResponseDto)
       .toList();
   }
+
+  @Transactional(readOnly = true)
+  public Board getBoardById(Long boardId) {
+    return boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+  }
+
 }
