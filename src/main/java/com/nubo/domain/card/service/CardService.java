@@ -1,13 +1,73 @@
 package com.nubo.domain.card.service;
 
+import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.service.BoardService;
+import com.nubo.domain.card.dto.CardRequestDto;
+import com.nubo.domain.card.dto.CardResponseDto;
+import com.nubo.domain.card.entity.Card;
+import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.user.entity.User;
+import com.nubo.domain.user.service.UserService;
+import com.nubo.domain.video.entity.Video;
+import com.nubo.domain.video.service.VideoService;
+import com.nubo.global.error.ErrorCode;
+import com.nubo.global.error.exception.ApiException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class CardService {
 
   private final CardRepository cardRepository;
+  private final CardMapper cardMapper;
 
+  private final VideoService videoService;
+  private final UserService userService;
+  private final BoardService boardService;
+
+  /**
+   * 사용자의 카드 생성 요청을 처리한다.
+   *
+   * 요청에 담긴 영상 정보가 기존에 존재하지 않으면 새로 저장하고,
+   * 해당 유저/보드/섹션 정보를 기반으로 카드 엔티티를 생성하여 저장한 뒤,
+   * 응답용 DTO로 변환해 반환한다.
+   *
+   * @param dto    카드 생성 요청 DTO (영상 및 카드 정보 포함)
+   * @param userId 인증된 사용자 ID
+   * @return 생성된 카드에 대한 응답 DTO
+   * @exception ApiException board, section, user가 존재하지 않는 경우
+   */
+  @Transactional
+  public CardResponseDto createCard(CardRequestDto dto, Long userId) {
+
+    // 0. 영상 ID 유효성 검사
+    if (dto.getVideoId() == null || dto.getVideoId().isBlank()) {
+      throw new ApiException(ErrorCode.INVALID_VIDEO_ID);
+    }
+
+    // 1. 사용자 조회
+    User user = userService.getUserById(userId);
+
+    // 2. 영상 조회 또는 생성
+    Video video = videoService.getOrCreateVideo(dto);
+
+    // 3. 보드 조회
+    Board board = boardService.getBoardById(dto.getBoardId());
+
+    // 4. 섹션 (선택)
+    Board section = null;
+    if (dto.getSectionId() != null) {
+      section = boardService.getBoardById(dto.getSectionId());
+    }
+
+    // 5. 카드 생성 및 저장
+    Card card = cardMapper.toEntity(dto, user, video, board, section);
+    Card savedCard = cardRepository.save(card);
+
+    // 6. 응답 DTO로 변환
+    return cardMapper.toResponseDto(savedCard);
+  }
 }
