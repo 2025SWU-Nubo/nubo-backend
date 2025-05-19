@@ -19,5 +19,4 @@ public class CardRequestDto {
 
   private String cardTitle;
   private Long boardId;
-  private Long sectionId;
 }

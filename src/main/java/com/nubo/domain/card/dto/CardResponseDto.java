@@ -24,5 +24,4 @@ public class CardResponseDto {
   private Platform platform;
 
   private Long boardId;
-  private Long sectionId;
 }

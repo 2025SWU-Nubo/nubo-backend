@@ -55,17 +55,23 @@ public class CardService {
     // 2. 영상 조회 또는 생성
     Video video = videoService.getOrCreateVideo(dto);
 
-    // 3. 보드 조회
-    Board board = boardService.getBoardById(dto.getBoardId());
+    // 3. 보드 조회 또는 자동 지정
+    Board board;
 
-    // 4. 섹션 (선택)
-    Board section = null;
-    if (dto.getSectionId() != null) {
-      section = boardService.getBoardById(dto.getSectionId());
+    if (dto.getBoardId() != null) {
+      // 사용자가 명시한 보드
+      board = boardService.getBoardById(dto.getBoardId());
+    } else {
+      // ✅ TODO: GPT 기반 자동 분류
+//      String category = gptClient.classifyCategory(dto.getSummary(), dto.getTags());
+//      board = boardService.getOrCreateBoardByCategory(category);
+
+      // ❗ 임시 기본보드 지정
+      board = boardService.getBoardById(1L);
     }
 
     // 5. 카드 생성 및 저장
-    Card card = cardMapper.toEntity(dto, user, video, board, section);
+    Card card = cardMapper.toEntity(dto, user, video, board);
     Card savedCard = cardRepository.save(card);
 
     // 6. 응답 DTO로 변환

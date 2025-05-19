@@ -14,7 +14,7 @@ public class CardMapper {
   /**
    * CardRequestDto → Card 변환
    */
-  public Card toEntity(CardRequestDto dto, User user, Video video, Board board, Board section) {
+  public Card toEntity(CardRequestDto dto, User user, Video video, Board board) {
     return Card.builder()
       .user(user)
       .video(video)
@@ -22,7 +22,6 @@ public class CardMapper {
       .summary(dto.getSummary())
       .tags(dto.getTags())
       .board(board)
-      .section(section)
       .isFavorite(false)
       .build();
   }
@@ -42,7 +41,6 @@ public class CardMapper {
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .platform(card.getVideo().getPlatform())
       .boardId(card.getBoard().getId())
-      .sectionId(card.getSection() != null ? card.getSection().getId() : null)
       .build();
   }
 }
