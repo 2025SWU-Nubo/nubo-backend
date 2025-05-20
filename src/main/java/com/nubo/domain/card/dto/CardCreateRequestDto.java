@@ -19,4 +19,7 @@ public class CardCreateRequestDto {
   private String videoDescription;
   private String transcript;
   private String subtitle;
+
+  // 사용자 지정 보드 (optional)
+  private Long boardId;
 }
