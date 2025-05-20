@@ -1,5 +1,5 @@
-DELETE
-FROM board;
+-- DELETE
+-- FROM board;
 
 ALTER TABLE board
     AUTO_INCREMENT = 11;

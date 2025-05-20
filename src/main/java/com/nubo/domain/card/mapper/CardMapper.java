@@ -1,7 +1,7 @@
 package com.nubo.domain.card.mapper;
 
 import com.nubo.domain.board.entity.Board;
-import com.nubo.domain.card.dto.CardRequestDto;
+import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
@@ -14,13 +14,11 @@ public class CardMapper {
   /**
    * CardRequestDto → Card 변환
    */
-  public Card toEntity(CardRequestDto dto, User user, Video video, Board board) {
+  public Card toEntity(CardCreateRequestDto dto, User user, Video video, Board board) {
     return Card.builder()
+      .title(video.getTitle())
       .user(user)
       .video(video)
-      .title(dto.getCardTitle())
-      .summary(dto.getSummary())
-      .tags(dto.getTags())
       .board(board)
       .isFavorite(false)
       .build();
@@ -37,9 +35,7 @@ public class CardMapper {
       .tags(card.getTags())
       .isFavorite(card.isFavorite())
       .videoId(card.getVideo().getId())
-      .videoTitle(card.getVideo().getTitle())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
-      .platform(card.getVideo().getPlatform())
       .boardId(card.getBoard().getId())
       .build();
   }

@@ -12,6 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -59,4 +60,9 @@ public class Card extends BaseTimeEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "section_id")
   private Board section;
+
+  public void updateMeta(String summary, List<String> tags) {
+    this.summary = summary;
+    this.tags = String.join(",", tags);
+  }
 }

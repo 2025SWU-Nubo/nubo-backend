@@ -1,6 +1,6 @@
 package com.nubo.domain.card.controller;
 
-import com.nubo.domain.card.dto.CardRequestDto;
+import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
@@ -30,7 +30,7 @@ public class CardController {
    * @return 생성된 카드 정보 DTO
    */
   @PostMapping
-  public ResponseEntity<CardResponseDto> createCard(@RequestBody CardRequestDto dto) {
+  public ResponseEntity<CardResponseDto> createCard(@RequestBody CardCreateRequestDto dto) {
     Long userId = userUtil.getAuthenticatedUserId();
     CardResponseDto response = cardService.createCard(dto, userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);

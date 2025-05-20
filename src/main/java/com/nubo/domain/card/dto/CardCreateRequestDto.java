@@ -6,17 +6,17 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class CardRequestDto {
+public class CardCreateRequestDto {
 
+  // video 기본 정보
   private String videoId;
-  private String videoTitle;
   private String videoUrl;
   private String thumbnailUrl;
   private Platform platform;
 
-  private String summary;
-  private String tags;
-
-  private String cardTitle;
-  private Long boardId;
+  // ai 가공용 정보
+  private String videoTitle;
+  private String videoDescription;
+  private String transcript;
+  private String subtitle;
 }

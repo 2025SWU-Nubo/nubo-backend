@@ -1,6 +1,6 @@
 package com.nubo.domain.video.service;
 
-import com.nubo.domain.card.dto.CardRequestDto;
+import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.mapper.VideoMapper;
 import com.nubo.domain.video.repository.VideoRepository;
@@ -23,7 +23,7 @@ public class VideoService {
    * @param dto 카드 생성 요청 DTO (영상 관련 필드 포함)
    * @return 기존 또는 새로 저장된 Video 엔티티
    */
-  public Video getOrCreateVideo(CardRequestDto dto) {
+  public Video getOrCreateVideo(CardCreateRequestDto dto) {
     return videoRepository.findById(dto.getVideoId())
       .orElseGet(() -> {
         Video newVideo = videoMapper.toEntity(dto);

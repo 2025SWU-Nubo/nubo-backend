@@ -1,5 +1,6 @@
 package com.nubo.domain.card.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -7,18 +8,11 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class CardResponseDto {
+@NoArgsConstructor
+public class AiCardMetaDto {
 
-  private Long id;
-  private String title;
   private String summary;
-  private String tags;
-  private boolean isFavorite;
-
-  private String videoId;
-  private String videoThumbnailUrl;
-
+  private List<String> tags;
   private Long boardId;
 }

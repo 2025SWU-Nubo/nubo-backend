@@ -34,4 +34,13 @@ public class Video extends BaseTimeEntity {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private Platform platform; // YOUTUBE, INSTAGRAM, TIKTOK
+
+  @Column(columnDefinition = "TEXT")
+  private String description;
+
+  @Column(columnDefinition = "TEXT")
+  private String transcript;
+
+  @Column(columnDefinition = "TEXT")
+  private String subtitle;
 }

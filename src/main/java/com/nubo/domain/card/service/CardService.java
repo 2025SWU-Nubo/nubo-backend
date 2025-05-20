@@ -2,7 +2,8 @@ package com.nubo.domain.card.service;
 
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.service.BoardService;
-import com.nubo.domain.card.dto.CardRequestDto;
+import com.nubo.domain.card.dto.AiCardMetaDto;
+import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
@@ -11,6 +12,7 @@ import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.service.VideoService;
+import com.nubo.global.ai.OpenAiClient;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.util.List;
@@ -28,6 +30,7 @@ public class CardService {
   private final VideoService videoService;
   private final UserService userService;
   private final BoardService boardService;
+  private final OpenAiClient openAiClient;
 
   /**
    * 사용자의 카드 생성 요청을 처리한다.
@@ -42,7 +45,7 @@ public class CardService {
    * @exception ApiException board, section, user가 존재하지 않는 경우
    */
   @Transactional
-  public CardResponseDto createCard(CardRequestDto dto, Long userId) {
+  public CardResponseDto createCard(CardCreateRequestDto dto, Long userId) {
 
     // 0. 영상 ID 유효성 검사
     if (dto.getVideoId() == null || dto.getVideoId().isBlank()) {
@@ -55,23 +58,16 @@ public class CardService {
     // 2. 영상 조회 또는 생성
     Video video = videoService.getOrCreateVideo(dto);
 
-    // 3. 보드 조회 또는 자동 지정
-    Board board;
+    // 3. GPT 메타데이터 생성 (description + transcript + subtitles를 하나의 텍스트로 전달)
+    String inputText = buildFullText(video);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText);
 
-    if (dto.getBoardId() != null) {
-      // 사용자가 명시한 보드
-      board = boardService.getBoardById(dto.getBoardId());
-    } else {
-      // ✅ TODO: GPT 기반 자동 분류
-//      String category = gptClient.classifyCategory(dto.getSummary(), dto.getTags());
-//      board = boardService.getOrCreateBoardByCategory(category);
-
-      // ❗ 임시 기본보드 지정
-      board = boardService.getBoardById(1L);
-    }
+    // 4. 보드 ID 매핑 (기본 제공 보드)
+    Board board = boardService.getBoardById(meta.getBoardId());
 
     // 5. 카드 생성 및 저장
     Card card = cardMapper.toEntity(dto, user, video, board);
+    card.updateMeta(meta.getSummary(), meta.getTags());
     Card savedCard = cardRepository.save(card);
 
     // 6. 응답 DTO로 변환
@@ -114,6 +110,25 @@ public class CardService {
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
     return cardMapper.toResponseDto(card);
+  }
+
+  private String buildFullText(Video video) {
+    StringBuilder sb = new StringBuilder();
+
+    if (video.getTitle() != null && !video.getTitle().isBlank()) {
+      sb.append("📌 제목:\n").append(video.getTitle()).append("\n\n");
+    }
+    if (video.getDescription() != null && !video.getDescription().isBlank()) {
+      sb.append("📌 소개글:\n").append(video.getDescription()).append("\n\n");
+    }
+    if (video.getTranscript() != null && !video.getTranscript().isBlank()) {
+      sb.append("📌 음성 텍스트:\n").append(video.getTranscript()).append("\n\n");
+    }
+    if (video.getSubtitle() != null && !video.getSubtitle().isBlank()) {
+      sb.append("📌 자막:\n").append(video.getSubtitle()).append("\n\n");
+    }
+
+    return sb.toString();
   }
 
 }
