@@ -58,20 +58,6 @@ public class CardService {
     // 1. 사용자 조회
     User user = userService.getUserById(userId);
 
-//    // 2. 메타데이터 및 오디오 추출
-//    VideoMetadataDto metadata = ytDlpService.extractMetadata(dto.getVideoUrl());
-//    byte[] audioBytes = ytDlpService.extractAudioBytes(dto.getVideoUrl());
-//    WhisperResponseDto whisperResult = transcribeService.transcribe(audioBytes);
-//    String transcript = whisperResult.getTranscript();
-//
-//    // 3. 영상 조회 or 생성
-//    Video video = videoService.getOrCreateVideo(metadata);
-//    video.setTranscript(transcript);
-//
-//    // 중복 카드 방지
-//    if (cardRepository.existsByUserAndVideo(user, video)) {
-//      throw new ApiException(ErrorCode.DUPLICATE_CARD);
-//    }
     // 2. 영상 ID 추출 → DB에 있는지 확인
     String videoId = ytDlpService.extractVideoIdOnly(dto.getVideoUrl());
     Video video;
