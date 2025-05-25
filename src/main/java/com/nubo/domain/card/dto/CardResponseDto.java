@@ -1,5 +1,6 @@
 package com.nubo.domain.card.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -14,7 +15,7 @@ public class CardResponseDto {
   private Long id;
   private String title;
   private String summary;
-  private String tags;
+  private List<String> tags;
   private boolean isFavorite;
 
   private String videoId;
