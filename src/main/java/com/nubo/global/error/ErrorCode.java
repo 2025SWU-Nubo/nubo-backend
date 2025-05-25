@@ -32,6 +32,9 @@ public enum ErrorCode {
 
   /* 필요한 도메인 에러코드 추가 */
 
+  // CARD
+  DUPLICATE_CARD(409, "CD001", "card already exists", LogLevel.WARN),
+
   // SECURITY
   INVALID_JWT_SECRET(500, "SC001", "JWT secret key must be at least 32 characters long",
     LogLevel.ERROR),

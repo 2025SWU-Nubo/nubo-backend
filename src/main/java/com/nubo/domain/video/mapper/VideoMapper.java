@@ -10,13 +10,13 @@ public class VideoMapper {
   /**
    * CardRequestDto 안의 video 관련 필드를 기반으로 Video 엔티티 생성
    */
-  public Video toEntity(CardCreateRequestDto dto) {
-    return Video.builder()
-      .id(dto.getVideoId())
-      .title(dto.getVideoTitle())
-      .url(dto.getVideoUrl())
-      .thumbnailUrl(dto.getThumbnailUrl())
-      .platform(dto.getPlatform())
-      .build();
-  }
+//  public Video toEntity(CardCreateRequestDto dto) {
+//    return Video.builder()
+//      .id(dto.getVideoId())
+//      .title(dto.getVideoTitle())
+//      .url(dto.getVideoUrl())
+//      .thumbnailUrl(dto.getThumbnailUrl())
+//      .platform(dto.getPlatform())
+//      .build();
+//  }
 }

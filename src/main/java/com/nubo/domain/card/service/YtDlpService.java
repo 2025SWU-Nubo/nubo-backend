@@ -1,9 +1,15 @@
 package com.nubo.domain.card.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nubo.domain.video.VideoMetadataDto;
+import com.nubo.domain.video.type.Platform;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -64,4 +70,69 @@ public class YtDlpService {
       return baos.toByteArray();
     }
   }
+
+  public VideoMetadataDto extractMetadata(String videoUrl)
+    throws IOException, InterruptedException {
+    String uniqueName = "shorts_meta_" + System.currentTimeMillis();
+    String outputPath = "downloads/" + uniqueName + ".info.json";
+
+    List<String> command = List.of(
+      "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp.exe",
+      "--skip-download",
+      "--write-info-json",
+      "-o", "downloads/" + uniqueName + ".%(ext)s",
+      videoUrl
+    );
+
+    ProcessBuilder pb = new ProcessBuilder(command);
+    pb.inheritIO();
+    Process process = pb.start();
+    int exitCode = process.waitFor();
+
+    if (exitCode != 0) {
+      throw new RuntimeException("yt-dlp 메타데이터 추출 실패");
+    }
+
+    // JSON 읽기
+    File jsonFile = new File(outputPath);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode info = mapper.readTree(jsonFile);
+
+    // 필요한 필드 추출
+    String videoId = info.get("id").asText();
+    String title = info.get("title").asText("");
+    String description = info.get("description").asText("");
+    String thumbnail = info.get("thumbnail").asText("");
+
+    // 다운로드 후 json 파일은 삭제해도 됨
+    jsonFile.delete();
+
+    return VideoMetadataDto.builder()
+      .videoId(videoId)
+      .videoUrl(videoUrl)
+      .title(title)
+      .description(description)
+      .thumbnailUrl(thumbnail)
+      .platform(Platform.YOUTUBE) // 필요 시 platform 추출 추가
+      .build();
+  }
+
+  public String extractVideoIdOnly(String videoUrl) throws IOException, InterruptedException {
+    List<String> command = List.of(
+      "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp.exe",
+      "--get-id",
+      videoUrl
+    );
+
+    ProcessBuilder pb = new ProcessBuilder(command);
+    pb.redirectErrorStream(true);
+    Process process = pb.start();
+
+    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+    String videoId = reader.readLine();
+    process.waitFor();
+
+    return videoId;
+  }
+
 }
