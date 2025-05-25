@@ -20,5 +20,5 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     @Param("boardType") BoardType boardType);
 
   // 보드 하위 섹션 리스트
-  List<Board> findByParentBoard(Board parentBoard);
+  List<Board> findByParentBoard_Id(Long parentBoardId);
 }

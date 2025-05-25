@@ -1,10 +1,14 @@
 package com.nubo.domain.board.mapper;
 
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
+import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.SectionDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardSource;
+import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.user.entity.User;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -37,6 +41,29 @@ public class BoardMapper {
       .isFavorite(false)
       .user(user)
       .parentBoard(parentBoard)
+      .build();
+  }
+
+  /**
+   * Board → SectionDto 변환
+   */
+  public SectionDto toSectionDto(Board board) {
+    return SectionDto.builder()
+      .id(board.getId())
+      .name(board.getName())
+      .build();
+  }
+
+  /**
+   * Board + 섹션 + 카드 리스트 → BoardDetailResponseDto 변환
+   */
+  public BoardDetailResponseDto toDetailResponseDto(Board board, List<SectionDto> sections,
+    List<CardResponseDto> cards) {
+    return BoardDetailResponseDto.builder()
+      .id(board.getId())
+      .name(board.getName())
+      .sections(sections)
+      .cards(cards)
       .build();
   }
 }

@@ -41,6 +41,7 @@ public enum ErrorCode {
   INVALID_JWT_TOKEN(401, "SC002", "Invalid or malformed JWT token", LogLevel.WARN),
   UNAUTHENTICATED(401, "SC003", "User not authenticated", LogLevel.WARN),
   UNAUTHORIZED_CLIENT(403, "SC004", "User not authorized", LogLevel.WARN),
+  ACCESS_DENIED(403, "SC005", "Access denied for this resource", LogLevel.WARN),
 
   // VIDEO
   INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN);
