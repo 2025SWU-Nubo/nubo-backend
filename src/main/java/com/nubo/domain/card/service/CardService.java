@@ -21,9 +21,11 @@ import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CardService {
@@ -40,11 +42,8 @@ public class CardService {
   private final VideoRepository videoRepository;
 
   /**
-   * 사용자의 카드 생성 요청을 처리한다.
-   *
-   * 요청에 담긴 영상 정보가 기존에 존재하지 않으면 새로 저장하고,
-   * 해당 유저/보드/섹션 정보를 기반으로 카드 엔티티를 생성하여 저장한 뒤,
-   * 응답용 DTO로 변환해 반환한다.
+   * 최적화된 카드 생성 요청 처리
+   * yt-dlp를 한 번만 호출하여 오디오와 메타데이터를 동시에 추출
    *
    * @param dto    카드 생성 요청 DTO (영상 및 카드 정보 포함)
    * @param userId 인증된 사용자 ID
@@ -55,53 +54,83 @@ public class CardService {
   public CardResponseDto createCard(CardCreateRequestDto dto, Long userId)
     throws IOException, InterruptedException {
 
+    long startTime = System.currentTimeMillis();
+    log.info("카드 생성 시작 - 사용자: {}, URL: {}", userId, dto.getVideoUrl());
+
     // 1. 사용자 조회
     User user = userService.getUserById(userId);
 
-    // 2. 영상 ID 추출 → DB에 있는지 확인
+    // 2. 영상 ID 빠른 추출
     String videoId = ytDlpService.extractVideoIdOnly(dto.getVideoUrl());
-    Video video;
 
-    if (videoRepository.existsById(videoId)) {
-      video = videoRepository.findById(videoId)
-        .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
-    } else {
-      // 2-1. 메타데이터 추출
-      VideoMetadataDto metadata = ytDlpService.extractMetadata(dto.getVideoUrl());
-
-      // 2-2. 영상 저장
-      video = videoService.getOrCreateVideo(metadata); // 내부에서 save
-    }
-
-    // 3. 중복 카드 방지
-    if (cardRepository.existsByUserAndVideo(user, video)) {
+    // 3. 기존 영상 확인 및 중복 카드 체크
+    Video existingVideo = videoRepository.findById(videoId).orElse(null);
+    if (existingVideo != null && cardRepository.existsByUserAndVideo(user, existingVideo)) {
       throw new ApiException(ErrorCode.DUPLICATE_CARD);
     }
 
-    // 4. Whisper 처리
-    byte[] audioBytes = ytDlpService.extractAudioBytes(dto.getVideoUrl());
-    WhisperResponseDto whisperResult = transcribeService.transcribe(audioBytes);
-    String transcript = whisperResult.getTranscript();
-    video.setTranscript(transcript); // GPT 입력에 활용
+    Video video;
+    byte[] audioBytes;
+    VideoMetadataDto metadata;
 
-    // 5. GPT 메타데이터 생성 (video 정보 가공)
+    if (existingVideo != null && existingVideo.getTranscript() != null
+      && !existingVideo.getTranscript().isBlank()) {
+      // 기존 영상에 transcript가 있으면 재사용 (오디오 추출 생략)
+      log.info("기존 영상 및 transcript 재사용: {}", videoId);
+      video = existingVideo;
+      audioBytes = null; // Whisper 처리 생략
+      metadata = null;   // 메타데이터 추출 생략
+    } else {
+      // 4. 통합 추출: 오디오와 메타데이터를 한 번에 처리
+      log.info("yt-dlp 통합 추출 시작");
+      YtDlpService.ExtractResult result = ytDlpService.extractAudioAndMetadata(dto.getVideoUrl());
+      audioBytes = result.getAudioBytes();
+      metadata = result.getMetadata();
+
+      log.info("yt-dlp 통합 추출 완료 - 소요시간: {}ms",
+        System.currentTimeMillis() - startTime);
+
+      // 5. 영상 저장 (신규인 경우)
+      if (existingVideo == null) {
+        video = videoService.getOrCreateVideo(metadata);
+      } else {
+        video = existingVideo;
+      }
+
+      // 6. Whisper 처리 (transcript가 없는 경우만)
+      WhisperResponseDto whisperResult = transcribeService.transcribe(audioBytes);
+      String transcript = whisperResult.getTranscript();
+      video.setTranscript(transcript);
+
+      log.info("음성 인식 완료 - 소요시간: {}ms",
+        System.currentTimeMillis() - startTime);
+    }
+
+    // 7. GPT 메타데이터 생성 (video 정보 가공)
     String inputText = buildFullText(video);
     AiCardMetaDto meta = openAiClient.generateCardMeta(inputText);
 
-    // 6. 보드 매핑 (사용자 지정 or 기본 제공 보드)
+    log.info("AI 메타데이터 생성 완료 - 소요시간: {}ms",
+      System.currentTimeMillis() - startTime);
+
+    // 8. 보드 매핑 (사용자 지정 or 기본 제공 보드)
     Long boardId = dto.getBoardId() != null
       ? dto.getBoardId()
       : meta.getBoardId();
     Board board = boardService.getBoardById(boardId);
 
-    // 7. 카드 생성 및 저장
+    // 9. 카드 생성 및 저장
     Card card = cardMapper.toEntity(dto, user, video, board);
     card.updateMeta(meta.getSummary(), meta.getTags());
     Card savedCard = cardRepository.save(card);
 
-    // 8. 응답 DTO로 변환
+    long totalTime = System.currentTimeMillis() - startTime;
+    log.info("카드 생성 완료 - 총 소요시간: {}ms", totalTime);
+
+    // 10. 응답 DTO로 변환
     return cardMapper.toResponseDto(savedCard);
   }
+
 
   /**
    * 로그인한 사용자의 전체 카드 목록을 조회한다.

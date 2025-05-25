@@ -10,79 +10,56 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 public class YtDlpService {
 
+  private static final String YT_DLP_PATH = "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp"
+    + ".exe";
+  private static final String DOWNLOAD_DIR = "downloads";
+
+  public YtDlpService() {
+    // downloads 디렉토리가 없으면 생성
+    try {
+      Files.createDirectories(Paths.get(DOWNLOAD_DIR));
+    } catch (IOException e) {
+      log.error("downloads 디렉토리 생성 실패", e);
+    }
+  }
+
   /**
-   * YouTube URL에서 오디오 추출 후 바이트 배열로 반환
-   *
-   * @param url YouTube 영상 URL
-   * @return .wav 오디오의 byte[]
+   * 오디오와 메타데이터를 한 번에 추출 - 성능 최적화
    */
-  public byte[] extractAudioBytes(String url) throws IOException, InterruptedException {
-    String uniqueName = "shorts_audio_" + System.currentTimeMillis();
-    String outputBase = "downloads/" + uniqueName;
+  public ExtractResult extractAudioAndMetadata(String url)
+    throws IOException, InterruptedException {
+    String uniqueName = "shorts_" + System.currentTimeMillis();
+    String outputBase = DOWNLOAD_DIR + "/" + uniqueName;
     String outputTemplate = outputBase + ".%(ext)s";
 
     List<String> command = new ArrayList<>();
-    command.add("C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp.exe");
+    command.add(YT_DLP_PATH);
     command.add("-f");
-    command.add("bestaudio");
+    command.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio"); // 더 빠른 포맷 우선
     command.add("--extract-audio");
     command.add("--audio-format");
     command.add("wav");
-    command.add("--write-auto-sub");
-    command.add("--sub-lang");
-    command.add("ko,en");
+    command.add("--audio-quality");
+    command.add("5"); // 품질을 적절히 낮춰 속도 향상 (0=최고, 9=최저)
+    command.add("--write-info-json"); // 메타데이터 JSON 파일도 함께 생성
+    command.add("--no-write-playlist-metafiles"); // 플레이리스트 메타파일 제외
     command.add("-o");
     command.add(outputTemplate);
     command.add(url);
 
-    ProcessBuilder pb = new ProcessBuilder(command);
-    pb.inheritIO(); // 콘솔 출력 확인용
-    Process process = pb.start();
-    int exitCode = process.waitFor();
-
-    if (exitCode != 0) {
-      throw new RuntimeException("yt-dlp 실행 실패");
-    }
-
-    // 실제로 생성된 파일 경로
-    File wavFile = new File(outputBase + ".wav");
-
-    // wav 파일을 byte[]로 읽기
-    try (FileInputStream fis = new FileInputStream(wavFile);
-      ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-
-      byte[] buffer = new byte[4096];
-      int len;
-      while ((len = fis.read(buffer)) != -1) {
-        baos.write(buffer, 0, len);
-      }
-
-      // wav 파일 삭제 (메모리 반환만 하고 저장 안함)
-      wavFile.delete();
-
-      return baos.toByteArray();
-    }
-  }
-
-  public VideoMetadataDto extractMetadata(String videoUrl)
-    throws IOException, InterruptedException {
-    String uniqueName = "shorts_meta_" + System.currentTimeMillis();
-    String outputPath = "downloads/" + uniqueName + ".info.json";
-
-    List<String> command = List.of(
-      "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp.exe",
-      "--skip-download",
-      "--write-info-json",
-      "-o", "downloads/" + uniqueName + ".%(ext)s",
-      videoUrl
-    );
+    log.info("오디오 및 메타데이터 통합 추출 시작: {}", url);
+    long startTime = System.currentTimeMillis();
 
     ProcessBuilder pb = new ProcessBuilder(command);
     pb.inheritIO();
@@ -90,36 +67,104 @@ public class YtDlpService {
     int exitCode = process.waitFor();
 
     if (exitCode != 0) {
-      throw new RuntimeException("yt-dlp 메타데이터 추출 실패");
+      throw new RuntimeException("yt-dlp 통합 추출 실패");
     }
 
-    // JSON 읽기
-    File jsonFile = new File(outputPath);
-    ObjectMapper mapper = new ObjectMapper();
-    JsonNode info = mapper.readTree(jsonFile);
+    // 생성된 파일들 확인
+    File wavFile = new File(outputBase + ".wav");
+    File jsonFile = new File(outputBase + ".info.json");
 
-    // 필요한 필드 추출
-    String videoId = info.get("id").asText();
-    String title = info.get("title").asText("");
-    String description = info.get("description").asText("");
-    String thumbnail = info.get("thumbnail").asText("");
+    if (!wavFile.exists()) {
+      throw new RuntimeException("WAV 파일이 생성되지 않았습니다: " + wavFile.getPath());
+    }
+    if (!jsonFile.exists()) {
+      throw new RuntimeException("메타데이터 파일이 생성되지 않았습니다: " + jsonFile.getPath());
+    }
 
-    // 다운로드 후 json 파일은 삭제해도 됨
-    jsonFile.delete();
+    byte[] audioBytes;
+    VideoMetadataDto metadata;
 
-    return VideoMetadataDto.builder()
-      .videoId(videoId)
-      .videoUrl(videoUrl)
-      .title(title)
-      .description(description)
-      .thumbnailUrl(thumbnail)
-      .platform(Platform.YOUTUBE) // 필요 시 platform 추출 추가
-      .build();
+    try {
+      // 오디오 파일 읽기
+      try (FileInputStream fis = new FileInputStream(wavFile);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+
+        byte[] buffer = new byte[8192];
+        int len;
+        while ((len = fis.read(buffer)) != -1) {
+          baos.write(buffer, 0, len);
+        }
+        audioBytes = baos.toByteArray();
+      }
+
+      // 메타데이터 파일 읽기
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode info = mapper.readTree(jsonFile);
+
+      String videoId = info.get("id").asText();
+      String title = info.has("title") ? info.get("title").asText("") : "";
+      String description = info.has("description") ? info.get("description").asText("") : "";
+      String thumbnail = info.has("thumbnail") ? info.get("thumbnail").asText("") : "";
+
+      metadata = VideoMetadataDto.builder()
+        .videoId(videoId)
+        .videoUrl(url)
+        .title(title)
+        .description(description)
+        .thumbnailUrl(thumbnail)
+        .platform(Platform.YOUTUBE)
+        .build();
+
+    } finally {
+      // 파일 정리
+      if (wavFile.exists()) {
+        wavFile.delete();
+      }
+      if (jsonFile.exists()) {
+        jsonFile.delete();
+      }
+    }
+
+    log.info("통합 추출 완료 - 소요시간: {}ms, 오디오 크기: {}KB",
+      System.currentTimeMillis() - startTime, audioBytes.length / 1024);
+
+    return new ExtractResult(audioBytes, metadata);
   }
 
+  /**
+   * 기존 호환성을 위한 개별 오디오 추출 메서드 (deprecated)
+   *
+   * @deprecated extractAudioAndMetadata() 사용 권장
+   */
+  @Deprecated
+  public byte[] extractAudioBytes(String url) throws IOException, InterruptedException {
+    return extractAudioAndMetadata(url).getAudioBytes();
+  }
+
+  /**
+   * 기존 호환성을 위한 개별 메타데이터 추출 메서드 (deprecated)
+   *
+   * @deprecated extractAudioAndMetadata() 사용 권장
+   */
+  @Deprecated
+  public VideoMetadataDto extractMetadata(String videoUrl)
+    throws IOException, InterruptedException {
+    return extractAudioAndMetadata(videoUrl).getMetadata();
+  }
+
+  /**
+   * 캐시된 비디오 ID 추출 - 가장 빠른 방법
+   */
   public String extractVideoIdOnly(String videoUrl) throws IOException, InterruptedException {
+    // URL에서 직접 파싱할 수 있으면 더 빠름
+    String directId = parseVideoIdFromUrl(videoUrl);
+    if (directId != null) {
+      return directId;
+    }
+
+    // yt-dlp로 추출
     List<String> command = List.of(
-      "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp.exe",
+      YT_DLP_PATH,
       "--get-id",
       videoUrl
     );
@@ -128,11 +173,63 @@ public class YtDlpService {
     pb.redirectErrorStream(true);
     Process process = pb.start();
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-    String videoId = reader.readLine();
-    process.waitFor();
-
-    return videoId;
+    try (BufferedReader reader = new BufferedReader(
+      new InputStreamReader(process.getInputStream()))) {
+      String videoId = reader.readLine();
+      process.waitFor();
+      return videoId;
+    }
   }
 
+  /**
+   * URL에서 직접 비디오 ID 파싱 (YouTube 한정)
+   */
+  private String parseVideoIdFromUrl(String url) {
+    try {
+      // YouTube Shorts: https://www.youtube.com/shorts/VIDEO_ID
+      if (url.contains("youtube.com/shorts/")) {
+        return url.substring(url.lastIndexOf("/") + 1).split("\\?")[0];
+      }
+
+      // YouTube 일반: https://www.youtube.com/watch?v=VIDEO_ID
+      if (url.contains("youtube.com/watch?v=")) {
+        String[] parts = url.split("v=");
+        if (parts.length > 1) {
+          return parts[1].split("&")[0];
+        }
+      }
+
+      // YouTube 단축: https://youtu.be/VIDEO_ID
+      if (url.contains("youtu.be/")) {
+        return url.substring(url.lastIndexOf("/") + 1).split("\\?")[0];
+      }
+
+    } catch (Exception e) {
+      log.warn("URL에서 비디오 ID 파싱 실패: {}", url, e);
+    }
+
+    return null; // 파싱 실패시 yt-dlp 사용
+  }
+
+  /**
+   * 통합된 추출 결과를 담는 클래스
+   */
+  public static class ExtractResult {
+
+    private final byte[] audioBytes;
+    private final VideoMetadataDto metadata;
+
+    public ExtractResult(byte[] audioBytes, VideoMetadataDto metadata) {
+      this.audioBytes = audioBytes;
+      this.metadata = metadata;
+    }
+
+    public byte[] getAudioBytes() {
+      return audioBytes;
+    }
+
+    public VideoMetadataDto getMetadata() {
+      return metadata;
+    }
+  }
 }
