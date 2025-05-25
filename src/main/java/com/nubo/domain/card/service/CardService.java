@@ -58,12 +58,16 @@ public class CardService {
     // 2. 영상 조회 또는 생성
     Video video = videoService.getOrCreateVideo(dto);
 
-    // 3. GPT 메타데이터 생성 (description + transcript + subtitles를 하나의 텍스트로 전달)
+    // 3. GPT 메타데이터 생성 (video 정보 가공)
     String inputText = buildFullText(video);
     AiCardMetaDto meta = openAiClient.generateCardMeta(inputText);
 
-    // 4. 보드 ID 매핑 (기본 제공 보드)
-    Board board = boardService.getBoardById(meta.getBoardId());
+    // 4. 보드 매핑 (사용자 지정 or 기본 제공 보드)
+    Long boardId = dto.getBoardId() != null
+      ? dto.getBoardId()
+      : meta.getBoardId();
+
+    Board board = boardService.getBoardById(boardId);
 
     // 5. 카드 생성 및 저장
     Card card = cardMapper.toEntity(dto, user, video, board);
