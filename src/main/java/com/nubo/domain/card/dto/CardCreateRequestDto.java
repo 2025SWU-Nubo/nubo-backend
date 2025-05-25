@@ -9,16 +9,8 @@ import lombok.NoArgsConstructor;
 public class CardCreateRequestDto {
 
   // video 기본 정보
-  private String videoId;
   private String videoUrl;
-  private String thumbnailUrl;
   private Platform platform;
-
-  // ai 가공용 정보
-  private String videoTitle;
-  private String videoDescription;
-  private String transcript;
-  private String subtitle;
 
   // 사용자 지정 보드 (optional)
   private Long boardId;
