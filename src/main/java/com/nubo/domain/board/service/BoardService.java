@@ -61,7 +61,7 @@ public class BoardService {
    */
   @Transactional(readOnly = true)
   public List<BoardResponseDto> getUserBoards(Long userId) {
-    List<Board> boards = boardRepository.findByUserIdAndBoardType(userId, BoardType.BOARD);
+    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
 
     return boards.stream()
       .map(boardMapper::toResponseDto)
