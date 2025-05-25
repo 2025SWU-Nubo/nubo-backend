@@ -42,6 +42,9 @@ public class CardMapper {
       .build();
   }
 
+  /**
+   * 태그 문자열->리스트형으로 분리
+   */
   private List<String> splitTags(String tags) {
     if (tags == null || tags.isBlank()) {
       return List.of();

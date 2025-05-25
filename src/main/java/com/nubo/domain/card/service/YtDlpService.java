@@ -21,10 +21,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class YtDlpService {
 
+  // yt-dlp 실행 파일 경로 (로컬 환경)
   private static final String YT_DLP_PATH = "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp"
     + ".exe";
+  // 다운로드 파일 저장 경로
   private static final String DOWNLOAD_DIR = "downloads";
 
+  /**
+   * 다운로드 디렉토리를 초기화한다.
+   * 디렉토리가 없으면 새로 생성한다.
+   */
   public YtDlpService() {
     // downloads 디렉토리가 없으면 생성
     try {
@@ -35,7 +41,13 @@ public class YtDlpService {
   }
 
   /**
-   * 오디오와 메타데이터를 한 번에 추출 - 성능 최적화
+   * YouTube 영상에서 오디오와 메타데이터를 동시에 추출한다.
+   * 성능 최적화를 위해 하나의 명령어로 처리하며, 파일은 작업 후 삭제된다.
+   *
+   * @param url YouTube 영상 URL
+   * @return 오디오 바이트와 메타데이터 DTO가 포함된 추출 결과
+   * @exception IOException          yt-dlp 실행 실패 또는 파일 읽기 오류
+   * @exception InterruptedException 프로세스 실행 중 인터럽트 발생
    */
   public ExtractResult extractAudioAndMetadata(String url)
     throws IOException, InterruptedException {
@@ -132,8 +144,12 @@ public class YtDlpService {
   }
 
   /**
-   * 기존 호환성을 위한 개별 오디오 추출 메서드 (deprecated)
+   * 기존 호환성을 위한 개별 오디오 추출 메서드
    *
+   * @param url YouTube 영상 URL
+   * @return 오디오 바이트 배열
+   * @exception IOException          예외 발생 시
+   * @exception InterruptedException 예외 발생 시
    * @deprecated extractAudioAndMetadata() 사용 권장
    */
   @Deprecated
@@ -142,8 +158,12 @@ public class YtDlpService {
   }
 
   /**
-   * 기존 호환성을 위한 개별 메타데이터 추출 메서드 (deprecated)
+   * 기존 호환성을 위한 개별 메타데이터 추출 메서드
    *
+   * @param videoUrl YouTube 영상 URL
+   * @return 메타데이터 DTO
+   * @exception IOException          예외 발생 시
+   * @exception InterruptedException 예외 발생 시
    * @deprecated extractAudioAndMetadata() 사용 권장
    */
   @Deprecated
@@ -153,7 +173,13 @@ public class YtDlpService {
   }
 
   /**
-   * 캐시된 비디오 ID 추출 - 가장 빠른 방법
+   * YouTube 영상 URL로부터 비디오 ID만 추출한다.
+   * 내부적으로 URL 직접 파싱 또는 yt-dlp 호출을 통해 처리한다.
+   *
+   * @param videoUrl YouTube 영상 URL
+   * @return 비디오 ID
+   * @exception IOException          예외 발생 시
+   * @exception InterruptedException 예외 발생 시
    */
   public String extractVideoIdOnly(String videoUrl) throws IOException, InterruptedException {
     // URL에서 직접 파싱할 수 있으면 더 빠름
@@ -182,7 +208,10 @@ public class YtDlpService {
   }
 
   /**
-   * URL에서 직접 비디오 ID 파싱 (YouTube 한정)
+   * URL 문자열에서 직접 YouTube 영상 ID를 파싱한다.
+   *
+   * @param url YouTube URL
+   * @return 파싱된 비디오 ID 또는 실패 시 null
    */
   private String parseVideoIdFromUrl(String url) {
     try {
@@ -212,7 +241,7 @@ public class YtDlpService {
   }
 
   /**
-   * 통합된 추출 결과를 담는 클래스
+   * yt-dlp로부터 추출한 오디오 및 메타데이터를 담는 내부 클래스
    */
   public static class ExtractResult {
 

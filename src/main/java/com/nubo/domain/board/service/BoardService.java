@@ -81,12 +81,27 @@ public class BoardService {
       .toList();
   }
 
+  /**
+   * 보드 ID로 보드를 조회한다.
+   *
+   * @param boardId 보드 ID
+   * @return 조회된 보드 엔티티
+   * @exception ApiException 보드가 존재하지 않는 경우 예외 발생
+   */
   @Transactional(readOnly = true)
   public Board getBoardById(Long boardId) {
     return boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
   }
 
+  /**
+   * 보드 ID를 기반으로 보드 상세 정보를 조회한다.
+   * 하위 섹션과 포함된 카드 정보도 함께 반환한다.
+   *
+   * @param boardId 보드 ID
+   * @return 보드 상세 응답 DTO
+   * @exception ApiException 보드가 존재하지 않는 경우 예외 발생
+   */
   @Transactional(readOnly = true)
   public BoardDetailResponseDto getBoardDetail(Long boardId) {
     Board board = boardRepository.findById(boardId)

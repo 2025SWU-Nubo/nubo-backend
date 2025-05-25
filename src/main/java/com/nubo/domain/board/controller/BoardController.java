@@ -47,7 +47,12 @@ public class BoardController {
     return boardService.getUserBoards(userId);
   }
 
-
+  /**
+   * 보드 ID로 상세 정보를 조회한다.
+   *
+   * @param boardId 조회할 보드 ID
+   * @return 보드 상세 정보 응답 DTO
+   */
   @GetMapping("/{boardId}")
   public ResponseEntity<BoardDetailResponseDto> getBoardDetail(@PathVariable Long boardId) {
     BoardDetailResponseDto detail = boardService.getBoardDetail(boardId);
