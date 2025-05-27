@@ -139,12 +139,17 @@ public class CardService {
    * @return 카드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardResponseDto> getCardsByUser(Long userId) {
+  public List<CardResponseDto> getCardsByUser(Long userId, String sort) {
     // 1. 유저 조회 (정확한 연관 보장을 위해)
     User user = userService.getUserById(userId);
 
-    // 2. 카드 리스트 조회
-    List<Card> cards = cardRepository.findAllByUser(user);
+    // 2. 정렬 기준에 따라 카드 조회
+    List<Card> cards;
+    if ("alphabetical".equalsIgnoreCase(sort)) {
+      cards = cardRepository.findAllByUserOrderByTitleAsc(user);
+    } else {
+      cards = cardRepository.findAllByUserOrderByCreatedAtDesc(user); // 기본: 최신순
+    }
 
     // 3. DTO 변환
     return cards.stream()

@@ -16,6 +16,10 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   // 해당 사용자의 특정 카드 조회
   Optional<Card> findByIdAndUser(Long cardId, User user);
 
+  List<Card> findAllByUserOrderByCreatedAtDesc(User user);
+
+  List<Card> findAllByUserOrderByTitleAsc(User user);
+
   // 중복 카드 방지용
   boolean existsByUserAndVideo(User user, Video video);
 

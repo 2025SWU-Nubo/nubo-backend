@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -41,12 +42,14 @@ public class CardController {
   /**
    * 로그인한 사용자의 카드 목록을 조회한다.
    *
+   * @param sort (optional) 정렬 방식: "latest" 또는 "alphabetical"
    * @return 카드 응답 DTO 리스트
    */
   @GetMapping
-  public ResponseEntity<List<CardResponseDto>> getMyCards() {
+  public ResponseEntity<List<CardResponseDto>> getMyCards(
+    @RequestParam(defaultValue = "latest") String sort) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardResponseDto> response = cardService.getCardsByUser(userId);
+    List<CardResponseDto> response = cardService.getCardsByUser(userId, sort);
     return ResponseEntity.ok(response);
   }
 
