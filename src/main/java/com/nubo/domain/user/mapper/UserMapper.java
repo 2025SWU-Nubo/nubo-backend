@@ -1,6 +1,6 @@
 package com.nubo.domain.user.mapper;
 
-import com.nubo.api.auth.dto.GoogleUserInfoDto;
+import com.nubo.auth.dto.GoogleUserInfoDto;
 import com.nubo.domain.user.dto.UserInfoDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.type.Provider;

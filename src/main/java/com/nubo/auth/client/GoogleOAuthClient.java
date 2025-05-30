@@ -1,7 +1,7 @@
-package com.nubo.api.auth.client;
+package com.nubo.auth.client;
 
-import com.nubo.api.auth.dto.GoogleTokenResponseDto;
-import com.nubo.api.auth.dto.GoogleUserInfoDto;
+import com.nubo.auth.dto.GoogleTokenResponseDto;
+import com.nubo.auth.dto.GoogleUserInfoDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;

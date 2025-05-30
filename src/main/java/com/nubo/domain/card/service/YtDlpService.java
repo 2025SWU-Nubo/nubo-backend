@@ -2,7 +2,7 @@ package com.nubo.domain.card.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nubo.domain.video.VideoMetadataDto;
+import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.type.Platform;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;

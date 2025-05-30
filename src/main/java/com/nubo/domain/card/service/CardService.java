@@ -11,7 +11,7 @@ import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
-import com.nubo.domain.video.VideoMetadataDto;
+import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.repository.VideoRepository;
 import com.nubo.domain.video.service.VideoService;

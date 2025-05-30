@@ -1,8 +1,8 @@
-package com.nubo.api.auth.controller;
+package com.nubo.auth.controller;
 
-import com.nubo.api.auth.dto.AuthCodeRequestDto;
-import com.nubo.api.auth.dto.LoginResponseDto;
-import com.nubo.api.auth.service.AuthService;
+import com.nubo.auth.dto.AuthCodeRequestDto;
+import com.nubo.auth.dto.LoginResponseDto;
+import com.nubo.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

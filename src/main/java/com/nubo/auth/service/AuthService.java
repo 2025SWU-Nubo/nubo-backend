@@ -1,9 +1,9 @@
-package com.nubo.api.auth.service;
+package com.nubo.auth.service;
 
-import com.nubo.api.auth.client.GoogleOAuthClient;
-import com.nubo.api.auth.dto.GoogleTokenResponseDto;
-import com.nubo.api.auth.dto.GoogleUserInfoDto;
-import com.nubo.api.auth.dto.LoginResponseDto;
+import com.nubo.auth.client.GoogleOAuthClient;
+import com.nubo.auth.dto.GoogleTokenResponseDto;
+import com.nubo.auth.dto.GoogleUserInfoDto;
+import com.nubo.auth.dto.LoginResponseDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
 import com.nubo.domain.user.service.UserService;

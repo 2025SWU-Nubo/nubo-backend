@@ -1,4 +1,4 @@
-package com.nubo.domain.video;
+package com.nubo.domain.video.dto;
 
 import com.nubo.domain.video.type.Platform;
 import lombok.Builder;

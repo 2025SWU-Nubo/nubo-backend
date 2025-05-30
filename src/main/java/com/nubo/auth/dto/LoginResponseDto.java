@@ -1,4 +1,4 @@
-package com.nubo.api.auth.dto;
+package com.nubo.auth.dto;
 
 import com.nubo.domain.user.dto.UserInfoDto;
 import lombok.AllArgsConstructor;

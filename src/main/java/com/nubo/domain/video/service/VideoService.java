@@ -1,7 +1,6 @@
 package com.nubo.domain.video.service;
 
-import com.nubo.domain.card.dto.CardCreateRequestDto;
-import com.nubo.domain.video.VideoMetadataDto;
+import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.mapper.VideoMapper;
 import com.nubo.domain.video.repository.VideoRepository;
