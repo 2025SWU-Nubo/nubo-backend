@@ -110,7 +110,7 @@ public class CardService {
 
     // 7. GPT 메타데이터 생성 (video 정보 가공)
     String inputText = buildFullText(video);
-    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId);
 
     log.info("AI 메타데이터 생성 완료 - 소요시간: {}ms",
       System.currentTimeMillis() - startTime);
@@ -121,8 +121,10 @@ public class CardService {
       : meta.getBoardId();
     Board board = boardService.getBoardById(boardId);
 
+    boardService.updateActivity(boardId);
+
     // 9. 카드 생성 및 저장
-    Card card = cardMapper.toEntity(dto, user, video, board);
+    Card card = cardMapper.toEntity(user, video, board);
     card.updateMeta(meta.getSummary(), meta.getTags());
     Card savedCard = cardRepository.save(card);
 

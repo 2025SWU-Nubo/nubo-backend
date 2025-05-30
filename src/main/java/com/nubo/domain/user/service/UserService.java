@@ -1,5 +1,10 @@
 package com.nubo.domain.user.service;
 
+import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.repository.BoardRepository;
+import com.nubo.domain.board.type.BoardSource;
+import com.nubo.domain.board.type.BoardType;
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.repository.UserRepository;
 import com.nubo.global.error.ErrorCode;
@@ -13,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
   private final UserRepository userRepository;
+  private final BoardRepository boardRepository;
 
   /**
    * 주어진 사용자 정보로 기존 사용자를 조회하거나, 없으면 새로 생성한다.
@@ -25,7 +31,24 @@ public class UserService {
     return userRepository.findByProviderAndProviderUserId(
       userCandidate.getProvider(),
       userCandidate.getProviderUserId()
-    ).orElseGet(() -> userRepository.save(userCandidate));
+    ).orElseGet(() -> {
+      // 1. 유저 저장
+      User newUser = userRepository.save(userCandidate);
+
+      // 2. 기본 보드 10개 생성
+      for (DefaultBoard defaultBoard : DefaultBoard.values()) {
+        Board board = Board.builder()
+          .name(defaultBoard.getDisplayName())
+          .boardType(BoardType.BOARD)
+          .source(BoardSource.AI)
+          .user(newUser)
+          .build();
+
+        boardRepository.save(board);
+      }
+
+      return newUser;
+    });
   }
 
   /**

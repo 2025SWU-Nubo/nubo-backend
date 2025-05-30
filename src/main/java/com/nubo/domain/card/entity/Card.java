@@ -56,11 +56,6 @@ public class Card extends BaseTimeEntity {
   @JoinColumn(name = "board_id", nullable = false)
   private Board board;
 
-  // 선택적으로 속한 섹션 (Board 테이블에서 boardType = SECTION 인 row 참조)
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "section_id")
-  private Board section;
-
   public void updateMeta(String summary, List<String> tags) {
     this.summary = summary;
     this.tags = String.join(",", tags);

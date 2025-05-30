@@ -21,4 +21,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 
   // 보드 하위 섹션 리스트
   List<Board> findByParentBoard_Id(Long parentBoardId);
+
+  // 카드 생성 시 기본제공 보드 매핑용
+  Optional<Board> findByUserIdAndName(Long userId, String name);
 }

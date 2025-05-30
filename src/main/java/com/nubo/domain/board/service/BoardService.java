@@ -2,14 +2,14 @@ package com.nubo.domain.board.service;
 
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
+import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
-import com.nubo.domain.board.dto.SectionDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.mapper.BoardMapper;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
-import com.nubo.domain.card.dto.CardResponseDto;
+import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.user.entity.User;
@@ -73,11 +73,11 @@ public class BoardService {
    * @return 보드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<BoardResponseDto> getUserBoards(Long userId) {
+  public List<BoardListResponseDto> getUserBoards(Long userId) {
     List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
 
     return boards.stream()
-      .map(boardMapper::toResponseDto)
+      .map(boardMapper::toListResponseDto)
       .toList();
   }
 
@@ -107,15 +107,39 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    List<SectionDto> sectionDtos = boardRepository.findByParentBoard_Id(boardId).stream()
-      .map(boardMapper::toSectionDto)
+    List<BoardListResponseDto> sections = boardRepository.findByParentBoard_Id(boardId).stream()
+      .map(boardMapper::toListResponseDto)
       .toList();
 
-    List<CardResponseDto> cardDtos = cardRepository.findByBoardId(boardId).stream()
-      .map(cardMapper::toResponseDto)
+    List<CardListResponseDto> cardDtos = cardRepository.findByBoardId(boardId).stream()
+      .map(cardMapper::toListResponseDto)
       .toList();
 
-    return boardMapper.toDetailResponseDto(board, sectionDtos, cardDtos);
+    return boardMapper.toDetailResponseDto(board, sections, cardDtos);
   }
 
+  /**
+   * 보드의 최근 활동 시간을 갱신한다.
+   *
+   * 주로 카드가 추가될 때 사용되며,
+   * Board.updatedAt 필드를 현재 시간으로 업데이트하여
+   * "마지막으로 수정된 시간"을 기록하는 데 사용된다.
+   *
+   * @param boardId 활동을 갱신할 보드의 ID
+   */
+  @Transactional
+  public void updateActivity(Long boardId) {
+    Board board = getBoardById(boardId);
+
+    // 현재 보드 갱신
+    board.touch();
+    boardRepository.save(board);
+
+    // 만약 섹션(SECTION 타입)이고 상위 보드가 있다면, 상위 보드도 갱신
+    if (board.getBoardType() == BoardType.SECTION && board.getParentBoard() != null) {
+      Board parent = board.getParentBoard();
+      parent.touch();
+      boardRepository.save(parent);
+    }
+  }
 }

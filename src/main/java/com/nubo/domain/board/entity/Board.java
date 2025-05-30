@@ -15,6 +15,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.AccessLevel;
@@ -54,10 +55,7 @@ public class Board extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean isFavorite = false;
 
-  // 마지막 방문일
-  private java.time.LocalDateTime lastVisitedAt;
-
-  // 사용자 보드일 경우에만 user 존재
+  // 모든 보드는 사용자 소유 (기본 제공 보드도 유저별로 복제됨)
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")
   private User user;
@@ -70,4 +68,9 @@ public class Board extends BaseTimeEntity {
   // 연관관계 역방향 (하위 섹션 리스트)
   @OneToMany(mappedBy = "parentBoard")
   private List<Board> sections = new ArrayList<>();
+
+  // 마지막 수정시간 업데이트를 위한 dummy 변경
+  public void touch() {
+    this.setUpdatedAtForTouch(LocalDateTime.now());
+  }
 }

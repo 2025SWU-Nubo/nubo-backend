@@ -34,4 +34,11 @@ public class BaseTimeEntity {
     this.updatedAt = LocalDateTime.now();
   }
 
+  protected LocalDateTime getUpdatedAtForTouch() {
+    return this.updatedAt;
+  }
+
+  protected void setUpdatedAtForTouch(LocalDateTime updatedAt) {
+    this.updatedAt = updatedAt;
+  }
 }

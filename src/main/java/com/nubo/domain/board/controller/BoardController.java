@@ -2,6 +2,7 @@ package com.nubo.domain.board.controller;
 
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
+import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
@@ -42,7 +43,7 @@ public class BoardController {
    * @return 사용자의 보드 리스트
    */
   @GetMapping
-  public List<BoardResponseDto> getUserBoards() {
+  public List<BoardListResponseDto> getUserBoards() {
     Long userId = userUtil.getAuthenticatedUserId();
     return boardService.getUserBoards(userId);
   }

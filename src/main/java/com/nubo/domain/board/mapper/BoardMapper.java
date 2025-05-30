@@ -2,11 +2,11 @@ package com.nubo.domain.board.mapper;
 
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
+import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
-import com.nubo.domain.board.dto.SectionDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardSource;
-import com.nubo.domain.card.dto.CardResponseDto;
+import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.user.entity.User;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -25,7 +25,6 @@ public class BoardMapper {
       .source(board.getSource())
       .isShared(board.isShared())
       .isFavorite(board.isFavorite())
-      .lastVisitedAt(board.getLastVisitedAt())
       .build();
   }
 
@@ -45,20 +44,25 @@ public class BoardMapper {
   }
 
   /**
-   * Board → SectionDto 변환
+   * Board → BoardListResponseDto 변환
    */
-  public SectionDto toSectionDto(Board board) {
-    return SectionDto.builder()
+  public BoardListResponseDto toListResponseDto(Board board) {
+    return BoardListResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
+      .source(board.getSource())
+      .isShared(board.isShared())
+      .isFavorite(board.isFavorite())
+      .updatedAt(board.getUpdatedAt())
       .build();
   }
 
   /**
    * Board + 섹션 + 카드 리스트 → BoardDetailResponseDto 변환
    */
-  public BoardDetailResponseDto toDetailResponseDto(Board board, List<SectionDto> sections,
-    List<CardResponseDto> cards) {
+  public BoardDetailResponseDto toDetailResponseDto(Board board,
+    List<BoardListResponseDto> sections,
+    List<CardListResponseDto> cards) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())
       .name(board.getName())

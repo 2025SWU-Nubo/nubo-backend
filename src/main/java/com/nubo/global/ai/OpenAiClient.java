@@ -3,7 +3,7 @@ package com.nubo.global.ai;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nubo.domain.board.type.DefaultBoard;
+import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import java.util.List;
 import java.util.Map;
@@ -21,11 +21,12 @@ import org.springframework.web.client.RestTemplate;
 public class OpenAiClient {
 
   private final RestTemplate restTemplate;
+  private final BoardRepository boardRepository;
 
   @Value("${openai.api-key}")
   private String apiKey;
 
-  public AiCardMetaDto generateCardMeta(String inputText) {
+  public AiCardMetaDto generateCardMeta(String inputText, Long userId) {
     String prompt = buildPrompt(inputText);
 
     HttpHeaders headers = new HttpHeaders();
@@ -63,7 +64,10 @@ public class OpenAiClient {
       });
       String boardName = json.get("board").asText();
 
-      Long boardId = DefaultBoard.getBoardIdByName(boardName);
+      Long boardId = boardRepository
+        .findByUserIdAndName(userId, boardName)
+        .orElseThrow(() -> new RuntimeException("해당 이름의 보드를 찾을 수 없습니다: " + boardName))
+        .getId();
 
       return AiCardMetaDto.builder()
         .summary(summary)
