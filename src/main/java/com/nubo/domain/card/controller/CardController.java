@@ -1,6 +1,8 @@
 package com.nubo.domain.card.controller;
 
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
@@ -46,10 +48,10 @@ public class CardController {
    * @return 카드 응답 DTO 리스트
    */
   @GetMapping
-  public ResponseEntity<List<CardResponseDto>> getMyCards(
+  public ResponseEntity<List<CardListResponseDto>> getMyCards(
     @RequestParam(defaultValue = "latest") String sort) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardResponseDto> response = cardService.getCardsByUser(userId, sort);
+    List<CardListResponseDto> response = cardService.getCardsByUser(userId, sort);
     return ResponseEntity.ok(response);
   }
 
@@ -60,9 +62,9 @@ public class CardController {
    * @return 카드 응답 DTO
    */
   @GetMapping("/{cardId}")
-  public ResponseEntity<CardResponseDto> getCard(@PathVariable Long cardId) {
+  public ResponseEntity<CardDetailResponseDto> getCard(@PathVariable Long cardId) {
     Long userId = userUtil.getAuthenticatedUserId();
-    CardResponseDto response = cardService.getCardById(cardId, userId);
+    CardDetailResponseDto response = cardService.getCardById(cardId, userId);
     return ResponseEntity.ok(response);
   }
 

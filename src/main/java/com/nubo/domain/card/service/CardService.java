@@ -4,6 +4,8 @@ import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
@@ -139,7 +141,7 @@ public class CardService {
    * @return 카드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardResponseDto> getCardsByUser(Long userId, String sort) {
+  public List<CardListResponseDto> getCardsByUser(Long userId, String sort) {
     // 1. 유저 조회 (정확한 연관 보장을 위해)
     User user = userService.getUserById(userId);
 
@@ -153,7 +155,7 @@ public class CardService {
 
     // 3. DTO 변환
     return cards.stream()
-      .map(cardMapper::toResponseDto)
+      .map(cardMapper::toListResponseDto)
       .toList();
   }
 
@@ -166,13 +168,13 @@ public class CardService {
    * @exception ApiException 사용자의 카드가 존재하지 않으면 예외 발생
    */
   @Transactional(readOnly = true)
-  public CardResponseDto getCardById(Long cardId, Long userId) {
+  public CardDetailResponseDto getCardById(Long cardId, Long userId) {
     User user = userService.getUserById(userId);
 
     Card card = cardRepository.findByIdAndUser(cardId, user)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    return cardMapper.toResponseDto(card);
+    return cardMapper.toDetailResponseDto(card);
   }
 
   private String buildFullText(Video video) {

@@ -2,6 +2,8 @@ package com.nubo.domain.card.mapper;
 
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
@@ -27,7 +29,7 @@ public class CardMapper {
   }
 
   /**
-   * Card → CareResponseDto 변환
+   * Card → CardResponseDto 변환
    */
   public CardResponseDto toResponseDto(Card card) {
     return CardResponseDto.builder()
@@ -39,6 +41,32 @@ public class CardMapper {
       .videoId(card.getVideo().getId())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .boardId(card.getBoard().getId())
+      .build();
+  }
+
+  /**
+   * Card → CardListResponseDto 변환
+   */
+  public CardListResponseDto toListResponseDto(Card card) {
+    return CardListResponseDto.builder()
+      .id(card.getId())
+      .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .build();
+  }
+
+  /**
+   * Card → CardDetailResponseDto 변환
+   */
+  public CardDetailResponseDto toDetailResponseDto(Card card) {
+    return CardDetailResponseDto.builder()
+      .id(card.getId())
+      .title(card.getTitle())
+      .summary(card.getSummary())
+      .tags(splitTags(card.getTags()))
+      .videoUrl(card.getVideo().getUrl())
+      .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .createdAt(card.getCreatedAt())
+      .updatedAt(card.getUpdatedAt())
       .build();
   }
 
