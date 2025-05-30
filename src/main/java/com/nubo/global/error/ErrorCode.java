@@ -44,7 +44,8 @@ public enum ErrorCode {
   ACCESS_DENIED(403, "SC005", "Access denied for this resource", LogLevel.WARN),
 
   // VIDEO
-  INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN);
+  INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN),
+  UNSUPPORTED_PLATFORM(400, "V002", "Unsupported video platform", LogLevel.WARN);;
 
   private final int status;
   private final String code;
