@@ -18,9 +18,9 @@ public class UserMapper {
   public static User fromGoogleUserInfo(GoogleUserInfoDto info) {
     return User.builder()
       .provider(Provider.GOOGLE)
-      .providerUserId(info.sub())
-      .nickname(info.name())
-      .profileImage(info.picture())
+      .providerUserId(info.getSub())
+      .nickname(info.getName())
+      .profileImage(info.getPicture())
       .build();
   }
 

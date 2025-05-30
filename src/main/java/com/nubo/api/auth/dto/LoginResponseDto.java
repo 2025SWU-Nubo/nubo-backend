@@ -1,10 +1,13 @@
 package com.nubo.api.auth.dto;
 
 import com.nubo.domain.user.dto.UserInfoDto;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
-public record LoginResponseDto(
-  String accessToken,
-  UserInfoDto user
-) {
+@Getter
+@AllArgsConstructor
+public class LoginResponseDto {
 
+  private String accessToken;
+  private UserInfoDto user;
 }
