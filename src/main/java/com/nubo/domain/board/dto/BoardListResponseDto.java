@@ -16,4 +16,6 @@ public class BoardListResponseDto {
   private boolean isFavorite;
   private LocalDateTime updatedAt;
 
+  private long sectionCount;
+  private long cardCount;
 }

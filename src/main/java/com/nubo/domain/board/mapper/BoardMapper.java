@@ -46,7 +46,7 @@ public class BoardMapper {
   /**
    * Board → BoardListResponseDto 변환
    */
-  public BoardListResponseDto toListResponseDto(Board board) {
+  public BoardListResponseDto toListResponseDto(Board board, long sectionCount, long cardCount) {
     return BoardListResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
@@ -54,6 +54,8 @@ public class BoardMapper {
       .isShared(board.isShared())
       .isFavorite(board.isFavorite())
       .updatedAt(board.getUpdatedAt())
+      .sectionCount(sectionCount)
+      .cardCount(cardCount)
       .build();
   }
 

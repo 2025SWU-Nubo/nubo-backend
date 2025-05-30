@@ -4,6 +4,7 @@ import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.mapper.BoardMapper;
 import com.nubo.domain.board.repository.BoardRepository;
@@ -17,6 +18,9 @@ import com.nubo.domain.user.service.UserService;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,8 +80,22 @@ public class BoardService {
   public List<BoardListResponseDto> getUserBoards(Long userId) {
     List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
 
+    List<Long> boardIds = boards.stream()
+      .map(Board::getId)
+      .toList();
+
+    // 통계 조회 (카운트 정보)
+    List<BoardStatsDto> stats = boardRepository.getBoardStats(boardIds);
+    Map<Long, BoardStatsDto> statsMap = stats.stream()
+      .collect(Collectors.toMap(BoardStatsDto::getBoardId, Function.identity()));
+
+    // 매핑
     return boards.stream()
-      .map(boardMapper::toListResponseDto)
+      .map(board -> {
+        BoardStatsDto stat = statsMap.getOrDefault(board.getId(),
+          new BoardStatsDto(board.getId(), 0L, 0L));
+        return boardMapper.toListResponseDto(board, stat.getSectionCount(), stat.getCardCount());
+      })
       .toList();
   }
 
@@ -108,14 +126,18 @@ public class BoardService {
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
     List<BoardListResponseDto> sections = boardRepository.findByParentBoard_Id(boardId).stream()
-      .map(boardMapper::toListResponseDto)
+      .map(section -> boardMapper.toListResponseDto(
+        section,
+        0L,
+        cardRepository.countByBoardId(section.getId())
+      ))
       .toList();
 
-    List<CardListResponseDto> cardDtos = cardRepository.findByBoardId(boardId).stream()
+    List<CardListResponseDto> cards = cardRepository.findByBoardId(boardId).stream()
       .map(cardMapper::toListResponseDto)
       .toList();
 
-    return boardMapper.toDetailResponseDto(board, sections, cardDtos);
+    return boardMapper.toDetailResponseDto(board, sections, cards);
   }
 
   /**
