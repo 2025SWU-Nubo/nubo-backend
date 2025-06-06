@@ -46,7 +46,8 @@ public class BoardMapper {
   /**
    * Board → BoardListResponseDto 변환
    */
-  public BoardListResponseDto toListResponseDto(Board board, long sectionCount, long cardCount) {
+  public BoardListResponseDto toListResponseDto(Board board, long sectionCount, long cardCount,
+    String thumbnailUrl) {
     return BoardListResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
@@ -56,6 +57,7 @@ public class BoardMapper {
       .updatedAt(board.getUpdatedAt())
       .sectionCount(sectionCount)
       .cardCount(cardCount)
+      .thumbnailUrl(thumbnailUrl)
       .build();
   }
 

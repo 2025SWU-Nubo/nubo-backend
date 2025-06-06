@@ -11,12 +11,16 @@ import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.card.dto.CardListResponseDto;
+import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
+import com.nubo.domain.video.entity.Video;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -89,12 +93,42 @@ public class BoardService {
     Map<Long, BoardStatsDto> statsMap = stats.stream()
       .collect(Collectors.toMap(BoardStatsDto::getBoardId, Function.identity()));
 
+    // 썸네일 조회
+    Map<Long, String> thumbnailMap = new HashMap<>();
+
+    for (Board board : boards) {
+      Long boardId = board.getId();
+      if (boardId == null) {
+        continue;
+      }
+
+      long cardCount = cardRepository.countByBoardId(boardId);
+      if (cardCount == 0) {
+        thumbnailMap.put(boardId, null); // 썸네일 없음
+        continue;
+      }
+
+      String thumbnailUrl = cardRepository.findTopByBoardOrderByCreatedAtDesc(board)
+        .map(Card::getVideo)
+        .map(Video::getThumbnailUrl)
+        .orElse(null);
+
+      thumbnailMap.put(boardId, thumbnailUrl);
+    }
+
     // 매핑
     return boards.stream()
       .map(board -> {
         BoardStatsDto stat = statsMap.getOrDefault(board.getId(),
           new BoardStatsDto(board.getId(), 0L, 0L));
-        return boardMapper.toListResponseDto(board, stat.getSectionCount(), stat.getCardCount());
+        String thumbnailUrl = thumbnailMap.get(board.getId());
+
+        return boardMapper.toListResponseDto(
+          board,
+          stat.getSectionCount(),
+          stat.getCardCount(),
+          thumbnailUrl
+        );
       })
       .toList();
   }
@@ -125,14 +159,31 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    List<BoardListResponseDto> sections = boardRepository.findByParentBoard_Id(boardId).stream()
-      .map(section -> boardMapper.toListResponseDto(
-        section,
-        0L,
-        cardRepository.countByBoardId(section.getId())
-      ))
-      .toList();
+    // 섹션 리스트
+    List<Board> sectionBoards = boardRepository.findByParentBoard_Id(boardId);
 
+    List<BoardListResponseDto> sections = new ArrayList<>();
+
+    for (Board section : sectionBoards) {
+      long cardCount = cardRepository.countByBoardId(section.getId());
+
+      String thumbnailUrl = null;
+      if (cardCount > 0) {
+        thumbnailUrl = cardRepository.findTopByBoardOrderByCreatedAtDesc(section)
+          .map(Card::getVideo)
+          .map(video -> {
+            if (video != null) {
+              return video.getThumbnailUrl();
+            }
+            return null;
+          })
+          .orElse(null);
+      }
+
+      sections.add(boardMapper.toListResponseDto(section, 0L, cardCount, thumbnailUrl));
+    }
+
+    // 카드 리스트
     List<CardListResponseDto> cards = cardRepository.findByBoardId(boardId).stream()
       .map(cardMapper::toListResponseDto)
       .toList();

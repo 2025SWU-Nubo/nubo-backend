@@ -18,4 +18,6 @@ public class BoardListResponseDto {
 
   private long sectionCount;
   private long cardCount;
+
+  private String thumbnailUrl;
 }
