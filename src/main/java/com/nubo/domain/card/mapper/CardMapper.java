@@ -62,8 +62,11 @@ public class CardMapper {
       .title(card.getTitle())
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
+      .boardSource(card.getBoard().getSource())
+      .boardName(card.getBoard().getName())
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .videoPlatform(card.getVideo().getPlatform())
       .createdAt(card.getCreatedAt())
       .updatedAt(card.getUpdatedAt())
       .build();
