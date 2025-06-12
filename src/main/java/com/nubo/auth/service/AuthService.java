@@ -4,6 +4,7 @@ import com.nubo.auth.client.GoogleOAuthClient;
 import com.nubo.auth.dto.GoogleTokenResponseDto;
 import com.nubo.auth.dto.GoogleUserInfoDto;
 import com.nubo.auth.dto.LoginResponseDto;
+import com.nubo.auth.dto.TokenCheckResponseDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
 import com.nubo.domain.user.service.UserService;
@@ -43,5 +44,18 @@ public class AuthService {
     String jwt = jwtProvider.createAccessToken(user.getId());
 
     return new LoginResponseDto(jwt, userMapper.toDto(user));
+  }
+
+  /**
+   * 주어진 JWT access token의 유효성과 만료 여부를 검사한다.
+   *
+   * @param accessToken 검사할 JWT access token
+   * @return 유효성 및 만료 여부를 담은 TokenCheckResponseDto
+   */
+  public TokenCheckResponseDto checkTokenValidity(String accessToken) {
+    boolean isValid = jwtProvider.validateToken(accessToken);
+    boolean isExpired = !isValid && jwtProvider.isTokenExpired(accessToken);
+
+    return new TokenCheckResponseDto(isValid, isExpired);
   }
 }

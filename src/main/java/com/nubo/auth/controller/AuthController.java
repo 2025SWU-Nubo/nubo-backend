@@ -2,6 +2,8 @@ package com.nubo.auth.controller;
 
 import com.nubo.auth.dto.AuthCodeRequestDto;
 import com.nubo.auth.dto.LoginResponseDto;
+import com.nubo.auth.dto.TokenCheckRequestDto;
+import com.nubo.auth.dto.TokenCheckResponseDto;
 import com.nubo.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,5 +33,18 @@ public class AuthController {
   public ResponseEntity<LoginResponseDto> loginWithGoogle(
     @RequestBody AuthCodeRequestDto requestDto) {
     return ResponseEntity.ok(authService.loginWithGoogle(requestDto.getAuthCode()));
+  }
+
+  /**
+   * 클라이언트로부터 전달받은 JWT access token의 유효성을 검사한다.
+   *
+   * @param request access token 정보를 담은 요청 객체
+   * @return 토큰의 유효성 및 만료 여부를 담은 응답 DTO
+   */
+  @PostMapping("/check-token")
+  public ResponseEntity<TokenCheckResponseDto> checkToken(
+    @RequestBody TokenCheckRequestDto request) {
+    TokenCheckResponseDto result = authService.checkTokenValidity(request.getAccessToken());
+    return ResponseEntity.ok(result);
   }
 }

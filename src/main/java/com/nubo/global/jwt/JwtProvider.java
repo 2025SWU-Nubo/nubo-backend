@@ -6,6 +6,7 @@ import com.nubo.global.auth.CustomUserDetails;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -126,5 +127,22 @@ public class JwtProvider {
       null,
       userDetails.getAuthorities()
     );
+  }
+
+  /**
+   * 주어진 JWT 토큰이 만료되었는지 확인한다.
+   *
+   * @param token 검사할 JWT access token
+   * @return 만료되었으면 true, 아니면 false
+   */
+  public boolean isTokenExpired(String token) {
+    try {
+      Claims claims = parseToken(token);
+      return claims.getExpiration().before(new Date());
+    } catch (ExpiredJwtException e) {
+      return true; // 명시적으로 만료된 경우
+    } catch (JwtException | IllegalArgumentException e) {
+      return false; // 유효하지 않지만 만료로 판단하지는 않음
+    }
   }
 }
