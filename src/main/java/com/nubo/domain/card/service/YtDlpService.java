@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -22,10 +23,17 @@ import org.springframework.stereotype.Service;
 public class YtDlpService {
 
   // yt-dlp 실행 파일 경로 (로컬 환경)
-  private static final String YT_DLP_PATH = "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp"
-    + ".exe";
+//  private static final String YT_DLP_PATH = "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp"
+//    + ".exe";
+
   // 다운로드 파일 저장 경로
   private static final String DOWNLOAD_DIR = "downloads";
+  @Value("${ext.ytdlp.path}")
+  private String YT_DLP_PATH;
+  @Value("${ext.ffmpeg.path:ffmpeg}") // PATH에 ffmpeg 있으면 그대로 사용
+  private String FFMPEG_PATH;
+  @Value("${ext.cookies.path:}") // 인스타 쿠키 필요 시 설정
+  private String COOKIES_PATH;
 
   /**
    * 다운로드 디렉토리를 초기화한다.
@@ -38,6 +46,20 @@ public class YtDlpService {
     } catch (IOException e) {
       log.error("downloads 디렉토리 생성 실패", e);
     }
+  }
+
+  // 보조
+  private static String text(JsonNode n, String key) {
+    return (n != null && n.has(key) && !n.get(key).isNull()) ? n.get(key).asText() : null;
+  }
+
+  private static String firstNonEmpty(String... vals) {
+    for (String v : vals) {
+      if (v != null && !v.isBlank()) {
+        return v;
+      }
+    }
+    return null;
   }
 
   /**
@@ -241,6 +263,173 @@ public class YtDlpService {
   }
 
   /**
+   * 플랫폼 공용: 메타데이터만 추출 (yt-dlp -J --skip-download)
+   * Instagram 공개/일부 제한 컨텐츠는 쿠키 필요할 수 있음.
+   */
+  public VideoMetadataDto extractMetadataOnly(String url, Platform platform)
+    throws IOException, InterruptedException {
+
+    List<String> cmd = new ArrayList<>();
+    cmd.add(YT_DLP_PATH);
+    cmd.add("-J");
+    cmd.add("--skip-download");
+
+    // 인스타는 쿠키가 있으면 성공률이 올라감 (선택)
+    if (platform == Platform.INSTAGRAM && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+      cmd.add("--cookies");
+      cmd.add(COOKIES_PATH);
+    }
+
+    cmd.add(url);
+
+    ProcessBuilder pb = new ProcessBuilder(cmd);
+    pb.redirectErrorStream(true);
+    Process proc = pb.start();
+
+    StringBuilder out = new StringBuilder();
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        out.append(line);
+      }
+    }
+    int exit = proc.waitFor();
+    if (exit != 0) {
+      throw new IOException("yt-dlp metadata failed, exit=" + exit);
+    }
+
+    ObjectMapper om = new ObjectMapper();
+    JsonNode root = om.readTree(out.toString());
+
+    // 안전 파싱 (플랫폼별 결측 대비)
+    String videoId = text(root, "id");
+    String title = firstNonEmpty(text(root, "title"), text(root, "description"), "(제목 없음)");
+    String thumbnail = text(root, "thumbnail");
+    if ((thumbnail == null || thumbnail.isBlank()) && root.has("thumbnails")) {
+      JsonNode thumbs = root.get("thumbnails");
+      if (thumbs.isArray() && thumbs.size() > 0) {
+        thumbnail = text(thumbs.get(thumbs.size() - 1), "url"); // 가장 큰 걸로 추정
+      }
+    }
+    String webpageUrl = firstNonEmpty(text(root, "webpage_url"), url);
+
+    return VideoMetadataDto.builder()
+      .videoId(videoId)
+      .videoUrl(webpageUrl)
+      .title(title)
+      .description(firstNonEmpty(text(root, "description"), ""))
+      .thumbnailUrl(thumbnail)
+      .platform(platform)
+      .build();
+  }
+
+  /**
+   * 플랫폼 공용: URL에서 mp4 내려받고 ffmpeg로 wav 변환 (인스타 호환)
+   * 반환값: wav 파일 (호출측에서 사용 후 삭제 권장)
+   */
+  public File downloadAudioAsWav(String url, String baseName, Platform platform)
+    throws IOException, InterruptedException {
+
+    String mp4Path = DOWNLOAD_DIR + "/" + baseName + ".mp4";
+    String wavPath = DOWNLOAD_DIR + "/" + baseName + ".wav";
+
+    // 1) mp4 다운로드
+    List<String> dl = new ArrayList<>();
+    dl.add(YT_DLP_PATH);
+    // 인스타 쿠키 필요 시
+    if (platform == Platform.INSTAGRAM && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+      dl.add("--cookies");
+      dl.add(COOKIES_PATH);
+    }
+    dl.add("-o");
+    dl.add(mp4Path);
+    dl.add(url);
+
+    Process p1 = new ProcessBuilder(dl).redirectErrorStream(true).start();
+    // 로그 흡수
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(p1.getInputStream()))) {
+      while (br.readLine() != null) {
+      }
+    }
+    int exit1 = p1.waitFor();
+    if (exit1 != 0) {
+      throw new IOException("yt-dlp mp4 download failed, exit=" + exit1);
+    }
+
+    // 2) ffmpeg로 wav 변환 (16kHz, mono)
+    List<String> ff = List.of(
+      FFMPEG_PATH, "-y", "-i", mp4Path,
+      "-ac", "1", "-ar", "16000", wavPath
+    );
+    Process p2 = new ProcessBuilder(ff).redirectErrorStream(true).start();
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(p2.getInputStream()))) {
+      while (br.readLine() != null) {
+      }
+    }
+    int exit2 = p2.waitFor();
+    if (exit2 != 0) {
+      throw new IOException("ffmpeg transcode failed, exit=" + exit2);
+    }
+
+    // mp4는 용량 절약을 위해 즉시 삭제
+    try {
+      Files.deleteIfExists(Paths.get(mp4Path));
+    } catch (Exception ignore) {
+    }
+
+    return new File(wavPath);
+  }
+
+  /**
+   * 플랫폼 공용: 메타데이터 → 오디오(wav) → 바이트 읽기 → 파일 정리까지 한 번에
+   * - YouTube: 기존 로직도 가능하나, 공용화 위해 동일 파이프라인 사용 권장
+   * - Instagram: mp4→ffmpeg 필수
+   */
+  public ExtractResult extractAllForPlatform(String url, Platform platform)
+    throws IOException, InterruptedException {
+
+    long start = System.currentTimeMillis();
+    String baseName = "media_" + System.currentTimeMillis();
+    byte[] audioBytes = null;
+    VideoMetadataDto metadata = null;
+    File wavFile = null;
+
+    try {
+      // 1) 메타데이터
+      metadata = extractMetadataOnly(url, platform);
+
+      // 2) 오디오 wav
+      wavFile = downloadAudioAsWav(url, baseName, platform);
+
+      // 3) 바이트 로드
+      try (FileInputStream fis = new FileInputStream(wavFile);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+        byte[] buf = new byte[8192];
+        int len;
+        while ((len = fis.read(buf)) != -1) {
+          baos.write(buf, 0, len);
+        }
+        audioBytes = baos.toByteArray();
+      }
+
+      log.info("extractAllForPlatform 완료: platform={}, ms={}, wavKB={}",
+        platform, (System.currentTimeMillis() - start),
+        (audioBytes != null ? audioBytes.length / 1024 : -1));
+
+      return new ExtractResult(audioBytes, metadata);
+
+    } finally {
+      // 임시 파일 정리
+      if (wavFile != null && wavFile.exists()) {
+        try {
+          Files.deleteIfExists(wavFile.toPath());
+        } catch (Exception ignore) {
+        }
+      }
+    }
+  }
+
+  /**
    * yt-dlp로부터 추출한 오디오 및 메타데이터를 담는 내부 클래스
    */
   public static class ExtractResult {
@@ -261,4 +450,6 @@ public class YtDlpService {
       return metadata;
     }
   }
+
 }
+
