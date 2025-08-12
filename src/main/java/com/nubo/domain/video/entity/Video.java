@@ -22,15 +22,15 @@ import lombok.Setter;
 public class Video extends BaseTimeEntity {
 
   @Id
-  private String id; // YouTube 영상 고유 ID
+  private String id; // 영상 고유 ID
 
   @Column(nullable = false)
   private String title; // 원본 영상 제목
 
-  @Column(nullable = false)
+  @Column(columnDefinition = "TEXT", nullable = false)
   private String url; // 영상 URL
 
-  @Column(nullable = false)
+  @Column(columnDefinition = "TEXT", nullable = false)
   private String thumbnailUrl; // 썸네일 이미지 URL
 
   @Enumerated(EnumType.STRING)
