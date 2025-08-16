@@ -49,6 +49,19 @@ public class CardService {
     return (s != null && s.length() > max) ? s.substring(0, max) + "..." : s;
   }
 
+  private static String safe(String s) {
+    return s == null ? "" : s;
+  }
+
+  private static String firstNonEmpty(String... vals) {
+    for (String v : vals) {
+      if (v != null && !v.isBlank()) {
+        return v;
+      }
+    }
+    return null;
+  }
+
   /**
    * 최적화된 카드 생성 요청 처리
    * - 플랫폼 식별
@@ -152,6 +165,21 @@ public class CardService {
     AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId);
     log.info("AI 메타데이터 생성 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
 
+    // 6-1) 최종 제목 결정
+    String metaTitle = meta.getTitle();
+    String mdTitle = (metadata != null) ? metadata.getTitle() : null;
+    String mdDesc = (metadata != null) ? metadata.getDescription() : null;
+
+    String finalTitle;
+    if (platform == Platform.YOUTUBE) {
+      // 유튜브는 원본 제목 우선
+      finalTitle = firstNonEmpty(mdTitle, truncate(safe(mdDesc), 120), "(제목 없음)");
+    } else {
+      // 인스타/틱톡은 GPT 제목 우선
+      finalTitle = firstNonEmpty(metaTitle, mdTitle, truncate(safe(mdDesc), 120), "(제목 없음)");
+    }
+    video.setTitle(finalTitle);
+
     // 7) 보드 매핑 (사용자 지정 우선, 없으면 AI 분류)
     Long boardId = (dto.getBoardId() != null) ? dto.getBoardId() : meta.getBoardId();
     Board board = boardService.getBoardById(boardId);
@@ -227,4 +255,5 @@ public class CardService {
 
     return sb.toString();
   }
+
 }

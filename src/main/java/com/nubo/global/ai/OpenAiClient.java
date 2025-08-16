@@ -59,6 +59,7 @@ public class OpenAiClient {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode json = mapper.readTree(content);
 
+      String title = json.has("title") ? json.get("title").asText("") : "";
       String summary = json.get("summary").asText();
       List<String> tags = mapper.convertValue(json.get("tags"), new TypeReference<List<String>>() {
       });
@@ -70,6 +71,7 @@ public class OpenAiClient {
         .getId();
 
       return AiCardMetaDto.builder()
+        .title(title)
         .summary(summary)
         .tags(tags)
         .boardId(boardId)

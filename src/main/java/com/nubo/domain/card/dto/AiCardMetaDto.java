@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AiCardMetaDto {
 
+  private String title;
   private String summary;
   private List<String> tags;
   private Long boardId;
