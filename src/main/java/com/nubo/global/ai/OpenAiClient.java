@@ -8,6 +8,7 @@ import com.nubo.domain.card.dto.AiCardMetaDto;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OpenAiClient {
@@ -34,7 +36,8 @@ public class OpenAiClient {
     headers.setBearerAuth(apiKey);
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-4",
+      "model", "gpt-4o",
+      "response_format", Map.of("type", "json_object"),
       "messages", List.of(
         Map.of("role", "system", "content",
           "You are a helpful assistant that summarizes and categorizes short-form videos."),
@@ -54,6 +57,8 @@ public class OpenAiClient {
         .get("choices")).get(0);
       Map<String, Object> message = (Map<String, Object>) choice.get("message");
       String content = message.get("content").toString();
+
+      log.info("GPT JSON Extracted: {}", content);
 
       // GPT 응답 파싱
       ObjectMapper mapper = new ObjectMapper();
@@ -84,43 +89,67 @@ public class OpenAiClient {
 
   private String buildPrompt(String inputText) {
     return String.format("""
-      다음은 하나의 영상에서 추출된 정보입니다.
+      당신은 영상 학습 노트를 작성하는 보조자이다.  
+      주어진 원본 제목(title), 소개글(description), 음성 텍스트(transcript), 자막(subtitle)을 분석하여  
+      학습자가 한눈에 보기 쉬운 "재열람용 요약 카드" JSON을 생성한다.
 
-      이 내용을 바탕으로 다음 세 가지를 JSON 형식으로 만들어주세요:
+      [입력/근거]
+      - summary, tags, board 는 오직 description, transcript, subtitle 에 등장하는 내용만을 근거로 작성한다.
+      - 원본 제목(title)은 제목 결정 시에만 참고하며, summary/tags/board에는 절대 사용하지 않는다.
+      - 새로운 개념, 맥락, 추측, 과장은 금지한다.
 
+      [출력 형식]
+      순수 JSON만 출력한다. (코드펜스, 추가 텍스트 금지)
+      값이 없으면 title="", summary="", tags=[], board="" 로 반환한다.
+
+      출력 스키마:
       {
-        "summary": "영상 내용을 마크다운 형식으로 정리해 주세요. 번호, 하이픈, 줄바꿈 등을 자유롭게 활용해 학습 노트처럼 정리합니다. '이 영상은 ~을 소개한다' 같은 표현은 피하고, 핵심 내용이나 팁, 개념을 직접적으로 기술해 주세요.",
-        "tags": ["키워드1", "키워드2", ..., "키워드5"],
-        "board": "가장 적합한 보드명 (아래 중 하나)"
+        "title": "string",
+        "summary": "string (Markdown 허용: ###, -, 1., 표 |A|B|)",
+        "tags": ["string", ...],
+        "board": "string"
       }
 
-      사용 가능한 보드 목록:
-      - 엔터테인먼트 & 코미디
-      - 교육 & 정보 (테크·비즈니스 포함)
-      - 뷰티 & 패션
-      - 요리 & 라이프스타일
-      - 운동 & 건강
-      - 여행 & 브이로그
-      - 게임 & 취미 (공예 포함)
-      - 음악 & 예술
-      - TV & 미디어 콘텐츠
-      - 기타
+      [규칙]
 
-      🎯 요약 작성 시 참고 사항:
-      선택된 보드에 어울리는 방식으로 요약해 주세요. 아래는 카테고리별 추천 요약 방식입니다:
-        
-      - 엔터테인먼트 & 코미디: 전개, 웃긴 포인트, 주요 흐름을 감상 포인트 중심으로 정리
-      - 교육 & 정보 (테크·비즈니스 포함): 핵심 개념, 주장, 배울 점을 요점 중심으로 설명
-      - 뷰티 & 패션: 추천 제품, 사용 팁, 스타일링 방법 등을 상황별로 정리
-      - 요리 & 라이프스타일: 필요한 재료와 순서, 실전 팁 등을 단계별로 정리
-      - 운동 & 건강: 루틴 구성, 실천 순서, 주의할 점 등을 실용적으로 정리
-      - 여행 & 브이로그: 장소 소개, 추천 이유, 개인 팁 등을 간결하게 정리
-      - 게임 & 취미 (공예 포함): 게임/취미의 규칙, 진행 방식, 핵심 포인트 설명
-      - 음악 & 예술: 작품의 배경, 의도, 감상 포인트를 중심으로 정리
-      - TV & 미디어 콘텐츠: 줄거리 요약 + 전달 메시지나 인상 깊은 장면 소개
-      - 기타: 사용자가 실천하거나 이해에 도움 될 방식으로 자유롭게 요약
+      1. title
+      - 다음 조건 중 하나라도 해당하면 원본 제목은 폐기하고 description/transcript/subtitle 기반으로 12~32자의 한국어 제목을 새로 생성한다:
+        (1) 원본 제목과 description+transcript+subtitle 사이의 의미적 관련성이 매우 낮은 경우
+        (2) 원본 제목이 플레이스홀더/계정/파일명/URL/해시태그 위주인 경우 (예: "Video by …", "Original audio", "IMG_1234")
+        (3) 원본 제목이 비어 있거나 "(제목 없음)" 등 플레이스홀더일 경우
+      - 새 제목은 반드시 입력 텍스트에 등장한 내용만 바탕으로 한다. (이모지/해시태그/과장/추측/광고 금지)
+      - 원본 제목이 충분히 관련 있고 위 조건에 해당하지 않는다면, 원본 제목을 그대로 사용하되 앞뒤 공백만 정리한다.
+      - description/transcript/subtitle이 모두 비어 있으면: title=""
 
-      📌 영상 내용:
+      2. summary
+      - Markdown을 활용해 가독성 있게 요약한다. (### 헤딩, 불릿, 번호목록, 표 등)
+      - 길이는 유연하다. 정보가 적으면 짧게, 많으면 길게.
+      - 광고, 홍보, 과장, 클릭 유도 금지. 사실 서술 위주.
+
+      3. tags
+      - 최소 3개, 최대 5개.
+      - 1~2 단어의 핵심 키워드.
+      - 중복, 의미 없음, 이모지, 해시태그 금지.
+
+      4. board
+      - 아래 보드 목록 중 정확히 하나 선택한다. (철자와 띄어쓰기까지 동일해야 한다.)
+      - 선택된 보드 외의 값은 절대 반환하지 않는다.
+
+      보드 목록:
+      - "교육"
+      - "테크 & 프로그래밍"
+      - "비즈니스 & 생산성"
+      - "뷰티 & 패션"
+      - "요리 & 라이프스타일"
+      - "운동 & 건강"
+      - "여행 & 브이로그"
+      - "게임"
+      - "취미 & 공예"
+      - "음악"
+      - "예술 & 디자인"
+      - "엔터테인먼트(코미디/TV/쇼)"
+            
+      *원본 텍스트:
       %s
       """, inputText);
   }

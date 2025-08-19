@@ -9,6 +9,8 @@ import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.repository.UserRepository;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
+import java.util.Arrays;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,17 +37,17 @@ public class UserService {
       // 1. 유저 저장
       User newUser = userRepository.save(userCandidate);
 
-      // 2. 기본 보드 10개 생성
-      for (DefaultBoard defaultBoard : DefaultBoard.values()) {
-        Board board = Board.builder()
+      // 2. 기본 보드 생성
+      List<Board> defaults = Arrays.stream(DefaultBoard.values())
+        .map(defaultBoard -> Board.builder()
           .name(defaultBoard.getDisplayName())
           .boardType(BoardType.BOARD)
           .source(BoardSource.AI)
           .user(newUser)
-          .build();
+          .build())
+        .toList();
 
-        boardRepository.save(board);
-      }
+      boardRepository.saveAll(defaults);
 
       return newUser;
     });

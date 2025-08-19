@@ -283,7 +283,8 @@ public class YtDlpService {
     cmd.add(url);
 
     ProcessBuilder pb = new ProcessBuilder(cmd);
-    pb.redirectErrorStream(true);
+//    pb.redirectErrorStream(true);
+    pb.redirectErrorStream(false); // stderr는 따로 두기
     Process proc = pb.start();
 
     StringBuilder out = new StringBuilder();
@@ -293,6 +294,14 @@ public class YtDlpService {
         out.append(line);
       }
     }
+
+    try (BufferedReader err = new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
+      String errLine;
+      while ((errLine = err.readLine()) != null) {
+        log.warn("yt-dlp stderr: {}", errLine);
+      }
+    }
+    
     int exit = proc.waitFor();
     if (exit != 0) {
       throw new IOException("yt-dlp metadata failed, exit=" + exit);

@@ -131,12 +131,9 @@ public class CardService {
 
       // 4) Video 저장/업서트
       if (existingVideo == null) {
-        // 제목 비어있으면 설명(캡션)으로 대체
         String title = (metadata.getTitle() != null && !metadata.getTitle().isBlank())
           ? metadata.getTitle()
-          : (metadata.getDescription() != null && !metadata.getDescription().isBlank()
-            ? truncate(metadata.getDescription(), 120)
-            : "(제목 없음)");
+          : "";
 
         video = videoService.getOrCreateVideo(
           VideoMetadataDto.builder()
@@ -240,20 +237,27 @@ public class CardService {
   private String buildFullText(Video video) {
     StringBuilder sb = new StringBuilder();
 
-    if (video.getTitle() != null && !video.getTitle().isBlank()) {
-      sb.append("📌 제목:\n").append(video.getTitle()).append("\n\n");
-    }
+    // 1) 요약 근거
+    sb.append("📌 요약 근거 (이 내용을 중심으로 요약하세요)\n");
+
     if (video.getDescription() != null && !video.getDescription().isBlank()) {
-      sb.append("📌 소개글:\n").append(video.getDescription()).append("\n\n");
+      sb.append("- description:\n").append(video.getDescription().trim()).append("\n\n");
     }
     if (video.getTranscript() != null && !video.getTranscript().isBlank()) {
-      sb.append("📌 음성 텍스트:\n").append(video.getTranscript()).append("\n\n");
+      sb.append("- transcript:\n").append(video.getTranscript().trim()).append("\n\n");
     }
     if (video.getSubtitle() != null && !video.getSubtitle().isBlank()) {
-      sb.append("📌 자막:\n").append(video.getSubtitle()).append("\n\n");
+      sb.append("- subtitle:\n").append(video.getSubtitle().trim()).append("\n\n");
     }
 
-    return sb.toString();
+    // 2) 제목(참고용)
+    String title = (video.getTitle() == null || video.getTitle().isBlank())
+      ? "(제목 없음)" : video.getTitle().trim();
+    sb.append("📌 원본 제목(참고용, 내용 요약에는 사용 금지)\n").append(title).append("\n\n");
+
+    String result = sb.toString();
+    log.info("=== buildFullText result ===\n{}", result); // fulltext 확인용
+    return result;
   }
 
 }
