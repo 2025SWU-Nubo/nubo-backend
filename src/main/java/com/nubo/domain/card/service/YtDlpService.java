@@ -301,7 +301,7 @@ public class YtDlpService {
         log.warn("yt-dlp stderr: {}", errLine);
       }
     }
-    
+
     int exit = proc.waitFor();
     if (exit != 0) {
       throw new IOException("yt-dlp metadata failed, exit=" + exit);
@@ -350,6 +350,8 @@ public class YtDlpService {
       dl.add("--cookies");
       dl.add(COOKIES_PATH);
     }
+    dl.add("-f");
+    dl.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/mp4");
     dl.add("-o");
     dl.add(mp4Path);
     dl.add(url);
