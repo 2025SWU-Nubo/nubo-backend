@@ -5,8 +5,11 @@ import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.board.type.DefaultBoard;
+import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.entity.User;
+import com.nubo.domain.user.mapper.UserMapper;
 import com.nubo.domain.user.repository.UserRepository;
+import com.nubo.global.auth.UserUtil;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.util.Arrays;
@@ -21,6 +24,9 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final BoardRepository boardRepository;
+
+  private final UserMapper userMapper;
+  private final UserUtil userUtil;
 
   /**
    * 주어진 사용자 정보로 기존 사용자를 조회하거나, 없으면 새로 생성한다.
@@ -66,4 +72,21 @@ public class UserService {
       .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED_CLIENT));
   }
 
+  /**
+   * 이메일 키워드를 기반으로 사용자 목록을 검색한다.
+   * <p>이메일 주소에 부분 일치하는 사용자를 반환한다.</p>
+   *
+   * @param keyword 검색할 이메일 키워드 (대소문자 구분 없음)
+   * @return UserSearchResponseDto 리스트
+   */
+  @Transactional(readOnly = true)
+  public List<UserSearchResponseDto> searchUsersByEmail(String keyword) {
+    Long currentUserId = userUtil.getAuthenticatedUserId();
+
+    List<User> users = userRepository.findByEmailContainingIgnoreCase(keyword);
+    return users.stream()
+      .filter(user -> !user.getId().equals(currentUserId)) // 자기 자신 제외
+      .map(userMapper::toSearchResponseDto)
+      .toList();
+  }
 }

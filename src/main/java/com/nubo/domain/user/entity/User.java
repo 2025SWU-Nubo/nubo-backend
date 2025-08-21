@@ -41,4 +41,7 @@ public class User extends BaseTimeEntity {
   private String profileImage;
 
   private Boolean isPushEnabled;
+
+  @Column(nullable = false, unique = true)
+  private String email;
 }

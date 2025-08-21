@@ -2,6 +2,7 @@ package com.nubo.domain.user.mapper;
 
 import com.nubo.auth.dto.GoogleUserInfoDto;
 import com.nubo.domain.user.dto.UserInfoDto;
+import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.type.Provider;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ public class UserMapper {
    */
   public static User fromGoogleUserInfo(GoogleUserInfoDto info) {
     return User.builder()
+      .email(info.getEmail())
       .provider(Provider.GOOGLE)
       .providerUserId(info.getSub())
       .nickname(info.getName())
@@ -25,7 +27,7 @@ public class UserMapper {
   }
 
   /**
-   * User 엔티티를 공통 응답용 DTO로 변환한다.
+   * User 엔티티를 로그인 응답용 DTO로 변환한다.
    *
    * @param user User 엔티티
    * @return 사용자 정보 DTO
@@ -38,4 +40,18 @@ public class UserMapper {
       .build();
   }
 
+  /**
+   * User 엔티티를 검색 응답 DTO로 변환한다.
+   *
+   * @param user User 엔티티
+   * @return UserSearchResponseDto
+   */
+  public UserSearchResponseDto toSearchResponseDto(User user) {
+    return UserSearchResponseDto.builder()
+      .id(user.getId())
+      .nickname(user.getNickname())
+      .email(user.getEmail())
+      .profileImage(user.getProfileImage())
+      .build();
+  }
 }
