@@ -43,16 +43,16 @@ public class BoardMember extends BaseTimeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  // ✅ 다대다 중간 테이블: 보드 N : 멤버십 : N 유저
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  // 다대다 중간 테이블: 보드 N : 멤버십 : N 유저
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "board_id", nullable = false)
   private Board board;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
 
   @Enumerated(EnumType.STRING)
-  @Column(nullable = false, length = 20)
+  @Column(nullable = false)
   private BoardMemberRole role;
 }

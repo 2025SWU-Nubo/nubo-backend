@@ -14,13 +14,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class CardMapper {
 
-  /* =========================
-   * 엔티티 생성 (M:N 대응)
-   * ========================= */
+  // =========================
+  // 엔티티 생성
+  // =========================
 
-  /**
-   * Card 생성: 이제 보드 주입 없음 (보드 연결은 BoardCard로 별도 처리)
-   */
+  // Card 생성 (보드 연결은 BoardCard로 별도 관리)
   public Card toEntity(User user, Video video) {
     return Card.builder()
       .title(video.getTitle())
@@ -30,15 +28,11 @@ public class CardMapper {
       .build();
   }
 
-  /* =========================
-   * 응답 매핑 (컨텍스트 기반 보드 정보 주입)
-   * ========================= */
+  // =========================
+  // 응답 매핑
+  // =========================
 
-  /**
-   * Card → CardResponseDto
-   *
-   * @param card 카드 엔티티
-   */
+  // Card → CardResponseDto (보드 ID 리스트 포함)
   public CardResponseDto toResponseDto(Card card, List<Long> boardIds) {
     return CardResponseDto.builder()
       .id(card.getId())
@@ -52,10 +46,7 @@ public class CardMapper {
       .build();
   }
 
-  /**
-   * Card → CardListResponseDto
-   * (리스트는 썸네일 정도만 필요하므로 보드 정보 불필요)
-   */
+  // Card → CardListResponseDto (리스트용, 썸네일만 포함)
   public CardListResponseDto toListResponseDto(Card card) {
     return CardListResponseDto.builder()
       .id(card.getId())
@@ -63,14 +54,7 @@ public class CardMapper {
       .build();
   }
 
-  /**
-   * Card → CardDetailResponseDto
-   *
-   * @param card               카드 엔티티
-   * @param contextBoardName   컨텍스트 보드명(보드 상세 화면에서 호출 시)
-   * @param contextBoardSource 컨텍스트 보드 소스
-   *                           둘 다 null이면 보드 정보 없이 내려감
-   */
+  // Card → CardDetailResponseDto (보드 컨텍스트 정보 포함 가능)
   public CardDetailResponseDto toDetailResponseDto(
     Card card,
     String contextBoardName,
@@ -83,7 +67,7 @@ public class CardMapper {
       .tags(splitTags(card.getTags()))
       .boardSource(contextBoardSource)
       .boardName(contextBoardName)
-      .videoUrl(card.getVideo().getUrl())               // 기존 필드명 유지
+      .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
       .createdAt(card.getCreatedAt())
@@ -91,37 +75,9 @@ public class CardMapper {
       .build();
   }
 
-  /* =========================
-   * 호환성 유지용 (Deprecated)
-   * ========================= */
-
-  /**
-   * (구) 보드까지 받던 생성 메서드 — M:N 전환 후 사용 금지
-   */
-  @Deprecated
-  public Card toEntity(User user, Video video, /* Board board */ Object _unused) {
-    return toEntity(user, video);
-  }
-
-  /**
-   * (구) 보드 필드를 Card에서 직접 읽던 매퍼 — M:N 전환 후 컨텍스트 보드로 대체
-   */
-  @Deprecated
-  public CardResponseDto toResponseDto(Card card) {
-    return toResponseDto(card, null);
-  }
-
-  /**
-   * (구) 보드 필드를 Card에서 직접 읽던 매퍼 — M:N 전환 후 컨텍스트 보드로 대체
-   */
-  @Deprecated
-  public CardDetailResponseDto toDetailResponseDto(Card card) {
-    return toDetailResponseDto(card, null, null);
-  }
-
-  /* =========================
-   * 유틸
-   * ========================= */
+  // =========================
+  // 유틸
+  // =========================
 
   private List<String> splitTags(String tags) {
     if (tags == null || tags.isBlank()) {

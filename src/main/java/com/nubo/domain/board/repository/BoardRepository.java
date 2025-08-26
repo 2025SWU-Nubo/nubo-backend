@@ -11,19 +11,19 @@ import org.springframework.data.repository.query.Param;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-  // 특정 사용자의 1차 보드만 (섹션 제외)
+  // 특정 사용자의 1차 보드 목록 조회 (섹션 제외, 기본보드 포함)
   @Query("SELECT b FROM Board b WHERE b.boardType = :boardType AND (b.user.id = :userId OR b.user"
     + " IS NULL)")
   List<Board> findVisibleBoardsForUser(@Param("userId") Long userId,
     @Param("boardType") BoardType boardType);
 
-  // 보드 하위 섹션 리스트
+  // 보드 하위 섹션 목록 조회
   List<Board> findByParentBoard_Id(Long parentBoardId);
 
-  // 카드 생성 시 기본제공 보드 매핑용
+  // 기본 제공 보드 매핑용 (사용자 + 이름 기준)
   Optional<Board> findByUserIdAndName(Long userId, String name);
 
-  // 보드 내 섹션, 카드 갯수 조회
+  // 보드별 섹션/카드 개수 통계 조회
   @Query("""
     SELECT new com.nubo.domain.board.dto.BoardStatsDto(
       b.id,

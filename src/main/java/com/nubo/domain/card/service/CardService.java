@@ -6,6 +6,7 @@ import com.nubo.domain.board.repository.BoardCardRepository;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
@@ -48,7 +49,7 @@ public class CardService {
   private final VideoRepository videoRepository;
   private final BoardCardRepository boardCardRepository;
 
-  // 길이 제한용 유틸
+  // 문자열 유틸
   private static String truncate(String s, int max) {
     return (s != null && s.length() > max) ? s.substring(0, max) + "..." : s;
   }
@@ -67,10 +68,11 @@ public class CardService {
   }
 
   /**
-   * 최적화된 카드 생성 요청 처리
-   * - 플랫폼 식별
-   * - (필요 시) yt-dlp 한 번 호출로 메타데이터+오디오 추출
-   * - Whisper → GPT 요약/태그 → 카드 생성
+   * 카드 생성
+   * 1. 플랫폼 식별 및 videoId 확보
+   * 2. 중복/삭제본 판정
+   * 3. 신규 생성 시 Video 업서트 + Whisper/GPT 처리
+   * 4. 카드 저장 및 보드 연결
    *
    * @param dto    카드 생성 요청 DTO (영상 및 카드 정보 포함)
    * @param userId 인증된 사용자 ID
@@ -84,7 +86,7 @@ public class CardService {
     long startTime = System.currentTimeMillis();
     log.info("카드 생성 시작 - user={}, url={}", userId, dto.getVideoUrl());
 
-    // 0) 공통 준비
+    // 0. 기본 준비
     User user = userService.getUserById(userId);
     Platform platform = Platform.fromUrl(dto.getVideoUrl());
 
@@ -93,15 +95,13 @@ public class CardService {
     byte[] audioBytes = null;        // Whisper용
     VideoMetadataDto metadata = null;// 신규 생성 시 메타
 
-    /* 1) videoId 확보 + 단일 판정(활성/삭제본) */
+    // 1. videoId 확보
     if (platform == Platform.YOUTUBE) {
       videoId = ytDlpService.extractVideoIdOnly(dto.getVideoUrl());
       if (videoId == null || videoId.isBlank()) {
         throw new ApiException(ErrorCode.INVALID_VIDEO_ID);
       }
     } else {
-      // 비-유튜브: 메타 추출로 videoId 먼저 확보(오디오도 같이 옴)
-      log.info("메타 우선 추출(비-유튜브): {}", dto.getVideoUrl());
       var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
       audioBytes = ex.getAudioBytes();
       metadata = ex.getMetadata();
@@ -111,41 +111,31 @@ public class CardService {
       }
     }
 
-    // 유저+videoId 단일 조회(락) → 활성/삭제본 동시 판정
+    // 2. 중복/삭제본 판정
     var matches = cardRepository.findAnyByUserAndVideoIdForUpdate(user, videoId);
-
-    // 활성 중복 → 409
     var activeOpt = matches.stream().filter(c -> c.getDeletedAt() == null).findFirst();
     if (activeOpt.isPresent()) {
       throw new ApiException(ErrorCode.DUPLICATE_CARD);
     }
 
-    // 삭제본 있으면 즉시 복구(콘텐츠 불변)
     var deletedOpt = matches.stream().filter(c -> c.getDeletedAt() != null).findFirst();
     if (deletedOpt.isPresent()) {
       Card revived = deletedOpt.get();
       revived.setDeletedAt(null);
       revived.setDeletedBy(null);
-      cardRepository.save(revived); // ⚠️ 제목/요약/태그 변경 금지
+      cardRepository.save(revived);
 
-      // 복구 시 연결된 보드들 전부 응답에 포함해주거나,
-      // 우선 하나만 대표로 넘기려면 첫 번째 보드 가져오기
       List<Long> boardIds = boardCardRepository.findBoardIdsByCardId(revived.getId());
-
       log.info("카드 복구 완료 - 원래 연결된 보드들: {}", boardIds);
 
       var restoreBoardIds = boardCardRepository.findBoardIdsByCardId(revived.getId());
-
       return cardMapper.toResponseDto(revived, restoreBoardIds);
     }
 
-    /* 2) 신규 생성 경로 */
-    // Video 로드/업서트
+    // 3. 신규 Video 업서트
     video = videoRepository.findById(videoId).orElse(null);
     if (video == null) {
       if (metadata == null) {
-        // 유튜브 신규: 여기서 all-in-one 추출
-        log.info("추출(유튜브 신규): {}", dto.getVideoUrl());
         var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
         audioBytes = ex.getAudioBytes();
         metadata = ex.getMetadata();
@@ -164,10 +154,8 @@ public class CardService {
           .build()
       );
     } else {
-      // transcript 없으면 오디오 확보
       if ((video.getTranscript() == null || video.getTranscript().isBlank())
         && audioBytes == null) {
-        log.info("오디오만 재추출: {}", dto.getVideoUrl());
         var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
         audioBytes = ex.getAudioBytes();
         if (metadata == null) {
@@ -176,19 +164,19 @@ public class CardService {
       }
     }
 
-    // Whisper (필요 시)
+    // 4. Whisper
     if (video.getTranscript() == null || video.getTranscript().isBlank()) {
       WhisperResponseDto whisper = transcribeService.transcribe(audioBytes);
       video.setTranscript(whisper.getTranscript());
       log.info("Whisper 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
     }
 
-    // GPT 요약/태그
+    // 5. GPT 요약/태그
     String inputText = buildFullText(video);
     AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId);
     log.info("AI 메타 생성 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
 
-    // 최종 제목(신규만 세팅)
+    // 6. 최종 제목
     String mdTitle = (metadata != null) ? metadata.getTitle() : null;
     String mdDesc = (metadata != null) ? metadata.getDescription() : null;
     String finalTitle = (platform == Platform.YOUTUBE)
@@ -196,26 +184,23 @@ public class CardService {
       : firstNonEmpty(meta.getTitle(), mdTitle, truncate(safe(mdDesc), 120), "(제목 없음)");
     video.setTitle(finalTitle);
 
-    // 카드 생성/저장
+    // 7. 카드 생성/저장
     Card card = cardMapper.toEntity(user, video);
     card.updateMeta(meta.getSummary(), meta.getTags());
     Card savedCard = cardRepository.save(card);
 
-    // 보드 결정 (여러 개 지원: 요청 or AI 분류)
+    // 8. 보드 연결
     List<Long> targetBoardIds =
       (dto.getBoardIds() != null && !dto.getBoardIds().isEmpty())
         ? dto.getBoardIds()
         : List.of(meta.getBoardId());
-
     if (targetBoardIds.contains(null)) {
       throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
     }
 
-    // 보드-카드 링크 생성
     for (Long boardId : targetBoardIds) {
       Board board = boardService.getBoardById(boardId);
       boardService.updateActivity(boardId);
-
       if (!boardCardRepository.existsByBoard_IdAndCard_Id(board.getId(), savedCard.getId())) {
         BoardCard link = new BoardCard();
         link.setBoard(board);
@@ -224,7 +209,6 @@ public class CardService {
       }
     }
 
-    // 응답에 연결된 보드 ID 전체 반환
     List<Long> boardIds = boardCardRepository.findBoardIdsByCardId(savedCard.getId());
     log.info("카드 생성 완료 - 총 {}ms", System.currentTimeMillis() - startTime);
     return cardMapper.toResponseDto(savedCard, boardIds);
@@ -270,9 +254,16 @@ public class CardService {
     Card card = cardRepository.findActiveByIdAndUser(cardId, user)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    return cardMapper.toDetailResponseDto(card);
+    return cardMapper.toDetailResponseDto(card, null, null);
   }
 
+  /**
+   * 카드 메타 생성용 전체 텍스트를 구성한다.
+   * description, transcript, subtitle 등을 합쳐 요약 입력 데이터로 사용된다.
+   *
+   * @param video Video 엔티티
+   * @return 합쳐진 텍스트 문자열
+   */
   private String buildFullText(Video video) {
     StringBuilder sb = new StringBuilder();
 
@@ -307,37 +298,29 @@ public class CardService {
    * @return 카드별 처리 결과 리스트
    */
   @Transactional
-  public List<java.util.Map<String, Object>> deleteCardsGlobally(List<Long> cardIds, Long userId) {
-    java.util.List<java.util.Map<String, Object>> results = new java.util.ArrayList<>();
+  public List<CardDeleteResultDto> deleteCardsGlobally(List<Long> cardIds, Long userId) {
+    List<CardDeleteResultDto> results = new java.util.ArrayList<>();
     Instant now = Instant.now();
 
     for (Long cardId : cardIds) {
       var opt = cardRepository.findByIdForUpdate(cardId);
       if (opt.isEmpty()) {
-        results.add(java.util.Map.of("cardId", cardId, "status", "NOT_FOUND"));
+        results.add(CardDeleteResultDto.notFound(cardId));
         continue;
       }
       Card card = opt.get();
 
-      // 생성자 권한 확인
       if (!card.getUser().getId().equals(userId)) {
-        results.add(java.util.Map.of("cardId", cardId, "status", "FORBIDDEN"));
+        results.add(CardDeleteResultDto.forbidden(cardId));
         continue;
       }
-
       if (card.getDeletedAt() != null) {
-        results.add(java.util.Map.of("cardId", cardId, "status", "ALREADY_DELETED"));
+        results.add(CardDeleteResultDto.alreadyDeleted(cardId));
         continue;
       }
 
-      // 소프트 삭제
       cardRepository.softDeleteById(cardId, userId, now);
-
-      results.add(java.util.Map.of(
-        "cardId", cardId,
-        "action", "SOFT_DELETED",
-        "status", "OK"
-      ));
+      results.add(CardDeleteResultDto.deleted(cardId));
     }
     return results;
   }

@@ -36,7 +36,7 @@ public class Card extends BaseTimeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  // 카드 작성자 (소유자)
+  // 카드 소유자
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
@@ -47,36 +47,32 @@ public class Card extends BaseTimeEntity {
   private Video video;
 
   @Column(nullable = false)
-  private String title; // 카드 제목 (초기값은 영상 제목, 이후 수정 가능)
+  private String title;    // 제목 (영상 제목 기본값, 수정 가능)
 
   @Column(columnDefinition = "TEXT")
-  private String summary; // AI 요약 텍스트
+  private String summary;  // AI 요약 텍스트
 
   @Column(columnDefinition = "TEXT")
-  private String tags; // 태그 목록 (JSON 문자열 형태)
+  private String tags;     // 태그 목록 (JSON 문자열)
 
   @Column(nullable = false)
   private boolean isFavorite = false; // 즐겨찾기 여부
 
-  /**
-   * 보드와의 M:N 관계 → 중간 엔티티 BoardCard로 관리
-   */
+  // 보드와의 M:N 관계 (BoardCard로 관리)
   @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<BoardCard> boardCards = new HashSet<>();
 
-  /**
-   * 소프트 삭제 관련 필드
-   * - 삭제된 시각
-   * - 삭제한 사용자 id
-   */
-  private Instant deletedAt;
-  private Long deletedBy;
+  // 소프트 삭제 정보
+  private Instant deletedAt; // 삭제 시각
+  private Long deletedBy;    // 삭제한 사용자 ID
 
+  // AI 메타데이터 업데이트
   public void updateMeta(String summary, List<String> tags) {
     this.summary = summary;
     this.tags = String.join(",", tags);
   }
 
+  // 소프트 삭제 여부 확인
   public boolean isDeleted() {
     return deletedAt != null;
   }

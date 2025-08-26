@@ -63,7 +63,7 @@ public class BoardService {
    */
   @Transactional
   public BoardResponseDto createBoard(BoardCreateRequestDto dto, Long userId) {
-    // 1) 섹션 처리: 상위 보드 필수 + 섹션은 공유 불가
+    // 1. 섹션일 경우 상위 보드 유효성 검사
     Board parentBoard = null;
     if (dto.getBoardType() == BoardType.SECTION) {
       if (dto.getParentBoardId() == null) {
@@ -72,7 +72,6 @@ public class BoardService {
       parentBoard = boardRepository.findById(dto.getParentBoardId())
         .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-      // 사용자 생성 보드 접근 권한 체크
       if (parentBoard.getSource() == BoardSource.USER &&
         !parentBoard.getUser().getId().equals(userId)) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
@@ -81,7 +80,7 @@ public class BoardService {
         throw new ApiException(ErrorCode.FIELD_INVALID); // 섹션은 공유 불가
       }
     } else {
-      // BOARD이고 shared=false인데 초대 리스트가 온 경우 입력 오류
+      // 1-b. 보드인데 shared=false인데 memberEmails가 존재하면 오류
       if (!dto.isShared()
         && dto.getMemberEmails() != null
         && !dto.getMemberEmails().isEmpty()) {
@@ -89,17 +88,17 @@ public class BoardService {
       }
     }
 
-    // 2) 소유자 로드
+    // 2. 보드 소유자 로드
     User owner = userService.getUserById(userId);
 
-    // 3) 보드 엔티티 생성/저장
+    // 3. 보드 엔티티 생성/저장
     Board newBoard = boardMapper.toEntity(dto, owner, parentBoard);
     newBoard.setShared(dto.isShared());
     Board savedBoard = boardRepository.save(newBoard);
 
-    // 4) 공유보드면 멤버십 생성
+    // 4. 공유 보드일 경우 멤버십 생성
     if (dto.getBoardType() == BoardType.BOARD && dto.isShared()) {
-      // 이메일 정제 및 본인 제외
+      // 4-1. 이메일 정제
       Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
         .orElse(List.of())
         .stream()
@@ -110,6 +109,7 @@ public class BoardService {
         .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
         .collect(Collectors.toCollection(LinkedHashSet::new));
 
+      // 4-2. 유저 조회 + 누락 이메일 검증
       List<User> admins = List.of();
       if (!inviteEmails.isEmpty()) {
         admins = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
@@ -120,11 +120,11 @@ public class BoardService {
           .filter(e -> !found.contains(e))
           .toList();
         if (!missing.isEmpty()) {
-          throw new ApiException(ErrorCode.ENTITY_NOT_FOUND); // 상세 메시지는 글로벌 핸들러에서
+          throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
         }
       }
 
-      // ✅ Mapper로 OWNER + ADMINs 생성
+      // 4-3. OWNER + ADMIN 멤버 생성/저장
       List<BoardMember> members = admins.isEmpty()
         ? List.of(boardMemberMapper.toOwner(savedBoard, owner))
         : boardMemberMapper.toOwnerAndAdmins(savedBoard, owner, admins);
@@ -132,6 +132,7 @@ public class BoardService {
       boardMemberRepository.saveAll(members);
     }
 
+    // 5. 결과 반환
     return boardMapper.toResponseDto(savedBoard);
   }
 
@@ -226,10 +227,10 @@ public class BoardService {
     List<BoardListResponseDto> sections = new ArrayList<>();
 
     for (Board section : sectionBoards) {
-      long cardCount = cardRepository.countActiveByBoardId(section.getId()); // ✅
+      long cardCount = cardRepository.countActiveByBoardId(section.getId());
       String thumbnailUrl = null;
       if (cardCount > 0) {
-        var top1 = cardRepository.findRecentCardsByBoard(section, PageRequest.of(0, 1)); // ✅
+        var top1 = cardRepository.findRecentCardsByBoard(section, PageRequest.of(0, 1));
         thumbnailUrl = top1.isEmpty()
           ? null
           : (top1.get(0).getVideo() != null ? top1.get(0).getVideo().getThumbnailUrl() : null);
@@ -240,7 +241,7 @@ public class BoardService {
 
     // 카드 리스트
     List<CardListResponseDto> cards = cardRepository.findByBoardIdOrderByCreatedAtDesc(boardId)
-      .stream() // ✅
+      .stream()
       .map(cardMapper::toListResponseDto)
       .toList();
 
@@ -264,7 +265,7 @@ public class BoardService {
     board.touch();
     boardRepository.save(board);
 
-    // 만약 섹션(SECTION 타입)이고 상위 보드가 있다면, 상위 보드도 갱신
+    // 섹션이고 상위 보드가 있다면, 상위 보드도 갱신
     if (board.getBoardType() == BoardType.SECTION && board.getParentBoard() != null) {
       Board parent = board.getParentBoard();
       parent.touch();
@@ -298,7 +299,6 @@ public class BoardService {
         BoardDeleteResultDto r = handleSingleBoardDelete(boardId, effective, userId);
         results.add(r);
       } catch (ApiException ae) {
-        // 비즈니스 에러만 결과에 담아서 계속 진행
         results.add(BoardDeleteResultDto.builder()
           .boardId(boardId)
           .status("FAILED")
@@ -366,10 +366,10 @@ public class BoardService {
     DeleteLinkedCardsOption option,
     Long userId
   ) {
+    // 1. 보드 조회 및 권한 확인
     Board root = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    // 권한: 기본보드(AI)는 데이터 삭제 없음(링크/카드만 처리). 사용자 보드는 멤버십 필요.
     if (root.getSource() != BoardSource.AI) {
       boolean isOwner = root.getUser() != null && Objects.equals(root.getUser().getId(), userId);
       boolean isMember = boardMemberRepository.existsByBoard_IdAndUser_Id(root.getId(), userId);
@@ -378,11 +378,11 @@ public class BoardService {
       }
     }
 
-    // 0) 트리 수집(자식 섹션 포함, 후위 순회: 자식 → 부모)
+    // 2. 삭제 대상 보드(자식 섹션 포함) 수집
     List<Board> targets = collectSelfAndSectionDescendantsPostOrder(root);
     List<Long> targetBoardIds = targets.stream().map(Board::getId).toList();
 
-    // 1) 트리 전체 카드 id 수집 (한 방)
+    // 3. 대상 보드들에 연결된 카드 수집
     List<Long> allCardIds = targetBoardIds.isEmpty()
       ? List.of()
       : boardCardRepository.findDistinctCardIdsByBoardIds(targetBoardIds);
@@ -390,7 +390,7 @@ public class BoardService {
     int linksDetached = 0;
     int cardsSoftDeleted = 0;
 
-    // 2) 옵션 적용 — 항상 "링크 먼저", 그 다음 soft delete
+    // 4. 옵션에 따른 카드 처리 (링크 해제 → 고아 카드 soft delete)
     try {
       if (option == DeleteLinkedCardsOption.DETACH_ONLY) {
         System.out.println("STEP-2 detach links start");
@@ -418,7 +418,7 @@ public class BoardService {
     }
 
     if (root.getSource() == BoardSource.AI) {
-      // 3-A) 기본 보드: 보드 row는 유지 (cardCount=0이면 프론트에서 비노출)
+      // 5. AI 기본 보드인 경우: 숨김 처리만
       return BoardDeleteResultDto.builder()
         .boardId(boardId)
         .status("HIDDEN")
@@ -428,7 +428,7 @@ public class BoardService {
         .sectionsDeleted(0)
         .build();
     } else {
-      // 3-B) 사용자 보드: 멤버 제거 → 보드/섹션 하드 삭제(역순)
+      // 6. 사용자 보드: 멤버 삭제 → 보드/섹션 삭제
       try {
         System.out.println("STEP-3 delete members start");
         if (!targetBoardIds.isEmpty()) {
@@ -449,7 +449,6 @@ public class BoardService {
         throw e;
       }
 
-      // 역순 삭제 (자식 → 부모)
       deleteBoardsInReverse(targets);
 
       int sectionsDeleted = (int) targets.stream()
@@ -467,22 +466,9 @@ public class BoardService {
   }
 
   /**
-   * per-user 숨김 처리
-   */
-  private void hideBoardForUser(Long boardId, Long userId) {
-    // 예: board_user_state 테이블 upsert
-    // boardUserStateRepository.upsertHidden(boardId, userId, true);
-  }
-
-  /**
    * root 보드와 모든 하위 섹션을 후위 순회(Post-Order)로 반환 (항상 자식 먼저 오게)
    */
   private List<Board> collectSelfAndSectionDescendantsPostOrder(Board root) {
-    // 구현 예시:
-    // - 재귀/BFS로 children(section) 탐색하여 리스트에 담고
-    // - 삭제 순서를 위해 자식 먼저, 마지막에 root 추가
-    // 여기서는 저장소 메서드가 있다고 가정
-    // return boardRepository.findSelfAndDescendantSectionsPostOrder(root.getId());
     List<Board> list = new ArrayList<>();
     collectDfs(root, list);
     return list;
