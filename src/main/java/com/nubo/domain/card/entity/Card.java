@@ -1,9 +1,10 @@
 package com.nubo.domain.card.entity;
 
-import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardCard;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.global.common.BaseTimeEntity;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,14 +13,20 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,12 +36,12 @@ public class Card extends BaseTimeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  // 카드 작성자 (누가 이 카드를 만들었는지)
+  // 카드 작성자 (소유자)
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id", nullable = false)
   private User user;
 
-  // 원본 영상 참조
+  // 원본 영상
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "video_id", nullable = false)
   private Video video;
@@ -51,13 +58,26 @@ public class Card extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean isFavorite = false; // 즐겨찾기 여부
 
-  // 속한 보드 (카드는 반드시 1개의 보드에 속함)
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "board_id", nullable = false)
-  private Board board;
+  /**
+   * 보드와의 M:N 관계 → 중간 엔티티 BoardCard로 관리
+   */
+  @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Set<BoardCard> boardCards = new HashSet<>();
+
+  /**
+   * 소프트 삭제 관련 필드
+   * - 삭제된 시각
+   * - 삭제한 사용자 id
+   */
+  private Instant deletedAt;
+  private Long deletedBy;
 
   public void updateMeta(String summary, List<String> tags) {
     this.summary = summary;
     this.tags = String.join(",", tags);
+  }
+
+  public boolean isDeleted() {
+    return deletedAt != null;
   }
 }

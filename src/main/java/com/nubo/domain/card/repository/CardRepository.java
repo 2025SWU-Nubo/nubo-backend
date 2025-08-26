@@ -3,32 +3,108 @@ package com.nubo.domain.card.repository;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
-import com.nubo.domain.video.entity.Video;
+import jakarta.persistence.LockModeType;
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface CardRepository extends JpaRepository<Card, Long> {
 
-  // 해당 사용자의 모든 카드 목록을 조회
-  List<Card> findAllByUser(User user);
+  @Query("select c from Card c where c.user = :user and c.deletedAt is null order by c.createdAt "
+    + "desc")
+  List<Card> findAllActiveByUserOrderByCreatedAtDesc(@Param("user") User user);
 
-  // 해당 사용자의 특정 카드 조회
-  Optional<Card> findByIdAndUser(Long cardId, User user);
+  @Query("select c from Card c where c.user = :user and c.deletedAt is null order by c.title asc")
+  List<Card> findAllActiveByUserOrderByTitleAsc(@Param("user") User user);
 
-  List<Card> findAllByUserOrderByCreatedAtDesc(User user);
+  @Query("select c from Card c where c.id = :cardId and c.user = :user and c.deletedAt is null")
+  Optional<Card> findActiveByIdAndUser(@Param("cardId") Long cardId, @Param("user") User user);
 
-  List<Card> findAllByUserOrderByTitleAsc(User user);
+  @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("""
+      select c
+      from Card c join c.video v
+      where c.user = :user and v.id = :videoId
+    """)
+  List<Card> findAnyByUserAndVideoIdForUpdate(@Param("user") User user,
+    @Param("videoId") String videoId);
 
-  // 중복 카드 방지용
-  boolean existsByUserAndVideo(User user, Video video);
+  // 보드에 연결된 카드들(최신순) — 기존 findByBoardId 대체용
+  @Query("""
+      select c
+        from BoardCard bc
+        join bc.card c
+       where bc.board.id = :boardId
+         and c.deletedAt is null
+       order by c.createdAt desc
+    """)
+  List<Card> findByBoardIdOrderByCreatedAtDesc(@Param("boardId") Long boardId);
 
-  // 보드에 소속된 카드 리스트 조회
-  List<Card> findByBoardId(Long boardId);
+  // 보드에 연결된 카드 개수 — 기존 countByBoardId 대체용
+  @Query("""
+      select count(c)
+        from BoardCard bc
+        join bc.card c
+       where bc.board.id = :boardId
+         and c.deletedAt is null
+    """)
+  long countActiveByBoardId(@Param("boardId") Long boardId);
 
-  // 보드에 소속된 카드 갯수 조회
-  long countByBoardId(Long boardId);
+  // 썸네일용 최신 1개(또는 N개) — 기존 findTopByBoard... 대체용
+  @Query("""
+      select c
+        from BoardCard bc
+        join bc.card c
+       where bc.board = :board
+         and c.deletedAt is null
+       order by c.createdAt desc
+    """)
+  List<Card> findRecentCardsByBoard(@Param("board") Board board, Pageable pageable);
 
-  // 가장 최신(최근 생성된) 카드 1개 가져오기 (보드 썸네일용)
-  Optional<Card> findTopByBoardOrderByCreatedAtDesc(Board board);
+  /* ============================================================
+   * [추가] 동시성 제어 / 락
+   * ============================================================ */
+
+  // 삭제/수정 같은 파괴적 연산 전에 행을 잠그고 조회
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select c from Card c where c.id = :id")
+  Optional<Card> findByIdForUpdate(@Param("id") Long id);
+
+
+  /* ============================================================
+   * [추가] 소프트 삭제(전역 삭제)
+   * ============================================================ */
+
+  // 단건 소프트 삭제
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    update Card c
+       set c.deletedAt = :now,
+           c.deletedBy = :userId
+     where c.id = :id
+       and c.deletedAt is null
+    """)
+  int softDeleteById(@Param("id") Long id,
+    @Param("userId") Long userId,
+    @Param("now") Instant now);
+
+  // 다건 소프트 삭제
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    update Card c
+       set c.deletedAt = :now,
+           c.deletedBy = :userId
+     where c.id in :ids
+       and c.deletedAt is null
+    """)
+  int softDeleteByIds(@Param("ids") Collection<Long> ids,
+    @Param("userId") Long userId,
+    @Param("now") Instant now);
 }

@@ -21,6 +21,8 @@ public enum ErrorCode {
   UNAUTHORIZED_ACCESS(403, "C008", "user id mismatch", LogLevel.ERROR),
   POSITIVE_VALUE_REQUIRED(400, "C009", "Value must be positive", LogLevel.ERROR),
 
+  FORBIDDEN(403, "C010", "Forbidden", LogLevel.WARN),
+
   // ENTITY
   ENTITY_NOT_FOUND(404, "E001", "Entity not found", LogLevel.WARN),
   DUPLICATE_RESOURCE(409, "E002", "Resource already exists", LogLevel.WARN),
@@ -29,6 +31,7 @@ public enum ErrorCode {
   // VALIDATION
   FIELD_REQUIRED(400, "V001", "Required field is missing", LogLevel.WARN),
   INVALID_FORMAT(400, "V002", "Invalid format", LogLevel.WARN),
+  FIELD_INVALID(400, "V003", "Invalid field value", LogLevel.WARN),
 
   /* 필요한 도메인 에러코드 추가 */
 

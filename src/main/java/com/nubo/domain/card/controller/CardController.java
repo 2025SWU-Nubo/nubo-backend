@@ -1,6 +1,7 @@
 package com.nubo.domain.card.controller;
 
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
@@ -8,9 +9,11 @@ import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,5 +71,16 @@ public class CardController {
     return ResponseEntity.ok(response);
   }
 
-
+  /**
+   * 카드 전역 삭제 (소프트 삭제).
+   *
+   * @param req 삭제할 카드 ID 목록
+   * @return 카드별 처리 결과 리스트
+   */
+  @DeleteMapping
+  public ResponseEntity<Map<String, Object>> deleteCards(@RequestBody CardDeleteRequestDto req) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    var results = cardService.deleteCardsGlobally(req.getCardIds(), userId);
+    return ResponseEntity.ok(Map.of("results", results));
+  }
 }

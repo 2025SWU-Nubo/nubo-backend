@@ -1,6 +1,7 @@
 package com.nubo.domain.card.dto;
 
 import com.nubo.domain.video.type.Platform;
+import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,5 +14,5 @@ public class CardCreateRequestDto {
   private Platform platform;
 
   // 사용자 지정 보드 (optional)
-  private Long boardId;
+  private List<Long> boardIds;
 }

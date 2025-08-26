@@ -21,5 +21,5 @@ public class CardResponseDto {
   private String videoId;
   private String videoThumbnailUrl;
 
-  private Long boardId;
+  private List<Long> boardIds;
 }

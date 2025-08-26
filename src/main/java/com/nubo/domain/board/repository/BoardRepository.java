@@ -11,9 +11,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-  // 특정 사용자의 특정 보드(섹션)
-  Optional<Board> findByIdAndUserId(Long id, Long userId);
-
   // 특정 사용자의 1차 보드만 (섹션 제외)
   @Query("SELECT b FROM Board b WHERE b.boardType = :boardType AND (b.user.id = :userId OR b.user"
     + " IS NULL)")
@@ -28,13 +25,15 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 
   // 보드 내 섹션, 카드 갯수 조회
   @Query("""
-    SELECT new com.nubo.domain.board.dto.BoardStatsDto(b.id,
+    SELECT new com.nubo.domain.board.dto.BoardStatsDto(
+      b.id,
       COUNT(DISTINCT s),
       COUNT(DISTINCT c)
     )
     FROM Board b
     LEFT JOIN Board s ON s.parentBoard.id = b.id
-    LEFT JOIN Card c ON c.board.id = b.id
+    LEFT JOIN BoardCard bc ON bc.board.id = b.id
+    LEFT JOIN Card c ON c.id = bc.card.id
     WHERE b.id IN :boardIds
     GROUP BY b.id
     """)

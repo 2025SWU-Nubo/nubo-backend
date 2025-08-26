@@ -14,6 +14,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,4 +90,20 @@ public class UserService {
       .map(userMapper::toSearchResponseDto)
       .toList();
   }
+
+  @Transactional(readOnly = true)
+  public List<User> getUsersByEmails(List<String> emails) {
+    if (emails == null || emails.isEmpty()) {
+      return List.of();
+    }
+    // 이메일 normalize (trim+lower) 일관성 유지
+    List<String> norm = emails.stream()
+      .filter(Objects::nonNull)
+      .map(String::trim)
+      .map(String::toLowerCase)
+      .filter(s -> !s.isBlank())
+      .toList();
+    return userRepository.findByEmailIn(norm);
+  }
+
 }

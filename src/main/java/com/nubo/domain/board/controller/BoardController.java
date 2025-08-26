@@ -1,6 +1,10 @@
 package com.nubo.domain.board.controller;
 
+import com.nubo.domain.board.dto.BoardCardsDetachRequestDto;
+import com.nubo.domain.board.dto.BoardCardsDetachResultDto;
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
+import com.nubo.domain.board.dto.BoardDeleteRequestDto;
+import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
@@ -8,8 +12,10 @@ import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,7 +44,7 @@ public class BoardController {
   }
 
   /**
-   * 로그인한 사용자의 보드 목록을 조회한다. (1차 분류만)
+   * 로그인한 사용자의 보드 목록을 조회한다. (섹션 정보 미포함)
    *
    * @return 사용자의 보드 리스트
    */
@@ -58,5 +64,47 @@ public class BoardController {
   public ResponseEntity<BoardDetailResponseDto> getBoardDetail(@PathVariable Long boardId) {
     BoardDetailResponseDto detail = boardService.getBoardDetail(boardId);
     return ResponseEntity.ok(detail);
+  }
+
+  /**
+   * 보드 다중 삭제 또는 숨김 처리.
+   * - 기본 제공 보드는 삭제되지 않고 숨김 처리됨
+   * - 연결된 카드 처리 방식은 옵션(deleteLinkedCards)에 따라 결정됨
+   *
+   * @param req 삭제할 boardIds와 연결된 카드 처리 옵션
+   * @return 각 보드별 처리 결과 목록
+   */
+  @DeleteMapping
+  public ResponseEntity<List<BoardDeleteResultDto>> deleteBoards(
+    @Valid @RequestBody BoardDeleteRequestDto req
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    var option = Optional.ofNullable(req.getDeleteLinkedCards())
+      .orElse(BoardDeleteRequestDto.DeleteLinkedCardsOption.DETACH_ONLY);
+
+    List<BoardDeleteResultDto> results =
+      boardService.deleteBoards(req.getBoardIds(), option, userId);
+
+    return ResponseEntity.ok(results);
+  }
+
+  /**
+   * 특정 보드에서 여러 카드 제거(카드 자체는 삭제되지 않음).
+   * - 보드-카드 연결 관계만 해제
+   *
+   * @param boardId 카드들을 제거할 보드 ID
+   * @param req     제거할 cardIds 목록
+   * @return 각 카드별 처리 결과 목록
+   */
+  @DeleteMapping("/{boardId}/cards")
+  public ResponseEntity<List<BoardCardsDetachResultDto>> detachCardsFromBoard(
+    @PathVariable Long boardId,
+    @RequestBody BoardCardsDetachRequestDto req
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<BoardCardsDetachResultDto> results =
+      boardService.detachCardsFromBoard(boardId, req.getCardIds(), userId);
+
+    return ResponseEntity.ok(results);
   }
 }
