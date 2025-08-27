@@ -11,18 +11,24 @@ import org.springframework.data.repository.query.Param;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-  // 특정 사용자의 1차 보드 목록 조회 (섹션 제외, 기본보드 포함)
+  // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우)
   @Query("""
       SELECT DISTINCT b
       FROM Board b
       WHERE b.boardType = :boardType
         AND (b.user.id = :userId OR b.user IS NULL)
-        AND EXISTS (
-          SELECT 1
-          FROM BoardCard bc
-          JOIN bc.card c
-          WHERE bc.board.id = b.id
-            AND c.deletedAt IS NULL
+        AND (
+          EXISTS (
+            SELECT 1
+            FROM BoardCard bc
+            WHERE bc.board.id = b.id
+              AND bc.card.deletedAt IS NULL
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM Board s
+            WHERE s.parentBoard.id = b.id
+          )
         )
     """)
   List<Board> findVisibleBoardsForUser(@Param("userId") Long userId,
