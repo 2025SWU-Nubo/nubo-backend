@@ -12,8 +12,10 @@ import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
+import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.card.repository.CardUserStatusRepository;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.domain.video.dto.VideoMetadataDto;
@@ -48,6 +50,7 @@ public class CardService {
   private final TranscribeService transcribeService;
   private final VideoRepository videoRepository;
   private final BoardCardRepository boardCardRepository;
+  private final CardUserStatusRepository cardUserStatusRepository;
 
   // 문자열 유틸
   private static String truncate(String s, int max) {
@@ -254,6 +257,9 @@ public class CardService {
     Card card = cardRepository.findActiveByIdAndUser(cardId, user)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
+    // 열람 기록
+    markAsViewed(userId, card);
+
     return cardMapper.toDetailResponseDto(card, null, null);
   }
 
@@ -323,5 +329,29 @@ public class CardService {
       results.add(CardDeleteResultDto.deleted(cardId));
     }
     return results;
+  }
+
+  /**
+   * 지정된 카드에 대해 사용자의 열람 상태를 기록한다.
+   * 카드 상세 조회 시 진입하면 자동으로 호출되어,
+   * 해당 카드가 처음 열람된 경우 viewedAt 시각을 저장한다.
+   *
+   * @param userId 열람한 사용자 ID
+   * @param card   열람된 카드 엔티티
+   */
+  @Transactional
+  public void markAsViewed(Long userId, Card card) {
+    CardUserStatus status = cardUserStatusRepository
+      .findByUserIdAndCardId(userId, card.getId())
+      .orElseGet(() -> CardUserStatus.builder()
+        .user(userService.getUserById(userId))
+        .card(card)
+        .build());
+
+    // 이미 본 적 없을 때만 기록 (덮어쓰기 방지)
+    if (status.getViewedAt() == null) {
+      status.setViewedAt(Instant.now());
+      cardUserStatusRepository.save(status);
+    }
   }
 }
