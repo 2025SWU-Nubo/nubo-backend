@@ -6,8 +6,9 @@ import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDeleteRequestDto;
 import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
-import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardSummaryResponseDto;
+import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
 import jakarta.validation.Valid;
@@ -49,7 +50,7 @@ public class BoardController {
    * @return 사용자의 보드 리스트
    */
   @GetMapping
-  public List<BoardListResponseDto> getUserBoards() {
+  public List<BoardSummaryResponseDto> getUserBoards() {
     Long userId = userUtil.getAuthenticatedUserId();
     return boardService.getUserBoards(userId);
   }
@@ -64,6 +65,17 @@ public class BoardController {
   public ResponseEntity<BoardDetailResponseDto> getBoardDetail(@PathVariable Long boardId) {
     BoardDetailResponseDto detail = boardService.getBoardDetail(boardId);
     return ResponseEntity.ok(detail);
+  }
+
+  /**
+   * 카드 추가 시 사용자가 선택할 수 있는
+   * 보드와 섹션 목록을 계층 구조로 반환한다.
+   */
+  @GetMapping("/with-sections")
+  public ResponseEntity<List<BoardWithSectionsSimpleResponseDto>> getBoardsWithSections() {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<BoardWithSectionsSimpleResponseDto> result = boardService.getBoardsWithSections(userId);
+    return ResponseEntity.ok(result);
   }
 
   /**

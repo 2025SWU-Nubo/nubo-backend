@@ -1,6 +1,6 @@
 package com.nubo.domain.home.controller;
 
-import com.nubo.domain.board.dto.BoardNameListResponseDto;
+import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.CardThumbnailResponseDto;
 import com.nubo.domain.card.service.CardService;
@@ -29,9 +29,9 @@ public class HomeController {
    * @return 보드 ID와 이름 리스트
    */
   @GetMapping("/boards")
-  public ResponseEntity<List<BoardNameListResponseDto>> getUserBoardsForHome() {
+  public ResponseEntity<List<BoardSimpleResponseDto>> getUserBoardsForHome() {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<BoardNameListResponseDto> boards = boardService.getBoardsForHome(userId);
+    List<BoardSimpleResponseDto> boards = boardService.getBoardsForHome(userId);
     return ResponseEntity.ok(boards);
   }
 

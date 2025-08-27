@@ -11,7 +11,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class BoardNameListResponseDto {
+public class BoardSimpleResponseDto {
 
   private Long boardId;
   private String boardName;

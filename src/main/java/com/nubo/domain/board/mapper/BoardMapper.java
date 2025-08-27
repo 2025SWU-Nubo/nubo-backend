@@ -2,13 +2,17 @@ package com.nubo.domain.board.mapper;
 
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
-import com.nubo.domain.board.dto.BoardListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardSimpleResponseDto;
+import com.nubo.domain.board.dto.BoardSummaryResponseDto;
+import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
+import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto.SectionSimpleDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.user.entity.User;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -44,11 +48,11 @@ public class BoardMapper {
   }
 
   /**
-   * Board → BoardListResponseDto 변환
+   * Board → BoardSummaryResponseDto 변환
    */
-  public BoardListResponseDto toListResponseDto(Board board, long sectionCount, long cardCount,
+  public BoardSummaryResponseDto toListResponseDto(Board board, long sectionCount, long cardCount,
     String thumbnailUrl) {
-    return BoardListResponseDto.builder()
+    return BoardSummaryResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .source(board.getSource())
@@ -65,7 +69,7 @@ public class BoardMapper {
    * Board + 섹션 + 카드 리스트 → BoardDetailResponseDto 변환
    */
   public BoardDetailResponseDto toDetailResponseDto(Board board,
-    List<BoardListResponseDto> sections,
+    List<BoardSummaryResponseDto> sections,
     List<CardListResponseDto> cards) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())
@@ -73,5 +77,37 @@ public class BoardMapper {
       .sections(sections)
       .cards(cards)
       .build();
+  }
+
+  /**
+   * Board → BoardWithSectionsSimpleResponseDto
+   */
+  public BoardWithSectionsSimpleResponseDto toWithSectionsSimpleDto(Board board) {
+    return BoardWithSectionsSimpleResponseDto.builder()
+      .id(board.getId())
+      .name(board.getName())
+      .sections(board.getSections().stream()
+        .map(section -> SectionSimpleDto.builder()
+          .id(section.getId())
+          .name(section.getName())
+          .build())
+        .collect(Collectors.toList()))
+      .build();
+  }
+
+  /**
+   * Board 리스트 → BoardWithSectionsSimpleResponseDto
+   */
+  public List<BoardWithSectionsSimpleResponseDto> toWithSectionsSimpleDtoList(List<Board> boards) {
+    return boards.stream()
+      .map(this::toWithSectionsSimpleDto)
+      .collect(Collectors.toList());
+  }
+
+  /**
+   * Board → BoardSimpleResponseDto
+   */
+  public BoardSimpleResponseDto toSimpleDto(Board board) {
+    return new BoardSimpleResponseDto(board.getId(), board.getName());
   }
 }

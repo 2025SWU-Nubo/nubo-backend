@@ -5,10 +5,11 @@ import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardDeleteRequestDto.DeleteLinkedCardsOption;
 import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
-import com.nubo.domain.board.dto.BoardListResponseDto;
-import com.nubo.domain.board.dto.BoardNameListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
+import com.nubo.domain.board.dto.BoardSummaryResponseDto;
+import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.mapper.BoardMapper;
@@ -144,7 +145,7 @@ public class BoardService {
    * @return 보드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<BoardListResponseDto> getUserBoards(Long userId) {
+  public List<BoardSummaryResponseDto> getUserBoards(Long userId) {
     List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
 
     List<Long> boardIds = boards.stream()
@@ -225,7 +226,7 @@ public class BoardService {
     // 섹션 리스트
     List<Board> sectionBoards = boardRepository.findByParentBoard_Id(boardId);
 
-    List<BoardListResponseDto> sections = new ArrayList<>();
+    List<BoardSummaryResponseDto> sections = new ArrayList<>();
 
     for (Board section : sectionBoards) {
       long cardCount = cardRepository.countActiveByBoardId(section.getId());
@@ -256,14 +257,25 @@ public class BoardService {
    * @return 보드 이름 리스트 DTO
    */
   @Transactional(readOnly = true)
-  public List<BoardNameListResponseDto> getBoardsForHome(Long userId) {
+  public List<BoardSimpleResponseDto> getBoardsForHome(Long userId) {
     List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
-
     return boards.stream()
-      .map(b -> new BoardNameListResponseDto(b.getId(), b.getName()))
+      .map(boardMapper::toSimpleDto)
       .toList();
   }
-  
+
+  /**
+   * 현재 사용자의 모든 보드와 섹션을 계층 구조로 조회한다.
+   *
+   * @param userId 조회할 사용자 ID
+   * @return 보드+섹션 이름 리스트 DTO
+   */
+  @Transactional(readOnly = true)
+  public List<BoardWithSectionsSimpleResponseDto> getBoardsWithSections(Long userId) {
+    List<Board> boards = boardRepository.findAllAccessibleBoardsWithSections(userId);
+    return boardMapper.toWithSectionsSimpleDtoList(boards);
+  }
+
   /**
    * 보드의 최근 활동 시간을 갱신한다.
    *

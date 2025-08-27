@@ -71,8 +71,22 @@ public class Board extends BaseTimeEntity {
   @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<BoardCard> boardCards = new HashSet<>();
 
+  @OneToMany(mappedBy = "parentBoard", cascade = CascadeType.ALL, orphanRemoval = true)
+  private Set<Board> sections = new HashSet<>();
+
   // 마지막 수정시간 업데이트를 위한 dummy 변경
   public void touch() {
     this.setUpdatedAtForTouch(LocalDateTime.now());
+  }
+
+  // === 연관관계 편의 메서드 ===
+  public void addSection(Board section) {
+    this.sections.add(section);
+    section.setParentBoard(this);
+  }
+
+  public void removeSection(Board section) {
+    this.sections.remove(section);
+    section.setParentBoard(null);
   }
 }

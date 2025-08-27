@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class BoardListResponseDto {
+public class BoardSummaryResponseDto {
 
   private Long id;
   private String name;
