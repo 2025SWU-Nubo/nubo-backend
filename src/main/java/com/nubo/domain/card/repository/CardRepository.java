@@ -76,6 +76,27 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   List<Card> findRecentCardsByBoard(@Param("board") Board board, Pageable pageable);
 
+  // 미열람 카드의 썸네일 리스트 랜덤 조회
+  @Query(value = """
+        SELECT c.*
+        FROM board_card bc
+        JOIN card c ON c.id = bc.card_id
+        WHERE bc.board_id = :boardId
+          AND c.deleted_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1
+            FROM card_user_status cus
+            WHERE cus.user_id = :userId
+              AND cus.card_id = c.id
+              AND cus.viewed_at IS NOT NULL
+          )
+        ORDER BY RAND()
+        LIMIT :limit
+    """, nativeQuery = true)
+  List<Card> findUnviewedCardsByBoard(@Param("userId") Long userId,
+    @Param("boardId") Long boardId,
+    @Param("limit") int limit);
+
   // =========================
   // 락/동시성 제어
   // =========================

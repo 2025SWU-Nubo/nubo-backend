@@ -24,7 +24,6 @@ public class CardMapper {
       .title(video.getTitle())
       .user(user)
       .video(video)
-      .isFavorite(false)
       .build();
   }
 
@@ -39,7 +38,6 @@ public class CardMapper {
       .title(card.getTitle())
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
-      .isFavorite(card.isFavorite())
       .videoId(card.getVideo().getId())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .boardIds(boardIds)

@@ -10,6 +10,7 @@ import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
+import com.nubo.domain.card.dto.CardThumbnailResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.entity.CardUserStatus;
@@ -262,6 +263,26 @@ public class CardService {
 
     return cardMapper.toDetailResponseDto(card, null, null);
   }
+
+  /**
+   * 지정된 보드에서 사용자가 아직 열람하지 않은 카드 썸네일 리스트를 반환한다.
+   * 결과는 랜덤 순서로 제한된 개수만 반환한다.
+   *
+   * @param userId  사용자 ID
+   * @param boardId 보드 ID
+   * @param limit   최대 반환 개수
+   * @return 카드 썸네일 DTO 리스트
+   */
+  @Transactional(readOnly = true)
+  public List<CardThumbnailResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
+    int limit) {
+    List<Card> unviewedCards = cardRepository.findUnviewedCardsByBoard(userId, boardId, limit);
+    return unviewedCards.stream()
+      .map(c -> new CardThumbnailResponseDto(c.getId(),
+        c.getVideo() != null ? c.getVideo().getThumbnailUrl() : null))
+      .toList();
+  }
+
 
   /**
    * 카드 메타 생성용 전체 텍스트를 구성한다.

@@ -6,6 +6,7 @@ import com.nubo.domain.board.dto.BoardDeleteRequestDto.DeleteLinkedCardsOption;
 import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardListResponseDto;
+import com.nubo.domain.board.dto.BoardNameListResponseDto;
 import com.nubo.domain.board.dto.BoardResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.entity.Board;
@@ -248,6 +249,21 @@ public class BoardService {
     return boardMapper.toDetailResponseDto(board, sections, cards);
   }
 
+  /**
+   * 홈 화면용 보드 이름 리스트 조회
+   *
+   * @param userId 조회할 사용자 ID
+   * @return 보드 이름 리스트 DTO
+   */
+  @Transactional(readOnly = true)
+  public List<BoardNameListResponseDto> getBoardsForHome(Long userId) {
+    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
+
+    return boards.stream()
+      .map(b -> new BoardNameListResponseDto(b.getId(), b.getName()))
+      .toList();
+  }
+  
   /**
    * 보드의 최근 활동 시간을 갱신한다.
    *
