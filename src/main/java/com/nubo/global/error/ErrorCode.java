@@ -48,7 +48,8 @@ public enum ErrorCode {
 
   // VIDEO
   INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN),
-  UNSUPPORTED_PLATFORM(400, "V002", "Unsupported video platform", LogLevel.WARN);;
+  UNSUPPORTED_PLATFORM(400, "V002", "Unsupported video platform", LogLevel.WARN),
+  INVALID_VIDEO_URL(400, "V003", "Video Url is invalid", LogLevel.WARN);
 
   private final int status;
   private final String code;
