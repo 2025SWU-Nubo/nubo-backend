@@ -1,7 +1,10 @@
 package com.nubo.domain.user.service;
 
 import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardMember;
+import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
+import com.nubo.domain.board.type.BoardMemberRole;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.board.type.DefaultBoard;
@@ -26,6 +29,7 @@ public class UserService {
 
   private final UserRepository userRepository;
   private final BoardRepository boardRepository;
+  private final BoardMemberRepository boardMemberRepository;
 
   private final UserMapper userMapper;
   private final UserUtil userUtil;
@@ -57,7 +61,18 @@ public class UserService {
           .build())
         .toList();
 
+      // 3. 각 보드에 대해 BoardMember(owner) 생성
+      List<BoardMember> memberships = defaults.stream()
+        .map(board -> BoardMember.builder()
+          .board(board)
+          .user(newUser)
+          .role(BoardMemberRole.OWNER)
+          .favorite(false)
+          .build())
+        .toList();
+
       boardRepository.saveAll(defaults);
+      boardMemberRepository.saveAll(memberships);
 
       return newUser;
     });

@@ -1,8 +1,9 @@
 package com.nubo.domain.board.mapper;
 
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
+import com.nubo.domain.board.dto.BoardCreateResponseDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
-import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
@@ -12,6 +13,7 @@ import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.user.entity.User;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
@@ -19,16 +21,17 @@ import org.springframework.stereotype.Component;
 public class BoardMapper {
 
   /**
-   * Board → BoardResponseDto 변환
+   * Board → BoardCreateResponseDto 변환
    */
-  public BoardResponseDto toResponseDto(Board board) {
-    return BoardResponseDto.builder()
+  public BoardCreateResponseDto toCreateResponseDto(Board board) {
+    return BoardCreateResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .boardType(board.getBoardType())
       .source(board.getSource())
       .isShared(board.isShared())
-      .isFavorite(board.isFavorite())
+      .isFavorite(false)
+      .parentBoardId(board.getParentBoard() != null ? board.getParentBoard().getId() : null)
       .build();
   }
 
@@ -41,7 +44,6 @@ public class BoardMapper {
       .boardType(dto.getBoardType())
       .source(BoardSource.USER)
       .isShared(false)
-      .isFavorite(false)
       .user(user)
       .parentBoard(parentBoard)
       .build();
@@ -50,14 +52,18 @@ public class BoardMapper {
   /**
    * Board → BoardSummaryResponseDto 변환
    */
-  public BoardSummaryResponseDto toListResponseDto(Board board, long sectionCount, long cardCount,
-    String thumbnailUrl) {
+  public BoardSummaryResponseDto toSummaryResponseDto(
+    Board board,
+    long sectionCount,
+    long cardCount,
+    String thumbnailUrl,
+    boolean favorite) {
     return BoardSummaryResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .source(board.getSource())
       .isShared(board.isShared())
-      .isFavorite(board.isFavorite())
+      .isFavorite(favorite)
       .updatedAt(board.getUpdatedAt())
       .sectionCount(sectionCount)
       .cardCount(cardCount)
@@ -68,12 +74,15 @@ public class BoardMapper {
   /**
    * Board + 섹션 + 카드 리스트 → BoardDetailResponseDto 변환
    */
-  public BoardDetailResponseDto toDetailResponseDto(Board board,
+  public BoardDetailResponseDto toDetailResponseDto(
+    Board board,
     List<BoardSummaryResponseDto> sections,
-    List<CardListResponseDto> cards) {
+    List<CardListResponseDto> cards,
+    boolean favorite) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
+      .isFavorite(favorite)
       .sections(sections)
       .cards(cards)
       .build();
@@ -82,32 +91,37 @@ public class BoardMapper {
   /**
    * Board → BoardWithSectionsSimpleResponseDto
    */
-  public BoardWithSectionsSimpleResponseDto toWithSectionsSimpleDto(Board board) {
+  public BoardWithSectionsSimpleResponseDto toWithSectionsSimpleResponseDto(
+    Board board,
+    boolean favorite,
+    Map<Long, Boolean> favoriteMap
+  ) {
     return BoardWithSectionsSimpleResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
+      .isFavorite(favorite)
       .sections(board.getSections().stream()
         .map(section -> SectionSimpleDto.builder()
           .id(section.getId())
           .name(section.getName())
+          .isFavorite(favoriteMap.getOrDefault(section.getId(), false))
           .build())
         .collect(Collectors.toList()))
       .build();
   }
 
-  /**
-   * Board 리스트 → BoardWithSectionsSimpleResponseDto
-   */
-  public List<BoardWithSectionsSimpleResponseDto> toWithSectionsSimpleDtoList(List<Board> boards) {
-    return boards.stream()
-      .map(this::toWithSectionsSimpleDto)
-      .collect(Collectors.toList());
-  }
 
   /**
    * Board → BoardSimpleResponseDto
    */
-  public BoardSimpleResponseDto toSimpleDto(Board board) {
+  public BoardSimpleResponseDto toSimpleResponseDto(Board board) {
     return new BoardSimpleResponseDto(board.getId(), board.getName());
+  }
+
+  public BoardFavoriteResponseDto toFavoriteResponseDto(Board board, boolean favorite) {
+    return BoardFavoriteResponseDto.builder()
+      .boardId(board.getId())
+      .favorite(favorite)
+      .build();
   }
 }

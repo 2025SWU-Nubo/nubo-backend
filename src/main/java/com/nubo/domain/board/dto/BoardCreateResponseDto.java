@@ -7,7 +7,7 @@ import lombok.Getter;
 
 @Getter
 @Builder
-public class BoardResponseDto {
+public class BoardCreateResponseDto {
 
   private Long id;
   private String name;
@@ -15,4 +15,5 @@ public class BoardResponseDto {
   private BoardSource source;
   private boolean isShared;
   private boolean isFavorite;
+  private Long parentBoardId;
 }

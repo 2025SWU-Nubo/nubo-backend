@@ -54,10 +54,6 @@ public class Board extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean isShared;
 
-  // 즐겨찾기 여부
-  @Column(nullable = false)
-  private boolean isFavorite = false;
-
   // 모든 보드는 사용자 소유 (기본 제공 보드도 유저별로 복제됨)
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "user_id")

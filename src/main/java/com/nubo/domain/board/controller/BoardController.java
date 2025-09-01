@@ -3,10 +3,12 @@ package com.nubo.domain.board.controller;
 import com.nubo.domain.board.dto.BoardCardsDetachRequestDto;
 import com.nubo.domain.board.dto.BoardCardsDetachResultDto;
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
+import com.nubo.domain.board.dto.BoardCreateResponseDto;
 import com.nubo.domain.board.dto.BoardDeleteRequestDto;
 import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
-import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
+import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,7 +42,7 @@ public class BoardController {
    * @return 생성된 보드 정보 DTO
    */
   @PostMapping
-  public BoardResponseDto createBoard(@RequestBody @Valid BoardCreateRequestDto dto) {
+  public BoardCreateResponseDto createBoard(@RequestBody @Valid BoardCreateRequestDto dto) {
     Long userId = userUtil.getAuthenticatedUserId();
     return boardService.createBoard(dto, userId);
   }
@@ -63,7 +66,8 @@ public class BoardController {
    */
   @GetMapping("/{boardId}")
   public ResponseEntity<BoardDetailResponseDto> getBoardDetail(@PathVariable Long boardId) {
-    BoardDetailResponseDto detail = boardService.getBoardDetail(boardId);
+    Long userId = userUtil.getAuthenticatedUserId();
+    BoardDetailResponseDto detail = boardService.getBoardDetail(boardId, userId);
     return ResponseEntity.ok(detail);
   }
 
@@ -118,5 +122,22 @@ public class BoardController {
       boardService.detachCardsFromBoard(boardId, req.getCardIds(), userId);
 
     return ResponseEntity.ok(results);
+  }
+
+  /**
+   * 보드 즐겨찾기 설정/해제 API
+   *
+   * @param boardId 보드 ID
+   * @param request 즐겨찾기 요청 DTO (favorite: true/false)
+   * @return 변경된 즐겨찾기 상태
+   */
+  @PatchMapping("/{boardId}/favorite")
+  public ResponseEntity<BoardFavoriteResponseDto> updateBoardFavorite(
+    @PathVariable Long boardId,
+    @RequestBody BoardFavoriteRequestDto request
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    BoardFavoriteResponseDto response = boardService.updateBoardFavorite(boardId, userId, request);
+    return ResponseEntity.ok(response);
   }
 }

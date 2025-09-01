@@ -55,4 +55,11 @@ public class BoardMember extends BaseTimeEntity {
   @Enumerated(EnumType.STRING)
   @Column(nullable = false)
   private BoardMemberRole role;
+
+  @Column(name = "favorite", nullable = false)
+  private boolean favorite = false;
+
+  public void updateFavorite(boolean favorite) {
+    this.favorite = favorite;
+  }
 }

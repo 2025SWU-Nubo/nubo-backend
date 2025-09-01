@@ -2,10 +2,12 @@ package com.nubo.domain.board.service;
 
 import com.nubo.domain.board.dto.BoardCardsDetachResultDto;
 import com.nubo.domain.board.dto.BoardCreateRequestDto;
+import com.nubo.domain.board.dto.BoardCreateResponseDto;
 import com.nubo.domain.board.dto.BoardDeleteRequestDto.DeleteLinkedCardsOption;
 import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
-import com.nubo.domain.board.dto.BoardResponseDto;
+import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
+import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
@@ -64,7 +66,7 @@ public class BoardService {
    * @exception ApiException 필드 누락 또는 상위 보드 미존재 시 예외 발생
    */
   @Transactional
-  public BoardResponseDto createBoard(BoardCreateRequestDto dto, Long userId) {
+  public BoardCreateResponseDto createBoard(BoardCreateRequestDto dto, Long userId) {
     // 1. 섹션일 경우 상위 보드 유효성 검사
     Board parentBoard = null;
     if (dto.getBoardType() == BoardType.SECTION) {
@@ -135,7 +137,7 @@ public class BoardService {
     }
 
     // 5. 결과 반환
-    return boardMapper.toResponseDto(savedBoard);
+    return boardMapper.toCreateResponseDto(savedBoard);
   }
 
   /**
@@ -151,6 +153,14 @@ public class BoardService {
     List<Long> boardIds = boards.stream()
       .map(Board::getId)
       .toList();
+
+    // 각 보드별 BoardMember 조회
+    Map<Long, Boolean> favoriteMap = boardMemberRepository
+      .findByUserIdAndBoardIds(userId, boardIds).stream()
+      .collect(Collectors.toMap(
+        bm -> bm.getBoard().getId(),
+        BoardMember::isFavorite
+      ));
 
     // 통계 조회 (카운트 정보)
     List<BoardStatsDto> stats = boardRepository.getBoardStats(boardIds);
@@ -186,12 +196,14 @@ public class BoardService {
         BoardStatsDto stat = statsMap.getOrDefault(board.getId(),
           new BoardStatsDto(board.getId(), 0L, 0L));
         String thumbnailUrl = thumbnailMap.get(board.getId());
+        boolean favorite = favoriteMap.getOrDefault(board.getId(), false);
 
-        return boardMapper.toListResponseDto(
+        return boardMapper.toSummaryResponseDto(
           board,
           stat.getSectionCount(),
           stat.getCardCount(),
-          thumbnailUrl
+          thumbnailUrl,
+          favorite
         );
       })
       .toList();
@@ -219,15 +231,29 @@ public class BoardService {
    * @exception ApiException 보드가 존재하지 않는 경우 예외 발생
    */
   @Transactional(readOnly = true)
-  public BoardDetailResponseDto getBoardDetail(Long boardId) {
+  public BoardDetailResponseDto getBoardDetail(Long boardId, Long userId) {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
+    // 즐겨찾기 상태 조회
+    BoardMember member = boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
+    boolean favorite = member.isFavorite();
+
     // 섹션 리스트
     List<Board> sectionBoards = boardRepository.findByParentBoard_Id(boardId);
+    List<Long> sectionIds = sectionBoards.stream().map(Board::getId).toList();
+
+    // 섹션별 즐겨찾기 상태 조회
+    Map<Long, Boolean> sectionFavoriteMap = sectionIds.isEmpty()
+      ? Map.of()
+      : boardMemberRepository.findByUserIdAndBoardIds(userId, sectionIds).stream()
+        .collect(Collectors.toMap(
+          bm -> bm.getBoard().getId(),
+          BoardMember::isFavorite
+        ));
 
     List<BoardSummaryResponseDto> sections = new ArrayList<>();
-
     for (Board section : sectionBoards) {
       long cardCount = cardRepository.countActiveByBoardId(section.getId());
       String thumbnailUrl = null;
@@ -237,8 +263,9 @@ public class BoardService {
           ? null
           : (top1.get(0).getVideo() != null ? top1.get(0).getVideo().getThumbnailUrl() : null);
       }
-
-      sections.add(boardMapper.toListResponseDto(section, 0L, cardCount, thumbnailUrl));
+      boolean sectionFavorite = sectionFavoriteMap.getOrDefault(section.getId(), false);
+      sections.add(
+        boardMapper.toSummaryResponseDto(section, 0L, cardCount, thumbnailUrl, sectionFavorite));
     }
 
     // 카드 리스트
@@ -247,7 +274,7 @@ public class BoardService {
       .map(cardMapper::toListResponseDto)
       .toList();
 
-    return boardMapper.toDetailResponseDto(board, sections, cards);
+    return boardMapper.toDetailResponseDto(board, sections, cards, favorite);
   }
 
   /**
@@ -260,7 +287,7 @@ public class BoardService {
   public List<BoardSimpleResponseDto> getBoardsForHome(Long userId) {
     List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
     return boards.stream()
-      .map(boardMapper::toSimpleDto)
+      .map(boardMapper::toSimpleResponseDto)
       .toList();
   }
 
@@ -273,8 +300,43 @@ public class BoardService {
   @Transactional(readOnly = true)
   public List<BoardWithSectionsSimpleResponseDto> getBoardsWithSections(Long userId) {
     List<Board> boards = boardRepository.findAllAccessibleBoardsWithSections(userId);
-    return boardMapper.toWithSectionsSimpleDtoList(boards);
+
+    // 보드 + 모든 섹션 id 수집
+    List<Long> allBoardIds = boards.stream()
+      .flatMap(board -> {
+        // 부모 보드 포함 + 자식 섹션들까지 flatten
+        return board.getSections().stream()
+          .map(Board::getId)
+          .collect(Collectors.toList())
+          .stream()
+          .collect(Collectors.collectingAndThen(
+            Collectors.toList(),
+            list -> {
+              list.add(board.getId());
+              return list.stream();
+            }
+          ));
+      })
+      .toList();
+
+    // 유저의 모든 멤버십 조회 → favorite 값 매핑
+    Map<Long, Boolean> favoriteMap = boardMemberRepository
+      .findByUserIdAndBoardIds(userId, allBoardIds).stream()
+      .collect(Collectors.toMap(
+        bm -> bm.getBoard().getId(),
+        BoardMember::isFavorite
+      ));
+
+    // 매핑
+    return boards.stream()
+      .map(board -> boardMapper.toWithSectionsSimpleResponseDto(
+        board,
+        favoriteMap.getOrDefault(board.getId(), false), // 보드 favorite
+        favoriteMap                                                // 섹션 favorite들
+      ))
+      .toList();
   }
+
 
   /**
    * 보드의 최근 활동 시간을 갱신한다.
@@ -299,6 +361,27 @@ public class BoardService {
       parent.touch();
       boardRepository.save(parent);
     }
+  }
+
+  /**
+   * 보드 즐겨찾기 상태를 업데이트한다.
+   *
+   * @param userId  현재 사용자 ID
+   * @param boardId 보드 ID
+   * @param request 즐겨찾기 요청 DTO (favorite: true/false)
+   * @return 변경된 즐겨찾기 응답 DTO
+   */
+  @Transactional
+  public BoardFavoriteResponseDto updateBoardFavorite(Long userId, Long boardId,
+    BoardFavoriteRequestDto request) {
+    Board board = getBoardById(boardId);
+    BoardMember member = boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
+
+    member.updateFavorite(request.isFavorite());
+    boardMemberRepository.save(member);
+
+    return boardMapper.toFavoriteResponseDto(board, member.isFavorite());
   }
 
   /**

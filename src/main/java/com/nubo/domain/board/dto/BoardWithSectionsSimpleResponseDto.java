@@ -10,6 +10,7 @@ public class BoardWithSectionsSimpleResponseDto {
 
   private Long id;
   private String name;
+  private boolean isFavorite;
   private List<SectionSimpleDto> sections;
 
   @Getter
@@ -18,5 +19,6 @@ public class BoardWithSectionsSimpleResponseDto {
 
     private Long id;
     private String name;
+    private boolean isFavorite;
   }
 }
