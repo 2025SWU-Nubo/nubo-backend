@@ -5,6 +5,7 @@ import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.board.type.DefaultBoard;
+import com.nubo.domain.user.dto.MyPageResponseDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
@@ -73,6 +74,18 @@ public class UserService {
   public User getUserById(Long id) {
     return userRepository.findById(id)
       .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED_CLIENT));
+  }
+
+  /**
+   * 주어진 사용자 ID에 해당하는 프로필 정보를 조회한다.
+   *
+   * @param id 사용자 ID
+   * @return 사용자의 이름, 이메일, 프로필 이미지 등을 담은 응답 DTO
+   */
+  @Transactional(readOnly = true)
+  public MyPageResponseDto getMyPage(Long id) {
+    User user = getUserById(id);
+    return userMapper.toMyPageResponseDto(user);
   }
 
   /**

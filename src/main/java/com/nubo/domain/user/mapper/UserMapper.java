@@ -1,6 +1,7 @@
 package com.nubo.domain.user.mapper;
 
 import com.nubo.auth.dto.GoogleUserInfoDto;
+import com.nubo.domain.user.dto.MyPageResponseDto;
 import com.nubo.domain.user.dto.UserInfoDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.entity.User;
@@ -50,6 +51,20 @@ public class UserMapper {
     return UserSearchResponseDto.builder()
       .id(user.getId())
       .nickname(user.getNickname())
+      .email(user.getEmail())
+      .profileImage(user.getProfileImage())
+      .build();
+  }
+
+  /**
+   * User 엔티티를 마이페이지 응답 DTO로 변환한다.
+   *
+   * @param user User 엔티티
+   * @return MyPageResponseDto
+   */
+  public MyPageResponseDto toMyPageResponseDto(User user) {
+    return MyPageResponseDto.builder()
+      .name(user.getNickname())
       .email(user.getEmail())
       .profileImage(user.getProfileImage())
       .build();
