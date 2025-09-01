@@ -44,4 +44,9 @@ public class User extends BaseTimeEntity {
 
   @Column(nullable = false, unique = true)
   private String email;
+
+  // 사용자 닉네임 수정
+  public void updateNickname(String nickname) {
+    this.nickname = nickname;
+  }
 }

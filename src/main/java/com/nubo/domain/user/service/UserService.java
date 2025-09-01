@@ -127,4 +127,16 @@ public class UserService {
     return userRepository.findByEmailIn(norm);
   }
 
+  /**
+   * 주어진 사용자 ID의 닉네임을 수정한다.
+   *
+   * @param userId   사용자 ID
+   * @param nickname 새 닉네임
+   */
+  @Transactional
+  public void updateNickname(Long userId, String nickname) {
+    User user = userRepository.findById(userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+    user.updateNickname(nickname);
+  }
 }
