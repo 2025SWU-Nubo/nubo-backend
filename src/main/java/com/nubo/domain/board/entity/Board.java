@@ -52,7 +52,7 @@ public class Board extends BaseTimeEntity {
 
   // 공유 여부 (USER 보드만 true 가능)
   @Column(nullable = false)
-  private boolean isShared;
+  private boolean shared;
 
   // 모든 보드는 사용자 소유 (기본 제공 보드도 유저별로 복제됨)
   @ManyToOne(fetch = FetchType.LAZY)

@@ -22,6 +22,7 @@ public enum ErrorCode {
   POSITIVE_VALUE_REQUIRED(400, "C009", "Value must be positive", LogLevel.ERROR),
 
   FORBIDDEN(403, "C010", "Forbidden", LogLevel.WARN),
+  INVALID_REQUEST(400, "C011", "Invalid request", LogLevel.WARN),
 
   // ENTITY
   ENTITY_NOT_FOUND(404, "E001", "Entity not found", LogLevel.WARN),

@@ -8,6 +8,10 @@ import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
+import com.nubo.domain.board.dto.BoardMemberListResponseDto;
+import com.nubo.domain.board.dto.BoardMemberResponseDto;
+import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
+import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
@@ -19,6 +23,7 @@ import com.nubo.domain.board.mapper.BoardMemberMapper;
 import com.nubo.domain.board.repository.BoardCardRepository;
 import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
+import com.nubo.domain.board.type.BoardMemberRole;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.card.dto.CardListResponseDto;
@@ -97,7 +102,6 @@ public class BoardService {
 
     // 3. 보드 엔티티 생성/저장
     Board newBoard = boardMapper.toEntity(dto, owner, parentBoard);
-    newBoard.setShared(dto.isShared());
     Board savedBoard = boardRepository.save(newBoard);
 
     // 4. 공유 보드일 경우 멤버십 생성
@@ -382,6 +386,107 @@ public class BoardService {
     boardMemberRepository.save(member);
 
     return boardMapper.toFavoriteResponseDto(board, member.isFavorite());
+  }
+
+  /**
+   * 사용자 보드를 공유 보드로 전환한다.
+   *
+   * @param boardId 대상 보드 ID
+   * @param userId  요청자 ID
+   * @param shared  공유 여부 (현재 정책상 true만 허용)
+   * @return 공유 상태가 반영된 응답 DTO
+   * @exception ApiException ENTITY_NOT_FOUND 보드가 없을 때
+   * @exception ApiException ACCESS_DENIED 권한이 없을 때
+   * @exception ApiException INVALID_REQUEST 공유 취소(false) 요청 시
+   */
+  @Transactional
+  public BoardShareResponseDto updateShareStatus(Long boardId, Long userId, boolean shared) {
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    // 권한 체크
+    if (board.getSource() != BoardSource.USER) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+    if (!board.getUser().getId().equals(userId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    // 이미 공유된 보드를 다시 개인보드로 되돌리려는 경우 금지
+    if (board.isShared() && !shared) {
+      throw new ApiException(ErrorCode.INVALID_REQUEST);
+    }
+
+    board.setShared(true);
+
+    return boardMapper.toShareResponseDto(board);
+  }
+
+  /**
+   * 공유 보드의 멤버 목록을 수정한다.
+   *
+   * @param boardId       대상 보드 ID
+   * @param currentUserId 요청자 ID
+   * @param dto           추가할 멤버 이메일 리스트 DTO
+   * @return 추가된 멤버 정보 목록
+   * @exception ApiException ENTITY_NOT_FOUND 보드 또는 사용자 없을 때
+   * @exception ApiException ACCESS_DENIED 권한이 없을 때
+   */
+  @Transactional
+  public BoardMemberListResponseDto updateMembers(Long boardId, Long currentUserId,
+    BoardMemberUpdateRequestDto dto) {
+
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    // 권한 체크
+    if (board.getSource() != BoardSource.USER || !board.getUser().getId().equals(currentUserId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    // --- 멤버 추가 ---
+    if (dto.getAddMemberEmails() != null && !dto.getAddMemberEmails().isEmpty()) {
+      List<User> invitees = userService.getUsersByEmails(dto.getAddMemberEmails());
+
+      for (User invitee : invitees) {
+        boolean exists = boardMemberRepository.existsByBoard_IdAndUser_Id(board.getId(),
+          invitee.getId());
+        if (exists) {
+          continue;
+        }
+
+        BoardMember member = BoardMember.builder()
+          .board(board)
+          .user(invitee)
+          .role(BoardMemberRole.ADMIN) // 정책상 모두 관리자
+          .build();
+
+        boardMemberRepository.save(member);
+      }
+    }
+
+    // --- 멤버 제거 ---
+    if (dto.getRemoveUserIds() != null && !dto.getRemoveUserIds().isEmpty()) {
+      for (Long userId : dto.getRemoveUserIds()) {
+        boardMemberRepository.findByBoard_IdAndUser_Id(board.getId(), userId)
+          .ifPresent(boardMemberRepository::delete);
+      }
+    }
+
+    // 최종 멤버 목록 조회
+    List<BoardMember> members = boardMemberRepository.findAllByBoardId(board.getId());
+
+    List<BoardMemberResponseDto> memberDtos = members.stream()
+      .map(m -> BoardMemberResponseDto.builder()
+        .userId(m.getUser().getId())
+        .nickname(m.getUser().getNickname())
+        .build())
+      .toList();
+
+    return BoardMemberListResponseDto.builder()
+      .boardId(board.getId())
+      .members(memberDtos)
+      .build();
   }
 
   /**

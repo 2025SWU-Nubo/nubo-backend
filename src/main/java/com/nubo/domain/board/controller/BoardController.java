@@ -9,6 +9,10 @@ import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
+import com.nubo.domain.board.dto.BoardMemberListResponseDto;
+import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
+import com.nubo.domain.board.dto.BoardShareRequestDto;
+import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
@@ -79,6 +83,44 @@ public class BoardController {
   public ResponseEntity<List<BoardWithSectionsSimpleResponseDto>> getBoardsWithSections() {
     Long userId = userUtil.getAuthenticatedUserId();
     List<BoardWithSectionsSimpleResponseDto> result = boardService.getBoardsWithSections(userId);
+    return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 사용자 보드를 공유 보드로 전환한다.
+   *
+   * @param boardId    대상 보드 ID (PathVariable)
+   * @param requestDto 공유 여부 요청 DTO (현재 정책상 true만 허용)
+   * @return 공유 상태가 반영된 응답 DTO
+   */
+  @PatchMapping("/{boardId}/share")
+  public ResponseEntity<BoardShareResponseDto> updateShareStatus(
+    @PathVariable Long boardId,
+    @RequestBody BoardShareRequestDto requestDto) {
+
+    Long currentUserId = userUtil.getAuthenticatedUserId();
+    BoardShareResponseDto result =
+      boardService.updateShareStatus(boardId, currentUserId, requestDto.isShared());
+
+    return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 공유 보드의 멤버 목록을 수정한다.
+   *
+   * @param boardId    대상 보드 ID
+   * @param requestDto 추가/삭제할 사용자 목록
+   * @return 최종 멤버 목록
+   */
+  @PatchMapping("/{boardId}/members")
+  public ResponseEntity<BoardMemberListResponseDto> updateMembers(
+    @PathVariable Long boardId,
+    @RequestBody BoardMemberUpdateRequestDto requestDto) {
+
+    Long currentUserId = userUtil.getAuthenticatedUserId();
+    BoardMemberListResponseDto result =
+      boardService.updateMembers(boardId, currentUserId, requestDto);
+
     return ResponseEntity.ok(result);
   }
 

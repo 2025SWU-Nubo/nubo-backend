@@ -4,6 +4,7 @@ import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardCreateResponseDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
+import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
@@ -43,7 +44,7 @@ public class BoardMapper {
       .name(dto.getName())
       .boardType(dto.getBoardType())
       .source(BoardSource.USER)
-      .isShared(false)
+      .shared(dto.isShared())
       .user(user)
       .parentBoard(parentBoard)
       .build();
@@ -122,6 +123,16 @@ public class BoardMapper {
     return BoardFavoriteResponseDto.builder()
       .boardId(board.getId())
       .favorite(favorite)
+      .build();
+  }
+
+  /**
+   * Board → BoardShareResponseDto
+   */
+  public BoardShareResponseDto toShareResponseDto(Board board) {
+    return BoardShareResponseDto.builder()
+      .boardId(board.getId())
+      .shared(board.isShared())
       .build();
   }
 }
