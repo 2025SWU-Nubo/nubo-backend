@@ -67,7 +67,12 @@ public class UserController {
     return ResponseEntity.noContent().build();
   }
 
-  // 프로필 이미지 업로드용 presigned URL 발급
+  /**
+   * 프로필 이미지 업로드를 위한 presigned URL을 발급한다.
+   *
+   * @param fileName 업로드할 파일명
+   * @return 200 OK + presigned URL 응답
+   */
   @GetMapping("/profile-image/presigned-url")
   public ResponseEntity<PresignedUrlResponseDto> getProfileImagePresignedUrl(
     @RequestParam String fileName) {
@@ -75,7 +80,12 @@ public class UserController {
     return ResponseEntity.ok(new PresignedUrlResponseDto(url));
   }
 
-  // 최종 URL 저장
+  /**
+   * 현재 로그인한 사용자의 프로필 이미지 URL을 수정한다.
+   *
+   * @param dto 수정할 프로필 이미지 URL이 담긴 요청 DTO
+   * @return 200 OK + 수정된 프로필 정보 응답
+   */
   @PatchMapping("/me/profile-image")
   public ResponseEntity<UserProfileUpdateResponseDto> updateProfileImage(
     @RequestBody UserProfileImageUpdateRequestDto dto
