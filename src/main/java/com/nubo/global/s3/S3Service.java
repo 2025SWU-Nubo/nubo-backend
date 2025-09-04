@@ -31,17 +31,34 @@ public class S3Service {
     String extension = "";
     int dotIndex = originalFileName.lastIndexOf(".");
     if (dotIndex > 0) {
-      extension = originalFileName.substring(dotIndex);
+      extension = originalFileName.substring(dotIndex + 1).toLowerCase();
+    }
+
+    // Content-Type 결정
+    String contentType;
+    switch (extension) {
+      case "png":
+        contentType = "image/png";
+        break;
+      case "jpg":
+      case "jpeg":
+        contentType = "image/jpeg";
+        break;
+      case "gif":
+        contentType = "image/gif";
+        break;
+      default:
+        contentType = "application/octet-stream"; // 기본값
     }
 
     // UUID 기반 파일명 → 중복 방지
-    String key = folder + "/" + UUID.randomUUID() + extension;
+    String key = folder + "/" + UUID.randomUUID() + "." + extension;
 
     // PutObject 요청
     PutObjectRequest objectRequest = PutObjectRequest.builder()
       .bucket(bucketName)
       .key(key)
-      .contentType("image/*")
+      .contentType(contentType)
       .build();
 
     // Presigned URL 생성 (5분 유효)

@@ -38,7 +38,7 @@ public class User extends BaseTimeEntity {
   private String nickname;
 
   @Column(columnDefinition = "TEXT")
-  private String profileImage;
+  private String profileImageUrl;
 
   private Boolean pushEnabled;
 
@@ -48,5 +48,10 @@ public class User extends BaseTimeEntity {
   // 사용자 닉네임 수정
   public void updateNickname(String nickname) {
     this.nickname = nickname;
+  }
+
+  // 프로필 이미지 변경
+  public void updateProfileImageUrl(String profileImageUrl) {
+    this.profileImageUrl = profileImageUrl;
   }
 }

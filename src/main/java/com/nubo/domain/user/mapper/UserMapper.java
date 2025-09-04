@@ -23,7 +23,7 @@ public class UserMapper {
       .provider(Provider.GOOGLE)
       .providerUserId(info.getSub())
       .nickname(info.getName())
-      .profileImage(info.getPicture())
+      .profileImageUrl(info.getPicture())
       .build();
   }
 
@@ -37,7 +37,7 @@ public class UserMapper {
     return UserInfoDto.builder()
       .id(user.getId())
       .nickname(user.getNickname())
-      .profileImage(user.getProfileImage())
+      .profileImageUrl(user.getProfileImageUrl())
       .build();
   }
 
@@ -52,7 +52,7 @@ public class UserMapper {
       .id(user.getId())
       .nickname(user.getNickname())
       .email(user.getEmail())
-      .profileImage(user.getProfileImage())
+      .profileImageUrl(user.getProfileImageUrl())
       .build();
   }
 
@@ -66,7 +66,7 @@ public class UserMapper {
     return MyPageResponseDto.builder()
       .name(user.getNickname())
       .email(user.getEmail())
-      .profileImage(user.getProfileImage())
+      .profileImageUrl(user.getProfileImageUrl())
       .build();
   }
 }

@@ -8,6 +8,7 @@ import lombok.Getter;
 public class UserInfoDto {
 
   Long id;
+  String email;
   String nickname;
-  String profileImage;
+  String profileImageUrl;
 }

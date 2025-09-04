@@ -13,13 +13,13 @@ public class CustomUserDetails implements UserDetails {
   private final Long id;
   private final String provider;
   private final String nickname;
-  private final String profileImage;
+  private final String profileImageUrl;
 
   public CustomUserDetails(User user) {
     this.id = user.getId();
     this.provider = user.getProvider().name(); // GOOGLE, KAKAO, NAVER
     this.nickname = user.getNickname();
-    this.profileImage = user.getProfileImage();
+    this.profileImageUrl = user.getProfileImageUrl();
   }
 
   @Override

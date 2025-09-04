@@ -9,6 +9,7 @@ import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.user.dto.MyPageResponseDto;
+import com.nubo.domain.user.dto.UserProfileUpdateResponseDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
@@ -154,4 +155,20 @@ public class UserService {
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
     user.updateNickname(nickname);
   }
+
+  @Transactional
+  public UserProfileUpdateResponseDto updateProfileImage(Long userId, String imageUrl) {
+    User user = userRepository.findById(userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    user.updateProfileImageUrl(imageUrl);
+
+    return UserProfileUpdateResponseDto.builder()
+      .id(user.getId())
+      .email(user.getEmail())
+      .nickname(user.getNickname())
+      .profileImageUrl(user.getProfileImageUrl())
+      .build();
+  }
+
 }

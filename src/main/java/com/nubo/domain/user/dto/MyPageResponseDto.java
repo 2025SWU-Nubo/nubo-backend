@@ -9,5 +9,5 @@ public class MyPageResponseDto {
 
   private String name;         // 사용자 이름
   private String email;        // 사용자 이메일
-  private String profileImage; // 프로필 이미지 URL
+  private String profileImageUrl; // 프로필 이미지 URL
 }

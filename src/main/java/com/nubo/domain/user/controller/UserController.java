@@ -1,10 +1,14 @@
 package com.nubo.domain.user.controller;
 
 import com.nubo.domain.user.dto.MyPageResponseDto;
+import com.nubo.domain.user.dto.PresignedUrlResponseDto;
 import com.nubo.domain.user.dto.UserNicknameUpdateRequestDto;
+import com.nubo.domain.user.dto.UserProfileImageUpdateRequestDto;
+import com.nubo.domain.user.dto.UserProfileUpdateResponseDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.auth.UserUtil;
+import com.nubo.global.s3.S3Service;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +27,7 @@ public class UserController {
 
   private final UserService userService;
   private final UserUtil userUtil;
+  private final S3Service s3Service;
 
   /**
    * 이메일로 사용자를 검색하는 API
@@ -61,4 +66,24 @@ public class UserController {
     userService.updateNickname(userId, dto.getNickname());
     return ResponseEntity.noContent().build();
   }
+
+  // 프로필 이미지 업로드용 presigned URL 발급
+  @GetMapping("/profile-image/presigned-url")
+  public ResponseEntity<PresignedUrlResponseDto> getProfileImagePresignedUrl(
+    @RequestParam String fileName) {
+    String url = s3Service.generateUploadUrl("profile", fileName);
+    return ResponseEntity.ok(new PresignedUrlResponseDto(url));
+  }
+
+  // 최종 URL 저장
+  @PatchMapping("/me/profile-image")
+  public ResponseEntity<UserProfileUpdateResponseDto> updateProfileImage(
+    @RequestBody UserProfileImageUpdateRequestDto dto
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    UserProfileUpdateResponseDto response =
+      userService.updateProfileImage(userId, dto.getProfileImageUrl());
+    return ResponseEntity.ok(response);
+  }
+
 }
