@@ -1,5 +1,6 @@
 package com.nubo.domain.board.mapper;
 
+import com.nubo.domain.board.dto.BoardMemberResponseDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.type.BoardMemberRole;
@@ -42,5 +43,13 @@ public class BoardMemberMapper {
     all.add(toOwner(board, owner));
     all.addAll(toAdmins(board, admins));
     return all;
+  }
+
+  // Entity → DTO 변환
+  public BoardMemberResponseDto toResponseDto(BoardMember member) {
+    return BoardMemberResponseDto.builder()
+      .userId(member.getUser().getId())
+      .nickname(member.getUser().getNickname())
+      .build();
   }
 }

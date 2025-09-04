@@ -9,7 +9,6 @@ import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
-import com.nubo.domain.board.dto.BoardMemberResponseDto;
 import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
@@ -17,13 +16,10 @@ import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.entity.Board;
-import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.mapper.BoardMapper;
 import com.nubo.domain.board.mapper.BoardMemberMapper;
-import com.nubo.domain.board.repository.BoardCardRepository;
 import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
-import com.nubo.domain.board.type.BoardMemberRole;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.card.dto.CardListResponseDto;
@@ -55,12 +51,18 @@ public class BoardService {
 
   private final BoardRepository boardRepository;
   private final BoardMapper boardMapper;
+
   private final UserService userService;
+
   private final CardRepository cardRepository;
   private final CardMapper cardMapper;
-  private final BoardCardRepository boardCardRepository;
+
+  private final BoardCardService boardCardService;
+
   private final BoardMemberRepository boardMemberRepository;
   private final BoardMemberMapper boardMemberMapper;
+
+  private final BoardMemberService boardMemberService;
 
   /**
    * 새 보드를 생성한다. 섹션일 경우 상위 보드 유효성도 함께 검사한다.
@@ -133,11 +135,7 @@ public class BoardService {
       }
 
       // 4-3. OWNER + ADMIN 멤버 생성/저장
-      List<BoardMember> members = admins.isEmpty()
-        ? List.of(boardMemberMapper.toOwner(savedBoard, owner))
-        : boardMemberMapper.toOwnerAndAdmins(savedBoard, owner, admins);
-
-      boardMemberRepository.saveAll(members);
+      boardMemberService.createOwnerAndAdmins(savedBoard, owner, admins);
     }
 
     // 5. 결과 반환
@@ -159,12 +157,8 @@ public class BoardService {
       .toList();
 
     // 각 보드별 BoardMember 조회
-    Map<Long, Boolean> favoriteMap = boardMemberRepository
-      .findByUserIdAndBoardIds(userId, boardIds).stream()
-      .collect(Collectors.toMap(
-        bm -> bm.getBoard().getId(),
-        BoardMember::isFavorite
-      ));
+    Map<Long, Boolean> favoriteMap = boardMemberService
+      .getFavoriteMapByUserAndBoardIds(userId, boardIds);
 
     // 통계 조회 (카운트 정보)
     List<BoardStatsDto> stats = boardRepository.getBoardStats(boardIds);
@@ -240,9 +234,7 @@ public class BoardService {
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
     // 즐겨찾기 상태 조회
-    BoardMember member = boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
-      .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
-    boolean favorite = member.isFavorite();
+    boolean favorite = boardMemberService.getFavoriteStatus(boardId, userId);
 
     // 섹션 리스트
     List<Board> sectionBoards = boardRepository.findByParentBoard_Id(boardId);
@@ -251,11 +243,7 @@ public class BoardService {
     // 섹션별 즐겨찾기 상태 조회
     Map<Long, Boolean> sectionFavoriteMap = sectionIds.isEmpty()
       ? Map.of()
-      : boardMemberRepository.findByUserIdAndBoardIds(userId, sectionIds).stream()
-        .collect(Collectors.toMap(
-          bm -> bm.getBoard().getId(),
-          BoardMember::isFavorite
-        ));
+      : boardMemberService.getFavoriteMapByUserAndBoardIds(userId, sectionIds);
 
     List<BoardSummaryResponseDto> sections = new ArrayList<>();
     for (Board section : sectionBoards) {
@@ -324,12 +312,8 @@ public class BoardService {
       .toList();
 
     // 유저의 모든 멤버십 조회 → favorite 값 매핑
-    Map<Long, Boolean> favoriteMap = boardMemberRepository
-      .findByUserIdAndBoardIds(userId, allBoardIds).stream()
-      .collect(Collectors.toMap(
-        bm -> bm.getBoard().getId(),
-        BoardMember::isFavorite
-      ));
+    Map<Long, Boolean> favoriteMap = boardMemberService
+      .getFavoriteMapByUserAndBoardIds(userId, allBoardIds);
 
     // 매핑
     return boards.stream()
@@ -379,14 +363,10 @@ public class BoardService {
   public BoardFavoriteResponseDto updateBoardFavorite(Long userId, Long boardId,
     BoardFavoriteRequestDto request) {
     Board board = getBoardById(boardId);
-    BoardMember member = boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
-      .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
-
-    member.updateFavorite(request.isFavorite());
-    boardMemberRepository.save(member);
-
-    return boardMapper.toFavoriteResponseDto(board, member.isFavorite());
+    boolean favorite = boardMemberService.updateFavorite(userId, boardId, request.isFavorite());
+    return boardMapper.toFavoriteResponseDto(board, favorite);
   }
+
 
   /**
    * 사용자 보드를 공유 보드로 전환한다.
@@ -444,49 +424,7 @@ public class BoardService {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
-    // --- 멤버 추가 ---
-    if (dto.getAddMemberEmails() != null && !dto.getAddMemberEmails().isEmpty()) {
-      List<User> invitees = userService.getUsersByEmails(dto.getAddMemberEmails());
-
-      for (User invitee : invitees) {
-        boolean exists = boardMemberRepository.existsByBoard_IdAndUser_Id(board.getId(),
-          invitee.getId());
-        if (exists) {
-          continue;
-        }
-
-        BoardMember member = BoardMember.builder()
-          .board(board)
-          .user(invitee)
-          .role(BoardMemberRole.ADMIN) // 정책상 모두 관리자
-          .build();
-
-        boardMemberRepository.save(member);
-      }
-    }
-
-    // --- 멤버 제거 ---
-    if (dto.getRemoveUserIds() != null && !dto.getRemoveUserIds().isEmpty()) {
-      for (Long userId : dto.getRemoveUserIds()) {
-        boardMemberRepository.findByBoard_IdAndUser_Id(board.getId(), userId)
-          .ifPresent(boardMemberRepository::delete);
-      }
-    }
-
-    // 최종 멤버 목록 조회
-    List<BoardMember> members = boardMemberRepository.findAllByBoardId(board.getId());
-
-    List<BoardMemberResponseDto> memberDtos = members.stream()
-      .map(m -> BoardMemberResponseDto.builder()
-        .userId(m.getUser().getId())
-        .nickname(m.getUser().getNickname())
-        .build())
-      .toList();
-
-    return BoardMemberListResponseDto.builder()
-      .boardId(board.getId())
-      .members(memberDtos)
-      .build();
+    return boardMemberService.updateMembers(board, dto);
   }
 
   /**
@@ -541,22 +479,21 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    // 공유보드 포함 멤버십 권한 허용(OWNER/ADMIN)
-    boolean allowed = boardMemberRepository.existsByBoard_IdAndUser_Id(board.getId(), userId);
-    if (!allowed) {
+// 공유보드 포함 멤버십 권한 허용(OWNER/ADMIN)
+    if (!boardMemberService.existsByBoardAndUser(board.getId(), userId)) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
     List<BoardCardsDetachResultDto> out = new ArrayList<>();
     for (Long cardId : cardIds) {
       try {
-        boolean linked = boardCardRepository.existsByBoard_IdAndCard_Id(boardId, cardId);
+        boolean linked = boardCardService.existsLink(boardId, cardId);
         if (!linked) {
           out.add(BoardCardsDetachResultDto.builder()
             .cardId(cardId).status("NOT_LINKED").build());
           continue;
         }
-        boardCardRepository.deleteByBoardIdAndCardId(boardId, cardId);
+        boardCardService.detachCard(boardId, cardId);
         out.add(BoardCardsDetachResultDto.builder()
           .cardId(cardId).status("OK").action("DETACHED").build());
       } catch (ApiException ae) {
@@ -588,7 +525,7 @@ public class BoardService {
 
     if (root.getSource() != BoardSource.AI) {
       boolean isOwner = root.getUser() != null && Objects.equals(root.getUser().getId(), userId);
-      boolean isMember = boardMemberRepository.existsByBoard_IdAndUser_Id(root.getId(), userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(root.getId(), userId);
       if (!isOwner && !isMember) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
       }
@@ -601,7 +538,7 @@ public class BoardService {
     // 3. 대상 보드들에 연결된 카드 수집
     List<Long> allCardIds = targetBoardIds.isEmpty()
       ? List.of()
-      : boardCardRepository.findDistinctCardIdsByBoardIds(targetBoardIds);
+      : boardCardService.findDistinctCardIdsByBoardIds(targetBoardIds);
 
     int linksDetached = 0;
     int cardsSoftDeleted = 0;
@@ -611,13 +548,13 @@ public class BoardService {
       if (option == DeleteLinkedCardsOption.DETACH_ONLY) {
         System.out.println("STEP-2 detach links start");
         if (!targetBoardIds.isEmpty()) {
-          linksDetached = boardCardRepository.deleteByBoardIds(targetBoardIds);
+          linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
         }
         System.out.println("STEP-2 detach links done, linksDetached=" + linksDetached);
       } else {
         System.out.println("STEP-2a detach links for DELETE_ORPHANS start");
         if (!targetBoardIds.isEmpty()) {
-          linksDetached = boardCardRepository.deleteByBoardIds(targetBoardIds);
+          linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
         }
         System.out.println("STEP-2a done, linksDetached=" + linksDetached);
 
@@ -648,7 +585,7 @@ public class BoardService {
       try {
         System.out.println("STEP-3 delete members start");
         if (!targetBoardIds.isEmpty()) {
-          boardMemberRepository.deleteByBoardIds(targetBoardIds);
+          boardMemberService.deleteByBoardIds(targetBoardIds);
         }
         System.out.println("STEP-3 delete members done");
       } catch (Exception e) {
