@@ -29,12 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
   private final UserRepository userRepository;
-  private final BoardRepository boardRepository;
-  private final BoardMemberRepository boardMemberRepository;
-
   private final UserMapper userMapper;
   private final UserUtil userUtil;
 
+  private final BoardRepository boardRepository;
+  private final BoardMemberRepository boardMemberRepository;
+  
   /**
    * 소셜 로그인으로 전달된 사용자 정보로
    * 기존 사용자를 조회하거나, 없으면 새로 생성한다.
