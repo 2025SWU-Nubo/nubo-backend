@@ -1,8 +1,7 @@
 package com.nubo.domain.card.service;
 
 import com.nubo.domain.board.entity.Board;
-import com.nubo.domain.board.entity.BoardCard;
-import com.nubo.domain.board.repository.BoardCardRepository;
+import com.nubo.domain.board.service.BoardCardService;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
@@ -13,15 +12,12 @@ import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardThumbnailResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
-import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
-import com.nubo.domain.card.repository.CardUserStatusRepository;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.entity.Video;
-import com.nubo.domain.video.repository.VideoRepository;
 import com.nubo.domain.video.service.VideoService;
 import com.nubo.domain.video.type.Platform;
 import com.nubo.global.ai.OpenAiClient;
@@ -44,14 +40,16 @@ public class CardService {
   private final CardMapper cardMapper;
 
   private final VideoService videoService;
+
   private final UserService userService;
+  private final CardUserStatusService cardUserStatusService;
+
   private final BoardService boardService;
+  private final BoardCardService boardCardService;
+
   private final OpenAiClient openAiClient;
   private final YtDlpService ytDlpService;
   private final TranscribeService transcribeService;
-  private final VideoRepository videoRepository;
-  private final BoardCardRepository boardCardRepository;
-  private final CardUserStatusRepository cardUserStatusRepository;
 
   // 문자열 유틸
   private static String truncate(String s, int max) {
@@ -129,15 +127,15 @@ public class CardService {
       revived.setDeletedBy(null);
       cardRepository.save(revived);
 
-      List<Long> boardIds = boardCardRepository.findBoardIdsByCardId(revived.getId());
+      List<Long> boardIds = boardCardService.findBoardIdsByCardId(revived.getId());
       log.info("카드 복구 완료 - 원래 연결된 보드들: {}", boardIds);
 
-      var restoreBoardIds = boardCardRepository.findBoardIdsByCardId(revived.getId());
+      var restoreBoardIds = boardCardService.findBoardIdsByCardId(revived.getId());
       return cardMapper.toResponseDto(revived, restoreBoardIds);
     }
 
     // 3. 신규 Video 업서트
-    video = videoRepository.findById(videoId).orElse(null);
+    video = videoService.getVideoById(videoId).orElse(null);
     if (video == null) {
       if (metadata == null) {
         var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
@@ -205,15 +203,10 @@ public class CardService {
     for (Long boardId : targetBoardIds) {
       Board board = boardService.getBoardById(boardId);
       boardService.updateActivity(boardId);
-      if (!boardCardRepository.existsByBoard_IdAndCard_Id(board.getId(), savedCard.getId())) {
-        BoardCard link = new BoardCard();
-        link.setBoard(board);
-        link.setCard(savedCard);
-        boardCardRepository.save(link);
-      }
+      boardCardService.attachCard(board, savedCard);
     }
 
-    List<Long> boardIds = boardCardRepository.findBoardIdsByCardId(savedCard.getId());
+    List<Long> boardIds = boardCardService.findBoardIdsByCardId(savedCard.getId());
     log.info("카드 생성 완료 - 총 {}ms", System.currentTimeMillis() - startTime);
     return cardMapper.toResponseDto(savedCard, boardIds);
   }
@@ -259,7 +252,7 @@ public class CardService {
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
     // 열람 기록
-    markAsViewed(userId, card);
+    cardUserStatusService.markAsViewed(userId, card);
 
     return cardMapper.toDetailResponseDto(card, null, null);
   }
@@ -352,27 +345,4 @@ public class CardService {
     return results;
   }
 
-  /**
-   * 지정된 카드에 대해 사용자의 열람 상태를 기록한다.
-   * 카드 상세 조회 시 진입하면 자동으로 호출되어,
-   * 해당 카드가 처음 열람된 경우 viewedAt 시각을 저장한다.
-   *
-   * @param userId 열람한 사용자 ID
-   * @param card   열람된 카드 엔티티
-   */
-  @Transactional
-  public void markAsViewed(Long userId, Card card) {
-    CardUserStatus status = cardUserStatusRepository
-      .findByUserIdAndCardId(userId, card.getId())
-      .orElseGet(() -> CardUserStatus.builder()
-        .user(userService.getUserById(userId))
-        .card(card)
-        .build());
-
-    // 이미 본 적 없을 때만 기록 (덮어쓰기 방지)
-    if (status.getViewedAt() == null) {
-      status.setViewedAt(Instant.now());
-      cardUserStatusRepository.save(status);
-    }
-  }
 }

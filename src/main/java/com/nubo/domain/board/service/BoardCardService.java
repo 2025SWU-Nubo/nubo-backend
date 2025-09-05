@@ -16,6 +16,11 @@ public class BoardCardService {
   private final BoardCardRepository boardCardRepository;
 
   @Transactional(readOnly = true)
+  public List<Long> findBoardIdsByCardId(Long cardId) {
+    return boardCardRepository.findBoardIdsByCardId(cardId);
+  }
+
+  @Transactional(readOnly = true)
   public boolean existsLink(Long boardId, Long cardId) {
     return boardCardRepository.existsByBoard_IdAndCard_Id(boardId, cardId);
   }
