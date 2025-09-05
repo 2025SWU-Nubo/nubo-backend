@@ -26,6 +26,7 @@ import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -196,7 +197,7 @@ public class CardService {
       (dto.getBoardIds() != null && !dto.getBoardIds().isEmpty())
         ? dto.getBoardIds()
         : List.of(meta.getBoardId());
-    if (targetBoardIds.contains(null)) {
+    if (targetBoardIds.stream().anyMatch(Objects::isNull)) {
       throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
     }
 
