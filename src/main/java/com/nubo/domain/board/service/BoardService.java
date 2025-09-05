@@ -17,8 +17,6 @@ import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.mapper.BoardMapper;
-import com.nubo.domain.board.mapper.BoardMemberMapper;
-import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
@@ -59,10 +57,21 @@ public class BoardService {
 
   private final BoardCardService boardCardService;
 
-  private final BoardMemberRepository boardMemberRepository;
-  private final BoardMemberMapper boardMemberMapper;
-
   private final BoardMemberService boardMemberService;
+
+  /**
+   * 주어진 사용자 소유 보드 중 이름 중복 여부를 확인한다.
+   *
+   * @param userId 사용자 ID
+   * @param name   확인할 보드 이름
+   * @return 사용 가능 여부 (true=사용 가능, false=중복)
+   */
+  @Transactional(readOnly = true)
+  public boolean isBoardNameAvailable(Long userId, String name) {
+    // 내 보드 중 동일한 이름이 존재하는지 확인
+    boolean exists = boardRepository.existsByUserIdAndNameIgnoreCase(userId, name);
+    return !exists;
+  }
 
   /**
    * 새 보드를 생성한다. 섹션일 경우 상위 보드 유효성도 함께 검사한다.

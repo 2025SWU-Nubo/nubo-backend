@@ -11,6 +11,7 @@ import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
 import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
+import com.nubo.domain.board.dto.BoardNameCheckResponseDto;
 import com.nubo.domain.board.dto.BoardShareRequestDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -38,6 +40,19 @@ public class BoardController {
 
   private final BoardService boardService;
   private final UserUtil userUtil;
+
+  /**
+   * 보드 이름 중복 여부를 확인한다.
+   *
+   * @param name 확인할 보드 이름
+   * @return 사용 가능 여부 DTO
+   */
+  @GetMapping("/check-name")
+  public ResponseEntity<BoardNameCheckResponseDto> checkBoardName(@RequestParam String name) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    boolean available = boardService.isBoardNameAvailable(userId, name);
+    return ResponseEntity.ok(new BoardNameCheckResponseDto(available));
+  }
 
   /**
    * 로그인한 사용자의 새 보드 또는 섹션을 생성한다.

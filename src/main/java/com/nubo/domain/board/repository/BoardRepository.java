@@ -72,4 +72,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     """)
   List<Board> findAllAccessibleBoardsWithSections(@Param("userId") Long userId);
 
+  // 동일한 이름의 보드가 존재하는지 조회한다.
+  boolean existsByUserIdAndNameIgnoreCase(Long userId, String name);
+
 }
