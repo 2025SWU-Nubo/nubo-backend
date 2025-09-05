@@ -18,7 +18,8 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       WHERE b.boardType = :boardType
         AND (b.user.id = :userId OR b.user IS NULL)
         AND (
-          EXISTS (
+          b.source = 'USER'
+          OR EXISTS (
             SELECT 1
             FROM BoardCard bc
             WHERE bc.board.id = b.id
