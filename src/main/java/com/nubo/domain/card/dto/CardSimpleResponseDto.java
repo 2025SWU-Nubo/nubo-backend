@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CardListResponseDto {
+public class CardSimpleResponseDto {
 
-  private Long id;
+  private Long cardId;
   private String videoThumbnailUrl;
 }

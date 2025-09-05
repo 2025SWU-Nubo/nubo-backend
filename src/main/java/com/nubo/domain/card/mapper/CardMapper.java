@@ -2,8 +2,8 @@ package com.nubo.domain.card.mapper;
 
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
-import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.video.entity.Video;
@@ -44,10 +44,10 @@ public class CardMapper {
       .build();
   }
 
-  // Card → CardListResponseDto (리스트용, 썸네일만 포함)
-  public CardListResponseDto toListResponseDto(Card card) {
-    return CardListResponseDto.builder()
-      .id(card.getId())
+  // Card → CardSimpleResponseDto (리스트용, 썸네일만 포함)
+  public CardSimpleResponseDto toListResponseDto(Card card) {
+    return CardSimpleResponseDto.builder()
+      .cardId(card.getId())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .build();
   }

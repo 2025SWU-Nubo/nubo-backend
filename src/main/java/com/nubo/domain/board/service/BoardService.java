@@ -20,7 +20,7 @@ import com.nubo.domain.board.mapper.BoardMapper;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
-import com.nubo.domain.card.dto.CardListResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.user.entity.User;
@@ -270,7 +270,7 @@ public class BoardService {
     }
 
     // 카드 리스트
-    List<CardListResponseDto> cards = cardRepository.findByBoardIdOrderByCreatedAtDesc(boardId)
+    List<CardSimpleResponseDto> cards = cardRepository.findByBoardIdOrderByCreatedAtDesc(boardId)
       .stream()
       .map(cardMapper::toListResponseDto)
       .toList();

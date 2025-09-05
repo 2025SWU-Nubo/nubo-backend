@@ -1,6 +1,6 @@
 package com.nubo.domain.board.dto;
 
-import com.nubo.domain.card.dto.CardListResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,5 +13,5 @@ public class BoardDetailResponseDto {
   private String name;
   private boolean isFavorite;
   private List<BoardSummaryResponseDto> sections;
-  private List<CardListResponseDto> cards;
+  private List<CardSimpleResponseDto> cards;
 }

@@ -2,7 +2,7 @@ package com.nubo.domain.home.controller;
 
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
-import com.nubo.domain.card.dto.CardThumbnailResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
 import java.util.List;
@@ -43,11 +43,11 @@ public class HomeController {
    * @return 미열람 카드 썸네일 DTO 리스트
    */
   @GetMapping("/boards/{boardId}/unviewed-cards")
-  public ResponseEntity<List<CardThumbnailResponseDto>> getUnviewedCardThumbnails(
+  public ResponseEntity<List<CardSimpleResponseDto>> getUnviewedCardThumbnails(
     @PathVariable Long boardId,
     @RequestParam(defaultValue = "10") int limit) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardThumbnailResponseDto> cards = cardService.getUnviewedCardThumbnails(userId, boardId,
+    List<CardSimpleResponseDto> cards = cardService.getUnviewedCardThumbnails(userId, boardId,
       limit);
     return ResponseEntity.ok(cards);
   }

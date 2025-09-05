@@ -7,9 +7,8 @@ import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
-import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
-import com.nubo.domain.card.dto.CardThumbnailResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
@@ -219,7 +218,7 @@ public class CardService {
    * @return 카드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardListResponseDto> getCardsByUser(Long userId, String sort) {
+  public List<CardSimpleResponseDto> getCardsByUser(Long userId, String sort) {
     // 1. 유저 조회 (정확한 연관 보장을 위해)
     User user = userService.getUserById(userId);
 
@@ -268,11 +267,11 @@ public class CardService {
    * @return 카드 썸네일 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardThumbnailResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
+  public List<CardSimpleResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
     int limit) {
     List<Card> unviewedCards = cardRepository.findUnviewedCardsByBoard(userId, boardId, limit);
     return unviewedCards.stream()
-      .map(c -> new CardThumbnailResponseDto(c.getId(),
+      .map(c -> new CardSimpleResponseDto(c.getId(),
         c.getVideo() != null ? c.getVideo().getThumbnailUrl() : null))
       .toList();
   }

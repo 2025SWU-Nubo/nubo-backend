@@ -19,5 +19,5 @@ public class BoardSummaryResponseDto {
   private long sectionCount;
   private long cardCount;
 
-  private String thumbnailUrl;
+  private String videoThumbnailUrl;
 }

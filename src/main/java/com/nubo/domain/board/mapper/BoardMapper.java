@@ -11,7 +11,7 @@ import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto.SectionSimpleDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardSource;
-import com.nubo.domain.card.dto.CardListResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.user.entity.User;
 import java.util.List;
 import java.util.Map;
@@ -68,7 +68,7 @@ public class BoardMapper {
       .updatedAt(board.getUpdatedAt())
       .sectionCount(sectionCount)
       .cardCount(cardCount)
-      .thumbnailUrl(thumbnailUrl)
+      .videoThumbnailUrl(thumbnailUrl)
       .build();
   }
 
@@ -78,7 +78,7 @@ public class BoardMapper {
   public BoardDetailResponseDto toDetailResponseDto(
     Board board,
     List<BoardSummaryResponseDto> sections,
-    List<CardListResponseDto> cards,
+    List<CardSimpleResponseDto> cards,
     boolean favorite) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())

@@ -3,8 +3,8 @@ package com.nubo.domain.card.controller;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
-import com.nubo.domain.card.dto.CardListResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
+import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
 import java.io.IOException;
@@ -51,10 +51,10 @@ public class CardController {
    * @return 카드 응답 DTO 리스트
    */
   @GetMapping
-  public ResponseEntity<List<CardListResponseDto>> getMyCards(
+  public ResponseEntity<List<CardSimpleResponseDto>> getMyCards(
     @RequestParam(defaultValue = "latest") String sort) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardListResponseDto> response = cardService.getCardsByUser(userId, sort);
+    List<CardSimpleResponseDto> response = cardService.getCardsByUser(userId, sort);
     return ResponseEntity.ok(response);
   }
 
