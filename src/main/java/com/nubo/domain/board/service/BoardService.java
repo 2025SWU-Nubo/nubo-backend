@@ -68,8 +68,10 @@ public class BoardService {
    */
   @Transactional(readOnly = true)
   public boolean isBoardNameAvailable(Long userId, String name) {
+    // 앞뒤 공백 제거
+    String cleanName = name != null ? name.trim() : null;
     // 내 보드 중 동일한 이름이 존재하는지 확인
-    boolean exists = boardRepository.existsByUserIdAndNameIgnoreCase(userId, name);
+    boolean exists = boardRepository.existsByUser_IdAndNameIgnoreCase(userId, cleanName);
     return !exists;
   }
 
@@ -113,6 +115,8 @@ public class BoardService {
 
     // 3. 보드 엔티티 생성/저장
     Board newBoard = boardMapper.toEntity(dto, owner, parentBoard);
+    String cleanName = dto.getName() != null ? dto.getName().trim() : null; // 앞뒤 공백 제거
+    newBoard.setName(cleanName);
     Board savedBoard = boardRepository.save(newBoard);
 
     // 4. 공유 보드일 경우 멤버십 생성
