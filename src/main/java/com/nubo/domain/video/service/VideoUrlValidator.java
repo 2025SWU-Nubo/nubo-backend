@@ -28,7 +28,7 @@ public class VideoUrlValidator {
    * @return Platform (YOUTUBE, INSTAGRAM, TIKTOK)
    * @exception ApiException INVALID_VIDEO_URL (지원하지 않는 경우)
    */
-  public Platform validatePlatform(String url) {
+  public Platform validatePlatform(String url, Long userId) {
     if (url == null || url.isBlank()) {
       throw new ApiException(ErrorCode.INVALID_VIDEO_URL);
     }
