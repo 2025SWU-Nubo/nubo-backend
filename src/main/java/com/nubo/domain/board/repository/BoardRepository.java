@@ -57,18 +57,36 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     """)
   List<BoardStatsDto> getBoardStats(@Param("boardIds") List<Long> boardIds);
 
-  // 사용자가 접근 가능한 모든 보드와 그 하위 섹션들을 함께 조회한다.
+  /**
+   * 사용자가 접근 가능한 보드 중에서,
+   * 하위에 카드 또는 섹션이 존재하는 보드와 그 섹션들을 함께 조회한다.
+   */
   @Query("""
     SELECT DISTINCT b
     FROM Board b
     LEFT JOIN FETCH Board s ON s.parentBoard.id = b.id
-    WHERE (b.user.id = :userId OR b.user IS NULL)
-       OR EXISTS (
-         SELECT 1
-         FROM BoardMember bm
-         WHERE bm.board.id = b.id
-           AND bm.user.id = :userId
-       )
+    WHERE (
+        b.user.id = :userId OR b.user IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM BoardMember bm
+          WHERE bm.board.id = b.id
+            AND bm.user.id = :userId
+        )
+    )
+    AND (
+        EXISTS (
+          SELECT 1
+          FROM BoardCard bc
+          WHERE bc.board.id = b.id
+            AND bc.card.deletedAt IS NULL
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM Board sb
+          WHERE sb.parentBoard.id = b.id
+        )
+    )
     ORDER BY b.id
     """)
   List<Board> findAllAccessibleBoardsWithSections(@Param("userId") Long userId);
