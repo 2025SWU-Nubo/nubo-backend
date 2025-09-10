@@ -122,7 +122,7 @@ public class OpenAiClient {
       - description/transcript/subtitle이 모두 비어 있으면: title=""
 
       2. summary
-      - Markdown을 활용해 가독성 있게 요약한다. (### 헤딩, 불릿, 번호목록, 표 등)
+      - Markdown을 활용해 가독성 있게 요약한다. (### 헤딩, 불릿, 번호목록, 표 등을 사용하되 헤딩은 h2부터 사용한다.)
       - 길이는 유연하다. 정보가 적으면 짧게, 많으면 길게.
       - 광고, 홍보, 과장, 클릭 유도 금지. 사실 서술 위주.
 
