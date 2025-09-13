@@ -12,6 +12,7 @@ public class BoardDetailResponseDto {
   private Long id;
   private String name;
   private boolean isFavorite;
+  private boolean isShared;
   private List<BoardSummaryResponseDto> sections;
   private List<CardSimpleResponseDto> cards;
 }

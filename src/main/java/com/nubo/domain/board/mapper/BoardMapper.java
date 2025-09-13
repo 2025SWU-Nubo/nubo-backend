@@ -84,6 +84,7 @@ public class BoardMapper {
       .id(board.getId())
       .name(board.getName())
       .isFavorite(favorite)
+      .isShared(board.isShared())
       .sections(sections)
       .cards(cards)
       .build();
