@@ -14,7 +14,9 @@ import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
 import com.nubo.domain.board.dto.BoardNameCheckResponseDto;
 import com.nubo.domain.board.dto.BoardShareRequestDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
+import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
+import com.nubo.domain.board.dto.BoardUpdateNameRequestDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
@@ -137,6 +139,27 @@ public class BoardController {
       boardService.updateMembers(boardId, currentUserId, requestDto);
 
     return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 보드 이름을 수정한다.
+   *
+   * - 사용자 보드(source=USER)만 가능
+   * - 공유 보드(shared=true)는 소유자만 가능
+   *
+   * @param boardId 보드 ID (PathVariable)
+   * @param request 새로운 이름을 담은 DTO
+   * @return 수정된 보드의 id, name
+   */
+  @PatchMapping("/{boardId}/name")
+  public ResponseEntity<BoardSimpleResponseDto> updateBoardName(
+    @PathVariable Long boardId,
+    @RequestBody @Valid BoardUpdateNameRequestDto request
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    BoardSimpleResponseDto response =
+      boardService.updateBoardName(boardId, request.getName(), userId);
+    return ResponseEntity.ok(response);
   }
 
   /**

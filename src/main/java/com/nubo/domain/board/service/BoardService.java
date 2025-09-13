@@ -440,6 +440,42 @@ public class BoardService {
     return boardMemberService.updateMembers(board, dto);
   }
 
+
+  /**
+   * 사용자 보드의 이름을 수정한다.
+   *
+   * @param boardId 수정할 보드 ID
+   * @param newName 새로운 보드 이름
+   * @param userId  요청한 사용자 ID
+   * @return 수정된 보드의 id와 name만 담은 DTO
+   */
+  @Transactional
+  public BoardSimpleResponseDto updateBoardName(Long boardId, String newName, Long userId) {
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    // 기본 보드(source != USER)는 이름 변경 불가
+    if (board.getSource() != BoardSource.USER) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    // 공유 보드인 경우 소유자만 수정 가능
+    if (board.isShared() && !board.getUser().getId().equals(userId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    // 이름 공백 제거 및 검증
+    String cleanName = newName != null ? newName.trim() : null;
+    if (cleanName == null || cleanName.isEmpty()) {
+      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    }
+
+    board.setName(cleanName);
+    board.touch(); // updatedAt 갱신
+
+    return boardMapper.toSimpleResponseDto(board);
+  }
+
   /**
    * 보드 다중 삭제/숨김.
    * - AI 보드(기본 제공): per-user 숨김 처리 (보드/카드 실삭제 없음)
@@ -492,7 +528,7 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-// 공유보드 포함 멤버십 권한 허용(OWNER/ADMIN)
+    // 공유보드 포함 멤버십 권한 허용(OWNER/ADMIN)
     if (!boardMemberService.existsByBoardAndUser(board.getId(), userId)) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
