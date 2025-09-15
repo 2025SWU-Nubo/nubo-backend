@@ -4,6 +4,7 @@ import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.video.entity.Video;
@@ -69,6 +70,15 @@ public class CardMapper {
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
       .createdAt(card.getCreatedAt())
+      .updatedAt(card.getUpdatedAt())
+      .build();
+  }
+
+  // Card → CardSummaryUpdateResponseDto (summary 수정)
+  public CardSummaryUpdateResponseDto toSummaryUpdateResponseDto(Card card) {
+    return CardSummaryUpdateResponseDto.builder()
+      .id(card.getId())
+      .summary(card.getSummary())
       .updatedAt(card.getUpdatedAt())
       .build();
   }

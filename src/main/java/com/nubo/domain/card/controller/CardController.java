@@ -5,6 +5,8 @@ import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
+import com.nubo.domain.card.dto.SummaryPromptRequestDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
 import java.io.IOException;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,6 +71,24 @@ public class CardController {
   public ResponseEntity<CardDetailResponseDto> getCard(@PathVariable Long cardId) {
     Long userId = userUtil.getAuthenticatedUserId();
     CardDetailResponseDto response = cardService.getCardById(cardId, userId);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 카드 summary를 AI로 재가공한다.
+   *
+   * @param cardId  카드 ID (PathVariable)
+   * @param request 사용자 프롬프트 요청 DTO
+   * @return 재가공된 summary 응답 DTO
+   */
+  @PatchMapping("/{cardId}/summary/ai")
+  public ResponseEntity<CardSummaryUpdateResponseDto> regenerateSummary(
+    @PathVariable Long cardId,
+    @RequestBody SummaryPromptRequestDto request
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    CardSummaryUpdateResponseDto response =
+      cardService.regenerateCardSummary(cardId, userId, request.getPrompt());
     return ResponseEntity.ok(response);
   }
 

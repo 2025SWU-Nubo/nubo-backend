@@ -28,6 +28,13 @@ public class OpenAiClient {
   @Value("${openai.api-key}")
   private String apiKey;
 
+  /**
+   * 카드와 원본 영상 데이터를 기반으로 summary를 재가공한다.
+   *
+   * @param inputText 가공할 원본 메타데이터의 합본 텍스트
+   * @param userId    사용자 id
+   * @return 생성된 메타데이터 dto
+   */
   public AiCardMetaDto generateCardMeta(String inputText, Long userId) {
     String prompt = buildPrompt(inputText);
 
@@ -125,6 +132,7 @@ public class OpenAiClient {
       - Markdown을 활용해 가독성 있게 요약한다. (### 헤딩, 불릿, 번호목록, 표 등을 사용하되 헤딩은 h2부터 사용한다.)
       - 길이는 유연하다. 정보가 적으면 짧게, 많으면 길게.
       - 광고, 홍보, 과장, 클릭 유도 금지. 사실 서술 위주.
+      - 학습 노트 스타일의 문장을 명사형 종결 어미로 작성한다.
 
       3. tags
       - 최소 3개, 최대 5개.
@@ -153,4 +161,83 @@ public class OpenAiClient {
       %s
       """, inputText);
   }
+
+  /**
+   * 카드와 원본 영상 데이터를 기반으로 summary를 재가공한다.
+   *
+   * @param cardTitle      카드 제목
+   * @param currentSummary 현재 카드 summary
+   * @param description    영상 설명
+   * @param transcript     영상 음성 텍스트
+   * @param subtitle       영상 자막
+   * @param prompt         사용자 프롬프트 (예: "더 자세하게 요약해줘")
+   * @return 재가공된 summary 텍스트
+   */
+  public String regenerateSummary(
+    String cardTitle,
+    String currentSummary,
+    String description,
+    String transcript,
+    String subtitle,
+    String prompt
+  ) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(apiKey);
+
+    String userPrompt = String.format("""
+        당신은 학습 노트 요약 보조자다.
+        사용자의 요청: %s
+
+        [카드 데이터]
+        - 카드 제목: %s
+        - 현재 요약: %s
+
+        [원본 영상 메타데이터]
+        - 설명: %s
+        - 자막: %s
+        - 음성 텍스트: %s
+
+        위 데이터를 기반으로, 사용자의 요청에 맞게 요약을 다시 작성한다.
+        새로운 개념이나 없는 내용은 추가하지 않는다.
+        """,
+      prompt,
+      cardTitle != null ? cardTitle : "",
+      currentSummary != null ? currentSummary : "",
+      description != null ? description : "",
+      subtitle != null ? subtitle : "",
+      transcript != null ? transcript : ""
+    );
+
+    Map<String, Object> requestBody = Map.of(
+      "model", "gpt-4o",
+      "messages", List.of(
+        Map.of("role", "system", "content",
+          "You are a helpful assistant that rewrites summaries according to user instructions, "
+            + "without inventing new facts."),
+        Map.of("role", "user", "content", userPrompt)
+      )
+    );
+
+    HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+    ResponseEntity<Map> response = restTemplate.postForEntity(
+      "https://api.openai.com/v1/chat/completions",
+      request,
+      Map.class
+    );
+
+    try {
+      Map<String, Object> choice = ((List<Map<String, Object>>) response.getBody()
+        .get("choices")).get(0);
+      Map<String, Object> message = (Map<String, Object>) choice.get("message");
+      String content = message.get("content").toString();
+
+      log.info("Regenerated summary: {}", content);
+      return content.trim();
+    } catch (Exception e) {
+      log.error("GPT summary regeneration failed", e);
+      throw new RuntimeException("GPT summary regeneration failed", e);
+    }
+  }
+
 }

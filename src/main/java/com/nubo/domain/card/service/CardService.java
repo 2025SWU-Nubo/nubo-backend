@@ -9,6 +9,7 @@ import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
@@ -308,6 +309,46 @@ public class CardService {
     String result = sb.toString();
     log.info("=== buildFullText result ===\n{}", result); // fulltext 확인용
     return result;
+  }
+
+  /**
+   * 카드 summary를 AI로 재가공한다.
+   *
+   * @param cardId 카드 ID
+   * @param userId 요청한 사용자 ID
+   * @param prompt 사용자 프롬프트
+   * @return 업데이트된 카드 summary 응답 DTO
+   */
+  @Transactional
+  public CardSummaryUpdateResponseDto regenerateCardSummary(Long cardId, Long userId,
+    String prompt) {
+    Card card = cardRepository.findById(cardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    if (!card.getUser().getId().equals(userId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    Video video = card.getVideo();
+
+    try {
+      String newSummary = openAiClient.regenerateSummary(
+        card.getTitle(),
+        card.getSummary(),
+        video.getDescription(),
+        video.getTranscript(),
+        video.getSubtitle(),
+        prompt
+      );
+
+      card.setSummary(newSummary);
+      Card saved = cardRepository.save(card);
+
+      return cardMapper.toSummaryUpdateResponseDto(saved);
+
+    } catch (Exception e) {
+      throw new ApiException(ErrorCode.AI_SUMMARY_FAILED);
+    }
   }
 
   /**
