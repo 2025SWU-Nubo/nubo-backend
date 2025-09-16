@@ -15,11 +15,11 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CardDetailResponseDto {
 
-  private Long id;
+  private Long cardId;
   private String title;
   private String summary;
   private List<String> tags;
-  
+
   private BoardSource boardSource;
   private String boardName;
 

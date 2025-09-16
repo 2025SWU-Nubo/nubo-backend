@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CardResponseDto {
 
-  private Long id;
+  private Long cardId;
   private String title;
   private String summary;
   private List<String> tags;

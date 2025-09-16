@@ -8,7 +8,7 @@ import lombok.Getter;
 @Builder
 public class CardSummaryUpdateResponseDto {
 
-  private Long id;
+  private Long cardId;
   private String summary;
   private LocalDateTime updatedAt;
 }

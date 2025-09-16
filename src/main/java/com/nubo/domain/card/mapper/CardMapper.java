@@ -35,7 +35,7 @@ public class CardMapper {
   // Card → CardResponseDto (보드 ID 리스트 포함)
   public CardResponseDto toResponseDto(Card card, List<Long> boardIds) {
     return CardResponseDto.builder()
-      .id(card.getId())
+      .cardId(card.getId())
       .title(card.getTitle())
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
@@ -60,7 +60,7 @@ public class CardMapper {
     BoardSource contextBoardSource
   ) {
     return CardDetailResponseDto.builder()
-      .id(card.getId())
+      .cardId(card.getId())
       .title(card.getTitle())
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
@@ -77,7 +77,7 @@ public class CardMapper {
   // Card → CardSummaryUpdateResponseDto (summary 수정)
   public CardSummaryUpdateResponseDto toSummaryUpdateResponseDto(Card card) {
     return CardSummaryUpdateResponseDto.builder()
-      .id(card.getId())
+      .cardId(card.getId())
       .summary(card.getSummary())
       .updatedAt(card.getUpdatedAt())
       .build();
