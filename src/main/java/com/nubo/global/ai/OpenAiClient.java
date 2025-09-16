@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.card.dto.AiCardMetaDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -171,9 +172,9 @@ public class OpenAiClient {
    * @param transcript     영상 음성 텍스트
    * @param subtitle       영상 자막
    * @param prompt         사용자 프롬프트 (예: "더 자세하게 요약해줘")
-   * @return 재가공된 summary 텍스트
+   * @return
    */
-  public String regenerateSummary(
+  public Map<String, Object> regenerateSummary(
     String cardTitle,
     String currentSummary,
     String description,
@@ -198,8 +199,31 @@ public class OpenAiClient {
         - 자막: %s
         - 음성 텍스트: %s
 
-        위 데이터를 기반으로, 사용자의 요청에 맞게 요약을 다시 작성한다.
-        새로운 개념이나 없는 내용은 추가하지 않는다.
+        [출력 형식]
+        반드시 순수 JSON만 출력한다. (코드펜스, 불필요한 텍스트 금지)
+
+        {
+          "summary": "string",
+          "highlights": [
+            { "rangeStart": number, "rangeEnd": number }
+          ]
+        }
+
+        규칙:
+           1. summary
+           - 사용자의 요청이 '요약/재작성'에 해당하면, summary를 새로 작성한다.
+           - 사용자의 요청이 '하이라이팅'을 포함하면, summary는 반드시 기존 summary 내용을 최대한 유지한다.
+             - 단, '더 간결하게' '더 자세하게' 등 요약/재작성 요구와 함께 있을 경우, 요청을 따르되 기존 맥락을 보존하며 큰 변형 없이 수정한다.
+           - 어떤 경우에도 불필요하게 원문 정보를 삭제하거나 누락하지 않는다.
+
+           2. highlights
+           - 사용자의 요청에 '하이라이팅'이 포함된 경우, summary 문자열 내에서 조건에 맞는 구간의 인덱스를 highlights로 추출한다.
+           - 요청에 하이라이팅이 포함되지 않으면 highlights = []로 반환한다.
+
+           3. 공통
+           - summary와 highlights는 항상 세트로 반환한다.
+           - 새로운 개념, 없는 정보, 과장된 내용은 절대 추가하지 않는다.
+           - highlights의 인덱스는 summary 문자열 기준으로 정확히 계산한다.
         """,
       prompt,
       cardTitle != null ? cardTitle : "",
@@ -213,8 +237,8 @@ public class OpenAiClient {
       "model", "gpt-4o",
       "messages", List.of(
         Map.of("role", "system", "content",
-          "You are a helpful assistant that rewrites summaries according to user instructions, "
-            + "without inventing new facts."),
+          "You are a helpful assistant that rewrites summaries according to user instructions "
+            + "and optionally extracts highlight ranges."),
         Map.of("role", "user", "content", userPrompt)
       )
     );
@@ -232,8 +256,28 @@ public class OpenAiClient {
       Map<String, Object> message = (Map<String, Object>) choice.get("message");
       String content = message.get("content").toString();
 
-      log.info("Regenerated summary: {}", content);
-      return content.trim();
+      log.info("Regenerated summary + highlights: {}", content);
+
+      // JSON 파싱
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode json = mapper.readTree(content);
+
+      String summary = json.has("summary") ? json.get("summary").asText() : "";
+      List<HighlightRange> highlights = List.of();
+
+      if (json.has("highlights")) {
+        highlights = mapper.convertValue(
+          json.get("highlights"),
+          new TypeReference<List<HighlightRange>>() {
+          }
+        );
+      }
+
+      return Map.of(
+        "summary", summary,
+        "highlights", highlights
+      );
+
     } catch (Exception e) {
       log.error("GPT summary regeneration failed", e);
       throw new RuntimeException("GPT summary regeneration failed", e);

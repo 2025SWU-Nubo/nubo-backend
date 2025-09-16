@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -335,7 +336,7 @@ public class CardService {
     Video video = card.getVideo();
 
     try {
-      String newSummary = openAiClient.regenerateSummary(
+      Map<String, Object> result = openAiClient.regenerateSummary(
         card.getTitle(),
         card.getSummary(),
         video.getDescription(),
@@ -344,7 +345,25 @@ public class CardService {
         prompt
       );
 
+      String newSummary = (String) result.get("summary");
+      @SuppressWarnings("unchecked")
+      List<HighlightRange> highlights =
+        (List<HighlightRange>) result.get("highlights");
+
       card.setSummary(newSummary);
+
+      if (highlights != null) {
+        try {
+          ObjectMapper mapper = new ObjectMapper();
+          String highlightJson = mapper.writeValueAsString(highlights);
+          card.setHighlightInfo(highlightJson);
+        } catch (Exception e) {
+          throw new ApiException(ErrorCode.INVALID_FORMAT);
+        }
+      } else {
+        card.setHighlightInfo("[]");
+      }
+
       Card saved = cardRepository.save(card);
 
       return cardMapper.toSummaryUpdateResponseDto(saved);
