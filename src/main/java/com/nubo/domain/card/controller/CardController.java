@@ -5,9 +5,9 @@ import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryPromptRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
-import com.nubo.domain.card.dto.SummaryPromptRequestDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
 import jakarta.validation.Valid;
@@ -86,7 +86,7 @@ public class CardController {
   @PatchMapping("/{cardId}/summary/ai")
   public ResponseEntity<CardSummaryUpdateResponseDto> regenerateSummary(
     @PathVariable Long cardId,
-    @RequestBody SummaryPromptRequestDto request
+    @RequestBody CardSummaryPromptRequestDto request
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
     CardSummaryUpdateResponseDto response =

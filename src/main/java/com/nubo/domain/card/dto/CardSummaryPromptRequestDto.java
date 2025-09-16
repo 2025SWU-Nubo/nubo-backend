@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class SummaryPromptRequestDto {
+public class CardSummaryPromptRequestDto {
 
   @NotBlank
   private String prompt;
