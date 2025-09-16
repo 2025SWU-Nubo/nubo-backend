@@ -5,10 +5,12 @@ import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.dto.SummaryPromptRequestDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
+import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +91,22 @@ public class CardController {
     Long userId = userUtil.getAuthenticatedUserId();
     CardSummaryUpdateResponseDto response =
       cardService.regenerateCardSummary(cardId, userId, request.getPrompt());
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 카드 summary를 사용자가 직접 수정한다.
+   *
+   * PATCH /card/{cardId}/summary
+   */
+  @PatchMapping("/{cardId}/summary")
+  public ResponseEntity<CardSummaryUpdateResponseDto> updateSummary(
+    @PathVariable Long cardId,
+    @RequestBody @Valid CardSummaryUpdateRequestDto request
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    CardSummaryUpdateResponseDto response =
+      cardService.updateCardSummary(cardId, userId, request.getSummary());
     return ResponseEntity.ok(response);
   }
 

@@ -25,6 +25,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -352,6 +353,30 @@ public class CardService {
   }
 
   /**
+   * 카드 summary를 사용자가 직접 수정한다.
+   *
+   * @param cardId     카드 ID
+   * @param userId     요청한 사용자 ID
+   * @param newSummary 새로 수정할 내용
+   * @return 업데이트된 카드 summary 응답 DTO
+   */
+  @Transactional
+  public CardSummaryUpdateResponseDto updateCardSummary(Long cardId, Long userId,
+    String newSummary) {
+    Card card = cardRepository.findById(cardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    if (!card.getUser().getId().equals(userId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    card.setSummary(newSummary);
+    Card saved = cardRepository.save(card);
+
+    return cardMapper.toSummaryUpdateResponseDto(saved);
+  }
+
+  /**
    * 여러 카드를 전역 삭제(소프트 삭제)한다.
    *
    * @param cardIds 삭제할 카드 ID 목록
@@ -360,7 +385,7 @@ public class CardService {
    */
   @Transactional
   public List<CardDeleteResultDto> deleteCardsGlobally(List<Long> cardIds, Long userId) {
-    List<CardDeleteResultDto> results = new java.util.ArrayList<>();
+    List<CardDeleteResultDto> results = new ArrayList<>();
     Instant now = Instant.now();
 
     for (Long cardId : cardIds) {
