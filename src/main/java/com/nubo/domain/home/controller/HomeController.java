@@ -1,5 +1,6 @@
 package com.nubo.domain.home.controller;
 
+import com.nubo.domain.board.dto.BoardPreviewResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
@@ -22,6 +23,20 @@ public class HomeController {
   private final UserUtil userUtil;
   private final BoardService boardService;
   private final CardService cardService;
+
+  /**
+   * 홈 화면용 최근 방문한 보드 리스트를 조회한다.
+   *
+   * @param limit 최대 반환 보드 수 (기본값: 5)
+   * @return 썸네일을 포함한 보드 DTO 리스트
+   */
+  @GetMapping("/boards/recent")
+  public ResponseEntity<List<BoardPreviewResponseDto>> getRecentVisitedBoards(
+    @RequestParam(defaultValue = "5") int limit) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<BoardPreviewResponseDto> boards = boardService.getRecentVisitedBoards(userId, limit);
+    return ResponseEntity.ok(boards);
+  }
 
   /**
    * 홈 화면용 보드 이름 리스트를 조회한다.

@@ -16,6 +16,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -59,7 +60,14 @@ public class BoardMember extends BaseTimeEntity {
   @Column(name = "favorite", nullable = false)
   private boolean favorite = false;
 
+  @Column(name = "last_visited_at")
+  private LocalDateTime lastVisitedAt;
+
   public void updateFavorite(boolean favorite) {
     this.favorite = favorite;
+  }
+
+  public void updateLastVisitedAt() {
+    this.lastVisitedAt = LocalDateTime.now();
   }
 }

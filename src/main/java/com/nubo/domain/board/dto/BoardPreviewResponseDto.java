@@ -1,0 +1,17 @@
+package com.nubo.domain.board.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class BoardPreviewResponseDto {
+
+  private Long boardId;
+  private String boardName;
+  private String videoThumbnailUrl;
+}

@@ -12,11 +12,14 @@ import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -115,6 +118,31 @@ public class BoardMemberService {
       .build();
   }
 
+  // OWNER 자격을 생성한다.
+  @Transactional
+  public void createOwner(Board board, User owner) {
+    BoardMember ownerMember = BoardMember.builder()
+      .board(board)
+      .user(owner)
+      .role(BoardMemberRole.OWNER)
+      .build();
+    boardMemberRepository.save(ownerMember);
+  }
+
+  // ADMIN 자격을 생성한다.
+  @Transactional
+  public void createAdmins(Board board, List<User> admins) {
+    for (User admin : admins) {
+      BoardMember adminMember = BoardMember.builder()
+        .board(board)
+        .user(admin)
+        .role(BoardMemberRole.ADMIN)
+        .build();
+      boardMemberRepository.save(adminMember);
+    }
+  }
+
+
   /**
    * 보드에 사용자가 속해 있는지 여부를 확인한다.
    */
@@ -129,6 +157,25 @@ public class BoardMemberService {
   @Transactional
   public void deleteByBoardIds(List<Long> boardIds) {
     boardMemberRepository.deleteByBoardIds(boardIds);
+  }
+
+  /**
+   * 사용자가 최근 방문한 보드 목록을 조회한다.
+   */
+  @Transactional(readOnly = true)
+  public List<BoardMember> findRecentVisitedBoards(Long userId, int limit) {
+    return boardMemberRepository.findRecentVisitedBoards(userId, PageRequest.of(0, limit));
+  }
+
+  /**
+   * 보드의 방문 시간을 업데이트한다.
+   */
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void updateLastVisitedAt(Long boardId, Long userId) {
+    int updated = boardMemberRepository.updateLastVisitedAt(boardId, userId, LocalDateTime.now());
+    if (updated == 0) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED); // 멤버십 없는 경우
+    }
   }
 
   // ====== private helper ======

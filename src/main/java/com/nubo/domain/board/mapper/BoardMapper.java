@@ -4,6 +4,7 @@ import com.nubo.domain.board.dto.BoardCreateRequestDto;
 import com.nubo.domain.board.dto.BoardCreateResponseDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
+import com.nubo.domain.board.dto.BoardPreviewResponseDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
@@ -112,6 +113,16 @@ public class BoardMapper {
       .build();
   }
 
+  /**
+   * Board → BoardPreviewResponseDto
+   */
+  public BoardPreviewResponseDto toPreviewDto(Board board, String thumbnailUrl) {
+    return BoardPreviewResponseDto.builder()
+      .boardId(board.getId())
+      .boardName(board.getName())
+      .videoThumbnailUrl(thumbnailUrl)
+      .build();
+  }
 
   /**
    * Board → BoardSimpleResponseDto

@@ -1,8 +1,10 @@
 package com.nubo.domain.board.repository;
 
 import com.nubo.domain.board.entity.BoardMember;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -28,4 +30,27 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
 
   // 특정 보드에 소속된 멤버 목록 조회용
   List<BoardMember> findAllByBoardId(Long boardId);
+
+  // 최근 방문한 보드 리스트 조회
+  @Query("""
+    SELECT bm
+    FROM BoardMember bm
+    JOIN FETCH bm.board b
+    WHERE bm.user.id = :userId
+      AND bm.lastVisitedAt IS NOT NULL
+    ORDER BY bm.lastVisitedAt DESC
+    """)
+  List<BoardMember> findRecentVisitedBoards(@Param("userId") Long userId, Pageable pageable);
+
+  // 보드 방문 시간 업데이트
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+      update BoardMember bm
+         set bm.lastVisitedAt = :now
+       where bm.board.id = :boardId
+         and bm.user.id = :userId
+    """)
+  int updateLastVisitedAt(@Param("boardId") Long boardId,
+    @Param("userId") Long userId,
+    @Param("now") LocalDateTime now);
 }

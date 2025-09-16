@@ -10,12 +10,14 @@ import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
 import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
+import com.nubo.domain.board.dto.BoardPreviewResponseDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.mapper.BoardMapper;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
@@ -119,36 +121,42 @@ public class BoardService {
     newBoard.setName(cleanName);
     Board savedBoard = boardRepository.save(newBoard);
 
-    // 4. 공유 보드일 경우 멤버십 생성
-    if (dto.getBoardType() == BoardType.BOARD && dto.isShared()) {
-      // 4-1. 이메일 정제
-      Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
-        .orElse(List.of())
-        .stream()
-        .filter(Objects::nonNull)
-        .map(String::trim)
-        .map(String::toLowerCase)
-        .filter(s -> !s.isBlank())
-        .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
-        .collect(Collectors.toCollection(LinkedHashSet::new));
+    // 4. 멤버십 생성
+    if (dto.getBoardType() == BoardType.BOARD) {
+      // 항상 OWNER 멤버 생성
+      boardMemberService.createOwner(savedBoard, owner);
 
-      // 4-2. 유저 조회 + 누락 이메일 검증
-      List<User> admins = List.of();
-      if (!inviteEmails.isEmpty()) {
-        admins = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
-        Set<String> found = admins.stream()
-          .map(u -> u.getEmail().toLowerCase())
-          .collect(Collectors.toSet());
-        List<String> missing = inviteEmails.stream()
-          .filter(e -> !found.contains(e))
-          .toList();
-        if (!missing.isEmpty()) {
-          throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
+      // 공유 보드일 경우 ADMIN 멤버도 추가
+      if (dto.isShared()) {
+        // 4-1. 이메일 정제
+        Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
+          .orElse(List.of())
+          .stream()
+          .filter(Objects::nonNull)
+          .map(String::trim)
+          .map(String::toLowerCase)
+          .filter(s -> !s.isBlank())
+          .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
+          .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        // 4-2. 유저 조회 + 누락 이메일 검증
+        List<User> admins = List.of();
+        if (!inviteEmails.isEmpty()) {
+          admins = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
+          Set<String> found = admins.stream()
+            .map(u -> u.getEmail().toLowerCase())
+            .collect(Collectors.toSet());
+          List<String> missing = inviteEmails.stream()
+            .filter(e -> !found.contains(e))
+            .toList();
+          if (!missing.isEmpty()) {
+            throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
+          }
         }
-      }
 
-      // 4-3. OWNER + ADMIN 멤버 생성/저장
-      boardMemberService.createOwnerAndAdmins(savedBoard, owner, admins);
+        // 4-3. ADMIN 멤버 생성
+        boardMemberService.createAdmins(savedBoard, admins);
+      }
     }
 
     // 5. 결과 반환
@@ -179,27 +187,7 @@ public class BoardService {
       .collect(Collectors.toMap(BoardStatsDto::getBoardId, Function.identity()));
 
     // 썸네일 조회
-    Map<Long, String> thumbnailMap = new HashMap<>();
-
-    for (Board board : boards) {
-      Long boardId = board.getId();
-      if (boardId == null) {
-        continue;
-      }
-
-      long cardCount = cardRepository.countActiveByBoardId(boardId);
-      if (cardCount == 0) {
-        thumbnailMap.put(boardId, null); // 썸네일 없음
-        continue;
-      }
-
-      var top1 = cardRepository.findRecentCardsByBoard(board, PageRequest.of(0, 1));
-      String thumbnailUrl = top1.isEmpty()
-        ? null
-        : (top1.get(0).getVideo() != null ? top1.get(0).getVideo().getThumbnailUrl() : null);
-
-      thumbnailMap.put(boardId, thumbnailUrl);
-    }
+    Map<Long, String> thumbnailMap = getThumbnailsForBoards(boards);
 
     // 매핑
     return boards.stream()
@@ -245,6 +233,8 @@ public class BoardService {
   public BoardDetailResponseDto getBoardDetail(Long boardId, Long userId) {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    boardMemberService.updateLastVisitedAt(boardId, userId);
 
     // 즐겨찾기 상태 조회
     boolean favorite = boardMemberService.getFavoriteStatus(boardId, userId);
@@ -293,6 +283,28 @@ public class BoardService {
     List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
     return boards.stream()
       .map(boardMapper::toSimpleResponseDto)
+      .toList();
+  }
+
+  /**
+   * 홈 화면용 최근 방문한 보드 리스트 조회
+   *
+   * @param userId 조회할 사용자 ID
+   * @return 보드 이름 리스트 DTO
+   */
+  public List<BoardPreviewResponseDto> getRecentVisitedBoards(Long userId, int limit) {
+    List<BoardMember> members = boardMemberService.findRecentVisitedBoards(userId, limit);
+
+    List<Board> boards = members.stream()
+      .map(BoardMember::getBoard)
+      .toList();
+    Map<Long, String> thumbnailMap = getThumbnailsForBoards(boards);
+
+    return members.stream()
+      .map(bm -> boardMapper.toPreviewDto(
+        bm.getBoard(),
+        thumbnailMap.get(bm.getBoard().getId())
+      ))
       .toList();
   }
 
@@ -693,4 +705,34 @@ public class BoardService {
       boardRepository.delete(b);
     }
   }
+
+  /**
+   * 보드 썸네일 추출
+   */
+  private Map<Long, String> getThumbnailsForBoards(List<Board> boards) {
+    Map<Long, String> thumbnailMap = new HashMap<>();
+
+    for (Board board : boards) {
+      Long boardId = board.getId();
+      if (boardId == null) {
+        continue;
+      }
+
+      long cardCount = cardRepository.countActiveByBoardId(boardId);
+      if (cardCount == 0) {
+        thumbnailMap.put(boardId, null); // 썸네일 없음
+        continue;
+      }
+
+      var top1 = cardRepository.findRecentCardsByBoard(board, PageRequest.of(0, 1));
+      String thumbnailUrl = top1.isEmpty()
+        ? null
+        : (top1.get(0).getVideo() != null ? top1.get(0).getVideo().getThumbnailUrl() : null);
+
+      thumbnailMap.put(boardId, thumbnailUrl);
+    }
+
+    return thumbnailMap;
+  }
+
 }
