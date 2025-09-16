@@ -1,11 +1,12 @@
 package com.nubo.domain.card.mapper;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
-import com.nubo.domain.card.dto.CardHighlightUpdateRequestDto;
-import com.nubo.domain.card.dto.CardHighlightUpdateResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
@@ -61,6 +62,21 @@ public class CardMapper {
     String contextBoardName,
     BoardSource contextBoardSource
   ) {
+    List<HighlightRange> highlights = List.of();
+
+    if (card.getHighlightInfo() != null && !card.getHighlightInfo().isBlank()) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        highlights = mapper.readValue(
+          card.getHighlightInfo(),
+          new TypeReference<List<HighlightRange>>() {
+          }
+        );
+      } catch (Exception e) {
+        highlights = List.of();
+      }
+    }
+
     return CardDetailResponseDto.builder()
       .cardId(card.getId())
       .title(card.getTitle())
@@ -71,6 +87,7 @@ public class CardMapper {
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
+      .highlights(highlights)
       .createdAt(card.getCreatedAt())
       .updatedAt(card.getUpdatedAt())
       .build();
@@ -78,20 +95,24 @@ public class CardMapper {
 
   // Card → CardSummaryUpdateResponseDto (summary 수정)
   public CardSummaryUpdateResponseDto toSummaryUpdateResponseDto(Card card) {
+    List<HighlightRange> highlights = List.of();
+
+    if (card.getHighlightInfo() != null && !card.getHighlightInfo().isBlank()) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        highlights = mapper.readValue(
+          card.getHighlightInfo(),
+          new TypeReference<List<HighlightRange>>() {
+          }
+        );
+      } catch (Exception e) {
+        highlights = List.of();
+      }
+    }
+
     return CardSummaryUpdateResponseDto.builder()
       .cardId(card.getId())
       .summary(card.getSummary())
-      .updatedAt(card.getUpdatedAt())
-      .build();
-  }
-
-  // Card → CardHighlightUpdateResponseDto (Highlight 수정)
-  public CardHighlightUpdateResponseDto toHighlightUpdateResponseDto(
-    Card card,
-    List<CardHighlightUpdateRequestDto.HighlightRange> highlights
-  ) {
-    return CardHighlightUpdateResponseDto.builder()
-      .cardId(card.getId())
       .highlights(highlights)
       .updatedAt(card.getUpdatedAt())
       .build();

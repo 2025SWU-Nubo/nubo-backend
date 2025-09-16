@@ -27,6 +27,8 @@ public class CardDetailResponseDto {
   private String videoThumbnailUrl;
   private Platform videoPlatform;
 
+  private List<CardSummaryUpdateRequestDto.HighlightRange> highlights;
+
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
 }

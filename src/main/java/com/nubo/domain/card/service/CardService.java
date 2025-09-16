@@ -8,10 +8,9 @@ import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
-import com.nubo.domain.card.dto.CardHighlightUpdateRequestDto;
-import com.nubo.domain.card.dto.CardHighlightUpdateResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
@@ -364,8 +363,13 @@ public class CardService {
    * @return 업데이트된 카드 summary 응답 DTO
    */
   @Transactional
-  public CardSummaryUpdateResponseDto updateCardSummary(Long cardId, Long userId,
-    String newSummary) {
+  public CardSummaryUpdateResponseDto updateCardSummary(
+    Long cardId,
+    Long userId,
+    String newSummary,
+    List<HighlightRange> highlights
+  ) {
+
     Card card = cardRepository.findById(cardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
@@ -374,47 +378,21 @@ public class CardService {
     }
 
     card.setSummary(newSummary);
+
+    if (highlights != null) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        String highlightJson = mapper.writeValueAsString(highlights);
+        card.setHighlightInfo(highlightJson);
+      } catch (Exception e) {
+        throw new ApiException(ErrorCode.INVALID_FORMAT);
+      }
+    }
+
     Card saved = cardRepository.save(card);
 
     return cardMapper.toSummaryUpdateResponseDto(saved);
   }
-
-  /**
-   * 카드 하이라이트 정보를 업데이트한다.
-   *
-   * @param cardId     카드 ID
-   * @param userId     요청 사용자 ID
-   * @param highlights 최신 하이라이트 배열
-   * @return 업데이트된 하이라이트 응답 DTO
-   */
-  @Transactional
-  public CardHighlightUpdateResponseDto updateCardHighlight(
-    Long cardId,
-    Long userId,
-    List<CardHighlightUpdateRequestDto.HighlightRange> highlights
-  ) {
-    Card card = cardRepository.findById(cardId)
-      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
-
-    if (!card.getUser().getId().equals(userId)) {
-      throw new ApiException(ErrorCode.ACCESS_DENIED);
-    }
-
-    try {
-      // JSON 문자열로 직렬화
-      ObjectMapper mapper = new ObjectMapper();
-      String highlightJson = mapper.writeValueAsString(highlights);
-
-      card.setHighlightInfo(highlightJson);
-      Card saved = cardRepository.save(card);
-
-      return cardMapper.toHighlightUpdateResponseDto(saved, highlights);
-
-    } catch (Exception e) {
-      throw new ApiException(ErrorCode.INVALID_FORMAT);
-    }
-  }
-
 
   /**
    * 여러 카드를 전역 삭제(소프트 삭제)한다.

@@ -3,8 +3,6 @@ package com.nubo.domain.card.controller;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
-import com.nubo.domain.card.dto.CardHighlightUpdateRequestDto;
-import com.nubo.domain.card.dto.CardHighlightUpdateResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryPromptRequestDto;
@@ -110,28 +108,10 @@ public class CardController {
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
     CardSummaryUpdateResponseDto response =
-      cardService.updateCardSummary(cardId, userId, request.getSummary());
+      cardService.updateCardSummary(cardId, userId, request.getSummary(), request.getHighlights());
     return ResponseEntity.ok(response);
   }
 
-  /**
-   * 카드 하이라이트 정보를 업데이트한다.
-   *
-   * @param cardId  카드 ID
-   * @param request 하이라이트 수정 요청 DTO
-   * @return 수정된 하이라이트 응답 DTO
-   */
-  @PatchMapping("/{cardId}/highlight")
-  public ResponseEntity<CardHighlightUpdateResponseDto> updateHighlight(
-    @PathVariable Long cardId,
-    @RequestBody @Valid CardHighlightUpdateRequestDto request
-  ) {
-    Long userId = userUtil.getAuthenticatedUserId();
-    CardHighlightUpdateResponseDto response =
-      cardService.updateCardHighlight(cardId, userId, request.getHighlights());
-    return ResponseEntity.ok(response);
-  }
-  
   /**
    * 카드 전역 삭제 (소프트 삭제).
    *
