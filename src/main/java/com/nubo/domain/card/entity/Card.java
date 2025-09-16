@@ -55,6 +55,9 @@ public class Card extends BaseTimeEntity {
   @Column(columnDefinition = "TEXT")
   private String tags;     // 태그 목록 (JSON 문자열)
 
+  @Column(columnDefinition = "TEXT")
+  private String highlightInfo; // 하이라이트 정보(JSON 배열 문자열)
+
   // 보드와의 M:N 관계 (BoardCard로 관리)
   @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<BoardCard> boardCards = new HashSet<>();

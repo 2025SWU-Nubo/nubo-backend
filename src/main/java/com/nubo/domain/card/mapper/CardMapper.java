@@ -2,6 +2,8 @@ package com.nubo.domain.card.mapper;
 
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardHighlightUpdateRequestDto;
+import com.nubo.domain.card.dto.CardHighlightUpdateResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
@@ -79,6 +81,18 @@ public class CardMapper {
     return CardSummaryUpdateResponseDto.builder()
       .cardId(card.getId())
       .summary(card.getSummary())
+      .updatedAt(card.getUpdatedAt())
+      .build();
+  }
+
+  // Card → CardHighlightUpdateResponseDto (Highlight 수정)
+  public CardHighlightUpdateResponseDto toHighlightUpdateResponseDto(
+    Card card,
+    List<CardHighlightUpdateRequestDto.HighlightRange> highlights
+  ) {
+    return CardHighlightUpdateResponseDto.builder()
+      .cardId(card.getId())
+      .highlights(highlights)
       .updatedAt(card.getUpdatedAt())
       .build();
   }
