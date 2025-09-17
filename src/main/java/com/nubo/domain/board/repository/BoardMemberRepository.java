@@ -53,4 +53,29 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
   int updateLastVisitedAt(@Param("boardId") Long boardId,
     @Param("userId") Long userId,
     @Param("now") LocalDateTime now);
+
+  // =========================
+  // 관심사 설정
+  // =========================
+
+  // 지정된 보드 ID들에 대해 visible 값을 true로 업데이트한다.
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    UPDATE BoardMember bm
+       SET bm.visible = true
+     WHERE bm.user.id = :userId
+       AND bm.board.id IN :boardIds
+    """)
+  int bulkSetVisibleTrue(@Param("boardIds") List<Long> boardIds,
+    @Param("userId") Long userId);
+
+  // 해당 유저의 모든 보드를 visible=false로 초기화한다.
+  // 관심사 설정 전에 기본 보드 상태를 리셋하는 용도로 사용 가능
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    UPDATE BoardMember bm
+       SET bm.visible = false
+     WHERE bm.user.id = :userId
+    """)
+  int bulkResetVisible(@Param("userId") Long userId);
 }

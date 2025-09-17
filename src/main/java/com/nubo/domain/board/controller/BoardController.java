@@ -95,11 +95,25 @@ public class BoardController {
   /**
    * 카드 추가 시 사용자가 선택할 수 있는
    * 보드와 섹션 목록을 계층 구조로 반환한다.
+   *
+   * @return 보드+섹션 이름 정보 응답 DTO
    */
   @GetMapping("/with-sections")
   public ResponseEntity<List<BoardWithSectionsSimpleResponseDto>> getBoardsWithSections() {
     Long userId = userUtil.getAuthenticatedUserId();
     List<BoardWithSectionsSimpleResponseDto> result = boardService.getBoardsWithSections(userId);
+    return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 관심사 설정을 위한 기본 보드를 모두 조회한다.
+   *
+   * @return 보드 이름 정보 응답 DTO
+   */
+  @GetMapping("/defaults")
+  public ResponseEntity<List<BoardSimpleResponseDto>> getDefaultBoards() {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<BoardSimpleResponseDto> result = boardService.getUserDefaultBoards(userId);
     return ResponseEntity.ok(result);
   }
 

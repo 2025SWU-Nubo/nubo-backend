@@ -30,6 +30,13 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             FROM Board s
             WHERE s.parentBoard.id = b.id
           )
+          OR EXISTS (
+            SELECT 1
+            FROM BoardMember bm
+            WHERE bm.board.id = b.id
+              AND bm.user.id = :userId
+              AND bm.visible = true
+          )
         )
     """)
   List<Board> findVisibleBoardsForUser(@Param("userId") Long userId,
@@ -86,6 +93,13 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
           FROM Board sb
           WHERE sb.parentBoard.id = b.id
         )
+        OR EXISTS (
+          SELECT 1
+          FROM BoardMember bm2
+          WHERE bm2.board.id = b.id
+            AND bm2.user.id = :userId
+            AND bm2.visible = true
+        )
     )
     ORDER BY b.id
     """)
@@ -93,5 +107,15 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 
   // 동일한 이름의 보드가 존재하는지 조회한다.
   boolean existsByUser_IdAndNameIgnoreCase(Long userId, String name);
+
+  // 사용자의 기본 보드를 모두 조회한다.
+  @Query("""
+    SELECT b
+    FROM Board b
+    WHERE b.user.id = :userId
+      AND b.source = 'AI'
+      AND b.boardType = 'BOARD'
+    """)
+  List<Board> findAllDefaultBoardsByUserId(@Param("userId") Long userId);
 
 }

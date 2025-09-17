@@ -52,4 +52,19 @@ public class BoardMemberMapper {
       .nickname(member.getUser().getNickname())
       .build();
   }
+
+  /**
+   * 기본 보드에 대한 BoardMember 리스트 생성
+   */
+  public List<BoardMember> toDefaultBoardMembers(List<Board> boards, User user) {
+    return boards.stream()
+      .map(board -> BoardMember.builder()
+        .board(board)
+        .user(user)
+        .role(BoardMemberRole.OWNER)
+        .favorite(false)
+        .visible(false)
+        .build())
+      .toList();
+  }
 }

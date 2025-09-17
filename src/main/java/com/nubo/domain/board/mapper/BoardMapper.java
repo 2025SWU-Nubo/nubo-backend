@@ -12,8 +12,11 @@ import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto.SectionSimpleDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardSource;
+import com.nubo.domain.board.type.BoardType;
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.user.entity.User;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -146,5 +149,19 @@ public class BoardMapper {
       .boardId(board.getId())
       .shared(board.isShared())
       .build();
+  }
+
+  /**
+   * 유저 생성 시 기본 제공 보드(AI) 리스트 생성
+   */
+  public List<Board> toDefaultBoards(User user) {
+    return Arrays.stream(DefaultBoard.values())
+      .map(defaultBoard -> Board.builder()
+        .name(defaultBoard.getDisplayName())
+        .boardType(BoardType.BOARD)
+        .source(BoardSource.AI)
+        .user(user)
+        .build())
+      .toList();
   }
 }

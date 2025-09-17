@@ -45,6 +45,15 @@ public class User extends BaseTimeEntity {
   @Column(nullable = false, unique = true)
   private String email;
 
+  /**
+   * 관심사 설정 완료 여부
+   * - 최초 회원가입 직후 false
+   * - /api/interests API 호출 완료 시 true
+   * - 이후 재호출 불가
+   */
+  @Column(nullable = false)
+  private boolean interestSetupCompleted = false;
+
   // 사용자 닉네임 수정
   public void updateNickname(String nickname) {
     this.nickname = nickname;
@@ -53,5 +62,10 @@ public class User extends BaseTimeEntity {
   // 프로필 이미지 변경
   public void updateProfileImageUrl(String profileImageUrl) {
     this.profileImageUrl = profileImageUrl;
+  }
+
+  // 관심사 설정 완료로 상태 변경
+  public void markInterestSetupCompleted() {
+    this.interestSetupCompleted = true;
   }
 }

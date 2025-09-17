@@ -350,6 +350,19 @@ public class BoardService {
       .toList();
   }
 
+  /**
+   * 현재 사용자의 모든 기본보드를 조회한다.
+   *
+   * @param userId 조회할 사용자 ID
+   * @return 보드 이름 리스트 DTO
+   */
+  @Transactional(readOnly = true)
+  public List<BoardSimpleResponseDto> getUserDefaultBoards(Long userId) {
+    List<Board> boards = boardRepository.findAllDefaultBoardsByUserId(userId);
+    return boards.stream()
+      .map(boardMapper::toSimpleResponseDto)
+      .toList();
+  }
 
   /**
    * 보드의 최근 활동 시간을 갱신한다.

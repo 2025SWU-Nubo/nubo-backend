@@ -62,6 +62,10 @@ public class BoardMember extends BaseTimeEntity {
 
   @Column(name = "last_visited_at")
   private LocalDateTime lastVisitedAt;
+  
+  // 보드 노출 여부 (최초 1회 관심사 설정용)
+  @Column(nullable = false)
+  private boolean visible = false;
 
   public void updateFavorite(boolean favorite) {
     this.favorite = favorite;

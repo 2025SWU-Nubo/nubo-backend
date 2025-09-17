@@ -2,12 +2,10 @@ package com.nubo.domain.user.service;
 
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardMember;
+import com.nubo.domain.board.mapper.BoardMapper;
+import com.nubo.domain.board.mapper.BoardMemberMapper;
 import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
-import com.nubo.domain.board.type.BoardMemberRole;
-import com.nubo.domain.board.type.BoardSource;
-import com.nubo.domain.board.type.BoardType;
-import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.user.dto.MyPageResponseDto;
 import com.nubo.domain.user.dto.UserProfileUpdateResponseDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
@@ -17,7 +15,6 @@ import com.nubo.domain.user.repository.UserRepository;
 import com.nubo.global.auth.UserUtil;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +31,9 @@ public class UserService {
 
   private final BoardRepository boardRepository;
   private final BoardMemberRepository boardMemberRepository;
-  
+  private final BoardMemberMapper boardMemberMapper;
+  private final BoardMapper boardMapper;
+
   /**
    * 소셜 로그인으로 전달된 사용자 정보로
    * 기존 사용자를 조회하거나, 없으면 새로 생성한다.
@@ -53,26 +52,13 @@ public class UserService {
       User newUser = userRepository.save(userCandidate);
 
       // 2. 기본 보드 생성
-      List<Board> defaults = Arrays.stream(DefaultBoard.values())
-        .map(defaultBoard -> Board.builder()
-          .name(defaultBoard.getDisplayName())
-          .boardType(BoardType.BOARD)
-          .source(BoardSource.AI)
-          .user(newUser)
-          .build())
-        .toList();
+      List<Board> defaultBoards = boardMapper.toDefaultBoards(newUser);
 
       // 3. 각 보드에 대해 BoardMember(owner) 생성
-      List<BoardMember> memberships = defaults.stream()
-        .map(board -> BoardMember.builder()
-          .board(board)
-          .user(newUser)
-          .role(BoardMemberRole.OWNER)
-          .favorite(false)
-          .build())
-        .toList();
+      List<BoardMember> memberships = boardMemberMapper.toDefaultBoardMembers(defaultBoards,
+        newUser);
 
-      boardRepository.saveAll(defaults);
+      boardRepository.saveAll(defaultBoards);
       boardMemberRepository.saveAll(memberships);
 
       return newUser;

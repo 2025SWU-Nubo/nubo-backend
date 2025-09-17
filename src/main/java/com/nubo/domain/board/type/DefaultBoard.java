@@ -1,5 +1,9 @@
 package com.nubo.domain.board.type;
 
+import java.util.EnumSet;
+import java.util.List;
+import java.util.stream.Collectors;
+
 public enum DefaultBoard {
 
   EDUCATION("교육"),
@@ -16,10 +20,17 @@ public enum DefaultBoard {
   ENTERTAINMENT("엔터테인먼트(코미디/TV/쇼)"),
   ETC("기타");
 
+  // 건너뛰기 시 기본으로 노출할 보드 지정
+  private static final EnumSet<DefaultBoard> DEFAULT_SKIP_BOARDS =
+    EnumSet.of(EDUCATION, TECH, BUSINESS, HEALTH, LIFESTYLE);
   private final String displayName;
 
   DefaultBoard(String displayName) {
     this.displayName = displayName;
+  }
+
+  public static List<DefaultBoard> getSkipDefaults() {
+    return DEFAULT_SKIP_BOARDS.stream().collect(Collectors.toList());
   }
 
   public String getDisplayName() {
