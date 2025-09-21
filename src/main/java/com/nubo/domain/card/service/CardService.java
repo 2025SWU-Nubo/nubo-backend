@@ -267,8 +267,6 @@ public class CardService {
 
     return cardMapper.toDetailResponseDto(
       card,
-      null,               // contextBoardName (필요 시 값 전달)
-      null,               // contextBoardSource (필요 시 값 전달)
       result.getStage(),
       result.isBerryGained(),
       result.isStageUp()

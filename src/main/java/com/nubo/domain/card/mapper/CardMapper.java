@@ -2,7 +2,6 @@ package com.nubo.domain.card.mapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
@@ -59,8 +58,6 @@ public class CardMapper {
   // Card → CardDetailResponseDto (보드 컨텍스트 정보 포함 가능)
   public CardDetailResponseDto toDetailResponseDto(
     Card card,
-    String contextBoardName,
-    BoardSource contextBoardSource,
     int stage,
     boolean berryGained,
     boolean stageUp
@@ -85,8 +82,6 @@ public class CardMapper {
       .title(card.getTitle())
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
-      .boardSource(contextBoardSource)
-      .boardName(contextBoardName)
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
