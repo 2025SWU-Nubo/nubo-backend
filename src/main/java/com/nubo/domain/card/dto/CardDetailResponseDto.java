@@ -31,4 +31,9 @@ public class CardDetailResponseDto {
 
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
+
+  // === 성장 관련 필드 ===
+  private int stage;            // 현재 단계 (0~4)
+  private boolean berryGained;  // 열매 획득 여부
+  private boolean stageUp;      // 단계 달성 여부
 }

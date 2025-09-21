@@ -16,6 +16,8 @@ import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.stat.dto.DropResultDto;
+import com.nubo.domain.stat.service.GrowthService;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.domain.video.dto.VideoMetadataDto;
@@ -55,6 +57,7 @@ public class CardService {
   private final OpenAiClient openAiClient;
   private final YtDlpService ytDlpService;
   private final TranscribeService transcribeService;
+  private final GrowthService growthService;
 
   // 문자열 유틸
   private static String truncate(String s, int max) {
@@ -249,7 +252,7 @@ public class CardService {
    * @return 카드 응답 DTO
    * @exception ApiException 사용자의 카드가 존재하지 않으면 예외 발생
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public CardDetailResponseDto getCardById(Long cardId, Long userId) {
     User user = userService.getUserById(userId);
 
@@ -259,7 +262,17 @@ public class CardService {
     // 열람 기록
     cardUserStatusService.markAsViewed(userId, card);
 
-    return cardMapper.toDetailResponseDto(card, null, null);
+    // 물방울 증가 처리
+    DropResultDto result = growthService.addDrop(userId);
+
+    return cardMapper.toDetailResponseDto(
+      card,
+      null,               // contextBoardName (필요 시 값 전달)
+      null,               // contextBoardSource (필요 시 값 전달)
+      result.getStage(),
+      result.isBerryGained(),
+      result.isStageUp()
+    );
   }
 
   /**

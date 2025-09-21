@@ -60,7 +60,10 @@ public class CardMapper {
   public CardDetailResponseDto toDetailResponseDto(
     Card card,
     String contextBoardName,
-    BoardSource contextBoardSource
+    BoardSource contextBoardSource,
+    int stage,
+    boolean berryGained,
+    boolean stageUp
   ) {
     List<HighlightRange> highlights = List.of();
 
@@ -90,6 +93,9 @@ public class CardMapper {
       .highlights(highlights)
       .createdAt(card.getCreatedAt())
       .updatedAt(card.getUpdatedAt())
+      .stage(stage)
+      .berryGained(berryGained)
+      .stageUp(stageUp)
       .build();
   }
 

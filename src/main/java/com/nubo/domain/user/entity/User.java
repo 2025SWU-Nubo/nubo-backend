@@ -54,6 +54,14 @@ public class User extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean interestSetupCompleted = false;
 
+  /**
+   * 대시보드용 정보
+   */
+  @Column(nullable = false)
+  private int currentDrops;   // 현재 사이클에서 누적된 물방울 개수 (0~25)
+  @Column(nullable = false)
+  private int berryCount;     // 누적 누베리 개수
+
   // 사용자 닉네임 수정
   public void updateNickname(String nickname) {
     this.nickname = nickname;
@@ -67,5 +75,20 @@ public class User extends BaseTimeEntity {
   // 관심사 설정 완료로 상태 변경
   public void markInterestSetupCompleted() {
     this.interestSetupCompleted = true;
+  }
+
+  // === 성장 관련 메서드 ===
+
+  // 물방울 1개 추가 (하루 최대 5개까지만 반영하는 로직은 서비스에서 처리)
+  public void addDrop() {
+    if (this.currentDrops < 25) {
+      this.currentDrops++;
+    }
+  }
+
+  // 누베리 1개 획득 후 사이클 초기화
+  public void gainBerry() {
+    this.berryCount++;
+    this.currentDrops = 0;
   }
 }
