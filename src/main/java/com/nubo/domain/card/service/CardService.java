@@ -256,8 +256,8 @@ public class CardService {
   public CardDetailResponseDto getCardById(Long cardId, Long userId) {
     User user = userService.getUserById(userId);
 
-    Card card = cardRepository.findActiveByIdAndUser(cardId, user)
-      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+    Card card = cardRepository.findAccessibleById(cardId, userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
 
     // 열람 기록 (최초 여부 확인)
     boolean firstView = cardUserStatusService.markAsViewed(userId, card);

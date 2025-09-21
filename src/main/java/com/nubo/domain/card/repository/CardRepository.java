@@ -31,8 +31,24 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   List<Card> findAllActiveByUserOrderByTitleAsc(@Param("user") User user);
 
   // 사용자 카드 단건 조회 (삭제되지 않은 것만)
-  @Query("select c from Card c where c.id = :cardId and c.user = :user and c.deletedAt is null")
-  Optional<Card> findActiveByIdAndUser(@Param("cardId") Long cardId, @Param("user") User user);
+  @Query("""
+    SELECT DISTINCT c
+    FROM Card c
+    JOIN BoardCard bc ON bc.card.id = c.id
+    JOIN Board b ON bc.board.id = b.id
+    WHERE c.id = :cardId
+      AND c.deletedAt IS NULL
+      AND (
+        c.user.id = :userId
+        OR EXISTS (
+          SELECT 1
+          FROM BoardMember bm
+          WHERE bm.board.id = b.id
+            AND bm.user.id = :userId
+        )
+      )
+    """)
+  Optional<Card> findAccessibleById(@Param("cardId") Long cardId, @Param("userId") Long userId);
 
   // 특정 영상으로 생성된 카드 조회 (동일 영상 중복 방지용)
   @Lock(LockModeType.PESSIMISTIC_WRITE)
