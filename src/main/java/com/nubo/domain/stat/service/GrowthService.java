@@ -113,6 +113,9 @@ public class GrowthService {
     // 오늘 시청 영상 수
     int todayCount = countMap.getOrDefault(today, 0);
 
+    // 오늘 획득한 물방울 수
+    int todayWaterDrops = Math.min(todayCount, 5);
+
     // 단계 계산 (0~4)
     int stage = Math.min(user.getCurrentDrops() / 5, 4);
 
@@ -122,6 +125,7 @@ public class GrowthService {
     return DashboardResponseDto.builder()
       .weeklyVideoCounts(weeklyVideoCounts)
       .todayVideoCount(todayCount)
+      .todayWaterDrops(todayWaterDrops)
       .stage(stage)
       .growthRate(growthRate)
       .berryCount(user.getBerryCount())

@@ -259,11 +259,18 @@ public class CardService {
     Card card = cardRepository.findActiveByIdAndUser(cardId, user)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    // 열람 기록
-    cardUserStatusService.markAsViewed(userId, card);
+    // 열람 기록 (최초 여부 확인)
+    boolean firstView = cardUserStatusService.markAsViewed(userId, card);
 
-    // 물방울 증가 처리
-    DropResultDto result = growthService.addDrop(userId);
+    DropResultDto result;
+    if (firstView) {
+      // 최초 열람일 때만 성장 반영
+      result = growthService.addDrop(userId);
+    } else {
+      // 이미 본 카드면 성장 반영 없음 → 현재 단계만 계산해서 내려줌
+      int stage = Math.min(user.getCurrentDrops() / 5, 4);
+      result = new DropResultDto(stage, false, false);
+    }
 
     return cardMapper.toDetailResponseDto(
       card,

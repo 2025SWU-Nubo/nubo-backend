@@ -18,6 +18,9 @@ public class DashboardResponseDto {
   // 오늘 시청 영상 수
   private int todayVideoCount;
 
+  // 오늘 구름 밑 물방울 표시용 (최대 5)
+  private int todayWaterDrops;
+
   // 성장 단계 (0=새싹, 1=키 큰 새싹, 2=꽃봉오리, 3=꽃, 4=열매)
   private int stage;
 

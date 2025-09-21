@@ -25,7 +25,7 @@ public class CardUserStatusService {
    * @param card   열람된 카드 엔티티
    */
   @Transactional
-  public void markAsViewed(Long userId, Card card) {
+  public boolean markAsViewed(Long userId, Card card) {
     CardUserStatus status = cardUserStatusRepository
       .findByUserIdAndCardId(userId, card.getId())
       .orElseGet(() -> CardUserStatus.builder()
@@ -36,6 +36,9 @@ public class CardUserStatusService {
     if (status.getViewedAt() == null) {
       status.setViewedAt(Instant.now());
       cardUserStatusRepository.save(status);
+      return true; // 최초 열람
     }
+
+    return false; // 이미 본 적 있음
   }
 }
