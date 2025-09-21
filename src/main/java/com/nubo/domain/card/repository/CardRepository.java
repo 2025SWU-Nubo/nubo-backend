@@ -22,13 +22,13 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   // =========================
 
   // 사용자 카드 전체 조회 (최신순)
-  @Query("select c from Card c where c.user = :user and c.deletedAt is null order by c.createdAt "
-    + "desc")
-  List<Card> findAllActiveByUserOrderByCreatedAtDesc(@Param("user") User user);
+  List<Card> findAllByUserAndDeletedAtIsNullOrderByCreatedAtDesc(User user);
 
-  // 사용자 카드 전체 조회 (제목 오름차순)
-  @Query("select c from Card c where c.user = :user and c.deletedAt is null order by c.title asc")
-  List<Card> findAllActiveByUserOrderByTitleAsc(@Param("user") User user);
+  // 사용자 카드 전체 조회 (오래된순)
+  List<Card> findAllByUserAndDeletedAtIsNullOrderByCreatedAtAsc(User user);
+
+  // 사용자 카드 전체 조회 (가나다순)
+  List<Card> findAllByUserAndDeletedAtIsNullOrderByTitleAsc(User user);
 
   // 사용자 카드 단건 조회 (삭제되지 않은 것만)
   @Query("""
@@ -123,8 +123,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
       AND (
         c.user.id = :userId
         OR EXISTS (
-          SELECT 1
-          FROM BoardMember bm
+          SELECT 1 FROM BoardMember bm
           WHERE bm.board.id = b.id
             AND bm.user.id = :userId
         )
@@ -134,10 +133,15 @@ public interface CardRepository extends JpaRepository<Card, Long> {
         OR LOWER(c.summary) LIKE LOWER(CONCAT('%', :keyword, '%'))
         OR LOWER(c.tags) LIKE LOWER(CONCAT('%', :keyword, '%'))
       )
+    ORDER BY
+      CASE WHEN :sort = 'LATEST' THEN c.createdAt END DESC,
+      CASE WHEN :sort = 'OLDEST' THEN c.createdAt END ASC,
+      CASE WHEN :sort = 'ALPHABET' THEN c.title END ASC
     """)
   List<Card> searchAccessibleCards(
     @Param("userId") Long userId,
-    @Param("keyword") String keyword
+    @Param("keyword") String keyword,
+    @Param("sort") String sort
   );
 
   // =========================

@@ -20,6 +20,7 @@ import com.nubo.domain.board.dto.BoardUpdateNameRequestDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
+import com.nubo.global.common.SortType;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
@@ -74,9 +75,11 @@ public class BoardController {
    * @return 사용자의 보드 리스트
    */
   @GetMapping
-  public List<BoardSummaryResponseDto> getUserBoards() {
+  public List<BoardSummaryResponseDto> getUserBoards(
+    @RequestParam(defaultValue = "LATEST") SortType sort
+  ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    return boardService.getUserBoards(userId);
+    return boardService.getUserBoards(userId, sort);
   }
 
   /**

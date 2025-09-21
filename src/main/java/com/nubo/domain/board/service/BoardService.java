@@ -27,6 +27,7 @@ import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
+import com.nubo.global.common.SortType;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.Instant;
@@ -170,8 +171,9 @@ public class BoardService {
    * @return 보드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<BoardSummaryResponseDto> getUserBoards(Long userId) {
-    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
+  public List<BoardSummaryResponseDto> getUserBoards(Long userId, SortType sort) {
+    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD,
+      sort.name());
 
     List<Long> boardIds = boards.stream()
       .map(Board::getId)
@@ -279,8 +281,9 @@ public class BoardService {
    * @return 보드 이름 리스트 DTO
    */
   @Transactional(readOnly = true)
-  public List<BoardSimpleResponseDto> getBoardsForHome(Long userId) {
-    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD);
+  public List<BoardSimpleResponseDto> getBoardsForHome(Long userId, SortType sort) {
+    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD,
+      sort.name());
     return boards.stream()
       .map(boardMapper::toSimpleResponseDto)
       .toList();

@@ -25,6 +25,7 @@ import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.service.VideoService;
 import com.nubo.domain.video.type.Platform;
 import com.nubo.global.ai.OpenAiClient;
+import com.nubo.global.common.SortType;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
@@ -226,17 +227,16 @@ public class CardService {
    * @return 카드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardSimpleResponseDto> getCardsByUser(Long userId, String sort) {
+  public List<CardSimpleResponseDto> getCardsByUser(Long userId, SortType sort) {
     // 1. 유저 조회 (정확한 연관 보장을 위해)
     User user = userService.getUserById(userId);
 
     // 2. 정렬 기준에 따라 카드 조회
-    List<Card> cards;
-    if ("alphabetical".equalsIgnoreCase(sort)) {
-      cards = cardRepository.findAllActiveByUserOrderByTitleAsc(user);
-    } else {
-      cards = cardRepository.findAllActiveByUserOrderByCreatedAtDesc(user);
-    }
+    List<Card> cards = switch (sort) {
+      case OLDEST -> cardRepository.findAllByUserAndDeletedAtIsNullOrderByCreatedAtAsc(user);
+      case ALPHABET -> cardRepository.findAllByUserAndDeletedAtIsNullOrderByTitleAsc(user);
+      default -> cardRepository.findAllByUserAndDeletedAtIsNullOrderByCreatedAtDesc(user);
+    };
 
     // 3. DTO 변환
     return cards.stream()
@@ -306,8 +306,10 @@ public class CardService {
    * @param keyword 검색 키워드
    * @return 카드 목록 (간단 정보)
    */
-  public List<CardSimpleResponseDto> searchCards(Long userId, String keyword) {
-    List<Card> cards = cardRepository.searchAccessibleCards(userId, keyword);
+  @Transactional(readOnly = true)
+  public List<CardSimpleResponseDto> searchCards(Long userId, String keyword, SortType sort) {
+    List<Card> cards = cardRepository.searchAccessibleCards(userId, keyword, sort.name());
+
     return cards.stream()
       .map(cardMapper::toSimpleResponseDto)
       .toList();

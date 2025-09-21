@@ -13,34 +13,38 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 
   // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우)
   @Query("""
-      SELECT DISTINCT b
-      FROM Board b
-      WHERE b.boardType = :boardType
-        AND (b.user.id = :userId OR b.user IS NULL)
-        AND (
-          b.source = 'USER'
-          OR EXISTS (
-            SELECT 1
-            FROM BoardCard bc
-            WHERE bc.board.id = b.id
-              AND bc.card.deletedAt IS NULL
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM Board s
-            WHERE s.parentBoard.id = b.id
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM BoardMember bm
-            WHERE bm.board.id = b.id
-              AND bm.user.id = :userId
-              AND bm.visible = true
-          )
+    SELECT DISTINCT b
+    FROM Board b
+    WHERE b.boardType = :boardType
+      AND (b.user.id = :userId OR b.user IS NULL)
+      AND (
+        b.source = 'USER'
+        OR EXISTS (
+          SELECT 1 FROM BoardCard bc
+          WHERE bc.board.id = b.id
+            AND bc.card.deletedAt IS NULL
         )
+        OR EXISTS (
+          SELECT 1 FROM Board s
+          WHERE s.parentBoard.id = b.id
+        )
+        OR EXISTS (
+          SELECT 1 FROM BoardMember bm
+          WHERE bm.board.id = b.id
+            AND bm.user.id = :userId
+            AND bm.visible = true
+        )
+      )
+    ORDER BY
+      CASE WHEN :sort = 'LATEST' THEN b.createdAt END DESC,
+      CASE WHEN :sort = 'OLDEST' THEN b.createdAt END ASC,
+      CASE WHEN :sort = 'ALPHABET' THEN b.name END ASC
     """)
-  List<Board> findVisibleBoardsForUser(@Param("userId") Long userId,
-    @Param("boardType") BoardType boardType);
+  List<Board> findVisibleBoardsForUser(
+    @Param("userId") Long userId,
+    @Param("boardType") BoardType boardType,
+    @Param("sort") String sort
+  );
 
   // 보드 하위 섹션 목록 조회
   List<Board> findByParentBoard_Id(Long parentBoardId);

@@ -6,6 +6,7 @@ import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
+import com.nubo.global.common.SortType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +45,11 @@ public class HomeController {
    * @return 보드 ID와 이름 리스트
    */
   @GetMapping("/boards")
-  public ResponseEntity<List<BoardSimpleResponseDto>> getUserBoardsForHome() {
+  public ResponseEntity<List<BoardSimpleResponseDto>> getUserBoardsForHome(
+    @RequestParam(defaultValue = "LATEST") SortType sort
+  ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<BoardSimpleResponseDto> boards = boardService.getBoardsForHome(userId);
+    List<BoardSimpleResponseDto> boards = boardService.getBoardsForHome(userId, sort);
     return ResponseEntity.ok(boards);
   }
 

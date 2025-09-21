@@ -10,6 +10,7 @@ import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
+import com.nubo.global.common.SortType;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
@@ -52,12 +53,13 @@ public class CardController {
   /**
    * 로그인한 사용자의 카드 목록을 조회한다.
    *
-   * @param sort (optional) 정렬 방식: "latest" 또는 "alphabetical"
+   * @param sort 정렬 방식 (LATEST, OLDEST, ALPHABET)
    * @return 카드 응답 DTO 리스트
    */
   @GetMapping
   public ResponseEntity<List<CardSimpleResponseDto>> getMyCards(
-    @RequestParam(defaultValue = "latest") String sort) {
+    @RequestParam(defaultValue = "LATEST") SortType sort
+  ) {
     Long userId = userUtil.getAuthenticatedUserId();
     List<CardSimpleResponseDto> response = cardService.getCardsByUser(userId, sort);
     return ResponseEntity.ok(response);
@@ -80,14 +82,16 @@ public class CardController {
    * 특정 키워드로 카드를 검색한다.
    *
    * @param keyword 검색 키워드
-   * @return 검색된 카드 목록 (간단 정보)
+   * @param sort    정렬 방식 (LATEST, OLDEST, ALPHABET)
+   * @return 검색된 카드 리스트
    */
   @GetMapping("/search")
   public ResponseEntity<List<CardSimpleResponseDto>> searchCards(
-    @RequestParam String keyword
+    @RequestParam String keyword,
+    @RequestParam(defaultValue = "LATEST") SortType sort
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardSimpleResponseDto> result = cardService.searchCards(userId, keyword);
+    List<CardSimpleResponseDto> result = cardService.searchCards(userId, keyword, sort);
     return ResponseEntity.ok(result);
   }
 
