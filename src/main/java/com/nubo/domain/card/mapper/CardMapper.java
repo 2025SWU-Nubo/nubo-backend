@@ -48,7 +48,7 @@ public class CardMapper {
   }
 
   // Card → CardSimpleResponseDto (리스트용, 썸네일만 포함)
-  public CardSimpleResponseDto toListResponseDto(Card card) {
+  public CardSimpleResponseDto toSimpleResponseDto(Card card) {
     return CardSimpleResponseDto.builder()
       .cardId(card.getId())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())

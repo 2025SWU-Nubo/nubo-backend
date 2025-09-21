@@ -77,6 +77,21 @@ public class CardController {
   }
 
   /**
+   * 특정 키워드로 카드를 검색한다.
+   *
+   * @param keyword 검색 키워드
+   * @return 검색된 카드 목록 (간단 정보)
+   */
+  @GetMapping("/search")
+  public ResponseEntity<List<CardSimpleResponseDto>> searchCards(
+    @RequestParam String keyword
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<CardSimpleResponseDto> result = cardService.searchCards(userId, keyword);
+    return ResponseEntity.ok(result);
+  }
+
+  /**
    * 카드 summary를 AI로 재가공한다.
    *
    * @param cardId  카드 ID

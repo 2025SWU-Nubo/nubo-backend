@@ -266,7 +266,7 @@ public class BoardService {
     // 카드 리스트
     List<CardSimpleResponseDto> cards = cardRepository.findByBoardIdOrderByCreatedAtDesc(boardId)
       .stream()
-      .map(cardMapper::toListResponseDto)
+      .map(cardMapper::toSimpleResponseDto)
       .toList();
 
     return boardMapper.toDetailResponseDto(board, sections, cards, favorite);

@@ -240,7 +240,7 @@ public class CardService {
 
     // 3. DTO 변환
     return cards.stream()
-      .map(cardMapper::toListResponseDto)
+      .map(cardMapper::toSimpleResponseDto)
       .toList();
   }
 
@@ -299,6 +299,19 @@ public class CardService {
       .toList();
   }
 
+  /**
+   * 사용자가 접근 가능한 카드 중 keyword로 검색
+   *
+   * @param userId  현재 로그인한 사용자 ID
+   * @param keyword 검색 키워드
+   * @return 카드 목록 (간단 정보)
+   */
+  public List<CardSimpleResponseDto> searchCards(Long userId, String keyword) {
+    List<Card> cards = cardRepository.searchAccessibleCards(userId, keyword);
+    return cards.stream()
+      .map(cardMapper::toSimpleResponseDto)
+      .toList();
+  }
 
   /**
    * 카드 메타 생성용 전체 텍스트를 구성한다.

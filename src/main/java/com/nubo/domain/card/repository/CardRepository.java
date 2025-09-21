@@ -113,6 +113,33 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     @Param("boardId") Long boardId,
     @Param("limit") int limit);
 
+  // 카드 검색 (제목, 내용, 태그 내에서의 키워드 "일부" 일치)
+  @Query("""
+    SELECT DISTINCT c
+    FROM Card c
+    JOIN BoardCard bc ON bc.card.id = c.id
+    JOIN Board b ON bc.board.id = b.id
+    WHERE c.deletedAt IS NULL
+      AND (
+        c.user.id = :userId
+        OR EXISTS (
+          SELECT 1
+          FROM BoardMember bm
+          WHERE bm.board.id = b.id
+            AND bm.user.id = :userId
+        )
+      )
+      AND (
+        LOWER(c.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(c.summary) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        OR LOWER(c.tags) LIKE LOWER(CONCAT('%', :keyword, '%'))
+      )
+    """)
+  List<Card> searchAccessibleCards(
+    @Param("userId") Long userId,
+    @Param("keyword") String keyword
+  );
+
   // =========================
   // 락/동시성 제어
   // =========================
