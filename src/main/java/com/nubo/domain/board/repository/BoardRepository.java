@@ -75,7 +75,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
   @Query("""
     SELECT DISTINCT b
     FROM Board b
-    LEFT JOIN FETCH Board s ON s.parentBoard.id = b.id
+    LEFT JOIN FETCH b.sections s
     WHERE (
         b.user.id = :userId OR b.user IS NULL
         OR EXISTS (
@@ -86,7 +86,8 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         )
     )
     AND (
-        EXISTS (
+        b.source = 'USER'
+        OR EXISTS (
           SELECT 1
           FROM BoardCard bc
           WHERE bc.board.id = b.id
@@ -105,9 +106,10 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             AND bm2.visible = true
         )
     )
+    AND b.parentBoard IS NULL
     ORDER BY b.id
     """)
-  List<Board> findAllAccessibleBoardsWithSections(@Param("userId") Long userId);
+  List<Board> findAllAccessibleBoards(@Param("userId") Long userId);
 
   // 동일한 이름의 보드가 존재하는지 조회한다.
   boolean existsByUser_IdAndNameIgnoreCase(Long userId, String name);

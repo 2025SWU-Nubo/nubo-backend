@@ -319,23 +319,19 @@ public class BoardService {
    */
   @Transactional(readOnly = true)
   public List<BoardWithSectionsSimpleResponseDto> getBoardsWithSections(Long userId) {
-    List<Board> boards = boardRepository.findAllAccessibleBoardsWithSections(userId);
+    List<Board> boards = boardRepository.findAllAccessibleBoards(userId);
 
     // 보드 + 모든 섹션 id 수집
     List<Long> allBoardIds = boards.stream()
       .flatMap(board -> {
-        // 부모 보드 포함 + 자식 섹션들까지 flatten
-        return board.getSections().stream()
-          .map(Board::getId)
-          .collect(Collectors.toList())
-          .stream()
-          .collect(Collectors.collectingAndThen(
-            Collectors.toList(),
-            list -> {
-              list.add(board.getId());
-              return list.stream();
-            }
-          ));
+        List<Long> ids = new ArrayList<>();
+        ids.add(board.getId()); // 부모 보드
+        ids.addAll(
+          board.getSections().stream()
+            .map(Board::getId)
+            .toList()
+        ); // 자식 섹션들
+        return ids.stream();
       })
       .toList();
 
