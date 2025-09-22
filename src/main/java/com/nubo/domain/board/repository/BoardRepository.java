@@ -136,7 +136,6 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
              SELECT 1 FROM BoardMember bm
              WHERE bm.board.id = b.id
                AND bm.user.id = :userId
-               AND bm.visible = true
            )
     )
     AND (
