@@ -122,4 +122,47 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     """)
   List<Board> findAllDefaultBoardsByUserId(@Param("userId") Long userId);
 
+  /**
+   * 사용자가 접근 가능한 보드/섹션 중,
+   * 하위에 카드 또는 섹션이 존재하는 보드들을 이름으로 검색한다.
+   */
+  @Query("""
+    SELECT DISTINCT b
+    FROM Board b
+    WHERE (b.user.id = :userId OR b.user IS NULL
+           OR EXISTS (
+             SELECT 1 FROM BoardMember bm
+             WHERE bm.board.id = b.id
+               AND bm.user.id = :userId
+               AND bm.visible = true
+           )
+    )
+    AND (
+      b.source = 'USER'
+      OR (
+        b.source = 'AI'
+        AND (
+          EXISTS (
+            SELECT 1 FROM BoardCard bc
+            WHERE bc.board.id = b.id
+              AND bc.card.deletedAt IS NULL
+          )
+          OR EXISTS (
+            SELECT 1 FROM Board s
+            WHERE s.parentBoard.id = b.id
+          )
+        )
+      )
+    )
+    AND LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+    ORDER BY
+      CASE WHEN :sort = 'LATEST' THEN b.createdAt END DESC,
+      CASE WHEN :sort = 'OLDEST' THEN b.createdAt END ASC,
+      CASE WHEN :sort = 'ALPHABET' THEN b.name END ASC
+    """)
+  List<Board> searchBoardsByName(
+    @Param("userId") Long userId,
+    @Param("keyword") String keyword,
+    @Param("sort") String sort
+  );
 }

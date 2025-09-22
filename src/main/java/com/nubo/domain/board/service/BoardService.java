@@ -304,7 +304,7 @@ public class BoardService {
     Map<Long, String> thumbnailMap = getThumbnailsForBoards(boards);
 
     return members.stream()
-      .map(bm -> boardMapper.toPreviewDto(
+      .map(bm -> boardMapper.toPreviewResponseDto(
         bm.getBoard(),
         thumbnailMap.get(bm.getBoard().getId())
       ))
@@ -364,6 +364,64 @@ public class BoardService {
     List<Board> boards = boardRepository.findAllDefaultBoardsByUserId(userId);
     return boards.stream()
       .map(boardMapper::toSimpleResponseDto)
+      .toList();
+  }
+
+  /**
+   * 보드 이름으로 검색한다.
+   *
+   * @param userId  검색 요청 사용자 ID
+   * @param keyword 검색 키워드
+   * @param sort    정렬 기준
+   * @return 검색된 보드 리스트
+   */
+  @Transactional(readOnly = true)
+  public List<BoardSummaryResponseDto> searchBoards(Long userId, String keyword, SortType sort) {
+    if (keyword == null || keyword.trim().isEmpty()) {
+      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    }
+
+    // 1. 보드 검색 (이름 기준)
+    List<Board> boards = boardRepository.searchBoardsByName(userId, keyword, sort.name());
+
+    if (boards.isEmpty()) {
+      return List.of();
+    }
+
+    List<Long> boardIds = boards.stream()
+      .map(Board::getId)
+      .toList();
+
+    // 2. 즐겨찾기 여부 조회 (BoardMember 기반)
+    Map<Long, Boolean> favoriteMap =
+      boardMemberService.getFavoriteMapByUserAndBoardIds(userId, boardIds);
+
+    // 3. 통계 조회 (섹션/카드 카운트)
+    List<BoardStatsDto> stats = boardRepository.getBoardStats(boardIds);
+    Map<Long, BoardStatsDto> statsMap = stats.stream()
+      .collect(Collectors.toMap(BoardStatsDto::getBoardId, Function.identity()));
+
+    // 4. 썸네일 조회
+    Map<Long, String> thumbnailMap = getThumbnailsForBoards(boards);
+
+    // 5. 매핑
+    return boards.stream()
+      .map(board -> {
+        BoardStatsDto stat = statsMap.getOrDefault(
+          board.getId(),
+          new BoardStatsDto(board.getId(), 0L, 0L)
+        );
+        String thumbnailUrl = thumbnailMap.get(board.getId());
+        boolean favorite = favoriteMap.getOrDefault(board.getId(), false);
+
+        return boardMapper.toSummaryResponseDto(
+          board,
+          stat.getSectionCount(),
+          stat.getCardCount(),
+          thumbnailUrl,
+          favorite
+        );
+      })
       .toList();
   }
 

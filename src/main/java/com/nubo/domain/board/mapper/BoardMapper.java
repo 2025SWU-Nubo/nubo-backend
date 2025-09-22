@@ -119,7 +119,7 @@ public class BoardMapper {
   /**
    * Board → BoardPreviewResponseDto
    */
-  public BoardPreviewResponseDto toPreviewDto(Board board, String thumbnailUrl) {
+  public BoardPreviewResponseDto toPreviewResponseDto(Board board, String thumbnailUrl) {
     return BoardPreviewResponseDto.builder()
       .boardId(board.getId())
       .boardName(board.getName())

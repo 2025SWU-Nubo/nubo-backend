@@ -121,6 +121,23 @@ public class BoardController {
   }
 
   /**
+   * 키워드로 보드를 검색한다.
+   *
+   * @param keyword 검색 키워드 (보드 이름)
+   * @param sort    정렬 기준 (기본값: 최신순)
+   * @return 검색 결과 보드 목록
+   */
+  @GetMapping("/search")
+  public ResponseEntity<List<BoardSummaryResponseDto>> searchBoards(
+    @RequestParam String keyword,
+    @RequestParam(defaultValue = "LATEST") SortType sort
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<BoardSummaryResponseDto> result = boardService.searchBoards(userId, keyword, sort);
+    return ResponseEntity.ok(result);
+  }
+
+  /**
    * 사용자 보드를 공유 보드로 전환한다.
    *
    * @param boardId    대상 보드 ID (PathVariable)
