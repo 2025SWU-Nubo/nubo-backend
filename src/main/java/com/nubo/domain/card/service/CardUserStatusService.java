@@ -32,18 +32,26 @@ public class CardUserStatusService {
   public boolean markAsViewed(Long userId, Card card) {
     CardUserStatus status = cardUserStatusRepository
       .findByUserIdAndCardId(userId, card.getId())
-      .orElseGet(() -> CardUserStatus.builder()
+      .orElse(null);
+
+    if (status == null) {
+      // 완전 처음 보는 카드 → INSERT
+      status = CardUserStatus.builder()
         .user(userService.getUserById(userId))
         .card(card)
-        .build());
-
-    if (status.getViewedAt() == null) {
-      status.setViewedAt(Instant.now());
+        .viewedAt(Instant.now())
+        .build();
       cardUserStatusRepository.save(status);
-      return true; // 최초 열람
+      return true;
     }
 
-    return false; // 이미 본 적 있음
+    if (status.getViewedAt() == null) {
+      // 레코드는 있는데 viewedAt이 비어있을 때 → UPDATE
+      status.setViewedAt(Instant.now());
+      return true;
+    }
+
+    return false; // 이미 본 카드
   }
 
   /**
