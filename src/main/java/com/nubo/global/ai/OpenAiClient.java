@@ -259,9 +259,17 @@ public class OpenAiClient {
 
       log.info("Regenerated summary + highlights: {}", content);
 
+      // 정제
+      String cleaned = content.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replaceAll("```json", "")
+          .replaceAll("```", "")
+          .trim();
+      }
+
       // JSON 파싱
       ObjectMapper mapper = new ObjectMapper();
-      JsonNode json = mapper.readTree(content);
+      JsonNode json = mapper.readTree(cleaned);
 
       String summary = json.has("summary") ? json.get("summary").asText() : "";
       List<HighlightRange> highlights = List.of();
