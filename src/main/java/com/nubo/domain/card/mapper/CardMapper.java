@@ -3,6 +3,7 @@ package com.nubo.domain.card.mapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardFavoriteResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
@@ -116,6 +117,14 @@ public class CardMapper {
       .summary(card.getSummary())
       .highlights(highlights)
       .updatedAt(card.getUpdatedAt())
+      .build();
+  }
+
+  // Card → CardFavoriteResponseDto
+  public CardFavoriteResponseDto toFavoriteResponseDto(Card card, boolean favorite) {
+    return CardFavoriteResponseDto.builder()
+      .cardId(card.getId())
+      .favorite(favorite)
       .build();
   }
 

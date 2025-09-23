@@ -8,6 +8,8 @@ import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardFavoriteRequestDto;
+import com.nubo.domain.card.dto.CardFavoriteResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
@@ -444,6 +446,27 @@ public class CardService {
     Card saved = cardRepository.save(card);
 
     return cardMapper.toSummaryUpdateResponseDto(saved);
+  }
+
+  /**
+   * 특정 카드에 대해 사용자의 즐겨찾기 상태를 변경한다.
+   *
+   * @param userId  현재 로그인한 사용자 ID
+   * @param cardId  즐겨찾기를 변경할 카드 ID
+   * @param request 즐겨찾기 여부 요청 DTO (true: 추가, false: 해제)
+   * @return 카드 ID와 최종 즐겨찾기 여부를 담은 응답 DTO
+   * @exception ApiException 카드가 존재하지 않는 경우 발생
+   */
+  @Transactional
+  public CardFavoriteResponseDto updateCardFavorite(Long userId, Long cardId,
+    CardFavoriteRequestDto request) {
+
+    Card card = cardRepository.findById(cardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    boolean favorite = cardUserStatusService.updateFavorite(userId, cardId, request.isFavorite());
+
+    return cardMapper.toFavoriteResponseDto(card, favorite);
   }
 
   /**

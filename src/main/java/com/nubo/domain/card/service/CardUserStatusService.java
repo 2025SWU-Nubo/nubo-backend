@@ -2,8 +2,11 @@ package com.nubo.domain.card.service;
 
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.entity.CardUserStatus;
+import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.card.repository.CardUserStatusRepository;
 import com.nubo.domain.user.service.UserService;
+import com.nubo.global.error.ErrorCode;
+import com.nubo.global.error.exception.ApiException;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CardUserStatusService {
 
   private final CardUserStatusRepository cardUserStatusRepository;
+  private final CardRepository cardRepository;
   private final UserService userService;
 
   /**
@@ -40,5 +44,34 @@ public class CardUserStatusService {
     }
 
     return false; // 이미 본 적 있음
+  }
+
+  /**
+   * 특정 카드에 대해 사용자의 즐겨찾기 상태를 업데이트한다.
+   *
+   * @param userId   현재 사용자 ID
+   * @param cardId   대상 카드 ID
+   * @param favorite true → 즐겨찾기 추가, false → 즐겨찾기 해제
+   * @return 최종 반영된 즐겨찾기 상태
+   */
+  @Transactional
+  public boolean updateFavorite(Long userId, Long cardId, boolean favorite) {
+    // 기존 상태 조회 (없으면 새로 생성)
+    CardUserStatus status = cardUserStatusRepository
+      .findByUserIdAndCardId(userId, cardId)
+      .orElseGet(() -> CardUserStatus.builder()
+        .user(userService.getUserById(userId))
+        .card(cardRepository.findById(cardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND)))
+        .build());
+
+    // 즐겨찾기 상태 변경
+    status.setIsFavorite(favorite);
+
+    // 저장
+    cardUserStatusRepository.save(status);
+
+    // 최종 반영된 값 리턴
+    return status.getIsFavorite();
   }
 }

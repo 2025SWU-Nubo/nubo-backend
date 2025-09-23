@@ -3,6 +3,8 @@ package com.nubo.domain.card.controller;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
+import com.nubo.domain.card.dto.CardFavoriteRequestDto;
+import com.nubo.domain.card.dto.CardFavoriteResponseDto;
 import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryPromptRequestDto;
@@ -128,6 +130,23 @@ public class CardController {
     Long userId = userUtil.getAuthenticatedUserId();
     CardSummaryUpdateResponseDto response =
       cardService.updateCardSummary(cardId, userId, request.getSummary(), request.getHighlights());
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 카드 즐겨찾기 상태를 업데이트한다.
+   *
+   * @param cardId  즐겨찾기를 설정할 카드의 ID
+   * @param request 즐겨찾기 여부 요청 DTO (true: 추가, false: 해제)
+   * @return 변경된 즐겨찾기 상태를 담은 응답 DTO
+   */
+  @PatchMapping("/{cardId}/favorite")
+  public ResponseEntity<CardFavoriteResponseDto> updateCardFavorite(
+    @PathVariable Long cardId,
+    @RequestBody CardFavoriteRequestDto request
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    CardFavoriteResponseDto response = cardService.updateCardFavorite(userId, cardId, request);
     return ResponseEntity.ok(response);
   }
 
