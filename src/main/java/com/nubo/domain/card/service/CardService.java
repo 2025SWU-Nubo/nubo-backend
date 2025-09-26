@@ -382,8 +382,13 @@ public class CardService {
 
       String newSummary = (String) result.get("summary");
       @SuppressWarnings("unchecked")
-      List<HighlightRange> highlights =
-        (List<HighlightRange>) result.get("highlights");
+      List<HighlightRange> highlights = (List<HighlightRange>) result.get("highlights");
+      boolean valid = result.get("valid") != null && (boolean) result.get("valid");
+
+      // 5. 연관성 검증 실패 → 예외 처리
+      if (!valid) {
+        throw new ApiException(ErrorCode.INVALID_PROMPT);
+      }
 
       card.setSummary(newSummary);
 
@@ -400,9 +405,10 @@ public class CardService {
       }
 
       Card saved = cardRepository.save(card);
-
       return cardMapper.toSummaryUpdateResponseDto(saved);
 
+    } catch (ApiException e) {
+      throw e;
     } catch (Exception e) {
       throw new ApiException(ErrorCode.AI_SUMMARY_FAILED);
     }

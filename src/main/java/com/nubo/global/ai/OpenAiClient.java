@@ -207,6 +207,7 @@ public class OpenAiClient {
           "highlights": [
             { "rangeStart": number, "rangeEnd": number }
           ]
+          "valid": true | false
         }
 
         규칙:
@@ -221,7 +222,12 @@ public class OpenAiClient {
            - 사용자의 요청에 '하이라이팅'이 포함된 경우, summary 문자열 내에서 조건에 맞는 구간의 인덱스를 highlights로 추출한다.
            - 요청에 하이라이팅이 포함되지 않으면 highlights = []로 반환한다.
 
-           3. 공통
+           3. 연관성 검증
+           - 사용자의 요청이 카드 요약/재작성/하이라이팅과 무관하다고 판단되면,
+             summary = "", highlights = [], valid = false 로 반환한다.
+           - 정상적인 요청일 경우 valid = true 로 반환한다.
+
+           4.공통
            - summary와 highlights는 항상 세트로 반환한다.
            - 새로운 개념, 없는 정보, 과장된 내용은 절대 추가하지 않는다.
            - highlights의 인덱스는 summary 문자열 기준으로 정확히 계산한다.
@@ -273,6 +279,7 @@ public class OpenAiClient {
 
       String summary = json.has("summary") ? json.get("summary").asText() : "";
       List<HighlightRange> highlights = List.of();
+      boolean valid = json.has("valid") && json.get("valid").asBoolean();
 
       if (json.has("highlights")) {
         highlights = mapper.convertValue(
@@ -284,7 +291,8 @@ public class OpenAiClient {
 
       return Map.of(
         "summary", summary,
-        "highlights", highlights
+        "highlights", highlights,
+        "valid", valid
       );
 
     } catch (Exception e) {
