@@ -274,8 +274,9 @@ public class YtDlpService {
     cmd.add("-J");
     cmd.add("--skip-download");
 
-    // 인스타는 쿠키가 있으면 성공률이 올라감 (선택)
-    if (platform == Platform.INSTAGRAM && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+    // 인스타/틱톡은 쿠키가 있으면 성공률이 올라감 (선택)
+    if ((platform == Platform.INSTAGRAM || platform == Platform.TIKTOK)
+      && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
       cmd.add("--cookies");
       cmd.add(COOKIES_PATH);
     }
@@ -345,8 +346,9 @@ public class YtDlpService {
     // 1) mp4 다운로드
     List<String> dl = new ArrayList<>();
     dl.add(YT_DLP_PATH);
-    // 인스타 쿠키 필요 시
-    if (platform == Platform.INSTAGRAM && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+    // 인스타/틱톡 쿠키 필요 시
+    if ((platform == Platform.INSTAGRAM || platform == Platform.TIKTOK)
+      && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
       dl.add("--cookies");
       dl.add(COOKIES_PATH);
     }
