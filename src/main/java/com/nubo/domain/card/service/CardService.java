@@ -16,6 +16,7 @@ import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.entity.Card;
+import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.stat.dto.DropResultDto;
@@ -27,6 +28,8 @@ import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.service.VideoService;
 import com.nubo.domain.video.type.Platform;
 import com.nubo.global.ai.OpenAiClient;
+import com.nubo.global.common.FilterType;
+import com.nubo.global.common.PageRequestUtil;
 import com.nubo.global.common.SortType;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
@@ -38,6 +41,8 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -229,21 +234,30 @@ public class CardService {
    * @return 카드 응답 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardSimpleResponseDto> getCardsByUser(Long userId, SortType sort) {
-    // 1. 유저 조회 (정확한 연관 보장을 위해)
-    User user = userService.getUserById(userId);
+  public Page<CardSimpleResponseDto> getCardsByUser(
+    Long userId, int page, int size, SortType sort, FilterType filter) {
 
-    // 2. 정렬 기준에 따라 카드 조회
-    List<Card> cards = switch (sort) {
-      case OLDEST -> cardRepository.findAllByUserAndDeletedAtIsNullOrderByCreatedAtAsc(user);
-      case ALPHABET -> cardRepository.findAllByUserAndDeletedAtIsNullOrderByTitleAsc(user);
-      default -> cardRepository.findAllByUserAndDeletedAtIsNullOrderByCreatedAtDesc(user);
+    User user = userService.getUserById(userId);
+    PageRequest pageable = PageRequestUtil.of(page, size, sort);
+
+    // 1. 카드 조회 (필터 적용)
+    Page<Card> cards = switch (filter) {
+      case FAVORITE -> cardRepository.findFavoriteCards(user.getId(), pageable);
+      case SHARED -> cardRepository.findSharedBoardCards(user.getId(), pageable);
+      default -> cardRepository.findByUserAndDeletedAtIsNull(user, pageable);
     };
 
+    // 2. 상태 조회
+    List<Long> cardIds = cards.stream().map(Card::getId).toList();
+    Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
+
     // 3. DTO 변환
-    return cards.stream()
-      .map(cardMapper::toSimpleResponseDto)
-      .toList();
+    return cards.map(card -> {
+      CardUserStatus status = statusMap.get(card.getId());
+      boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
+      boolean viewed = status != null && status.getViewedAt() != null;
+      return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+    });
   }
 
   /**
@@ -294,10 +308,19 @@ public class CardService {
   @Transactional(readOnly = true)
   public List<CardSimpleResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
     int limit) {
-    List<Card> unviewedCards = cardRepository.findUnviewedCardsByBoard(userId, boardId, limit);
+    List<Card> unviewedCards =
+      cardRepository.findUnviewedCardsByBoard(userId, boardId, PageRequest.of(0, limit));
+
+    List<Long> cardIds = unviewedCards.stream().map(Card::getId).toList();
+    Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
+
     return unviewedCards.stream()
-      .map(c -> new CardSimpleResponseDto(c.getId(),
-        c.getVideo() != null ? c.getVideo().getThumbnailUrl() : null))
+      .map(card -> {
+        CardUserStatus status = statusMap.get(card.getId());
+        boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
+        boolean viewed = status != null && status.getViewedAt() != null;
+        return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+      })
       .toList();
   }
 
@@ -312,8 +335,16 @@ public class CardService {
   public List<CardSimpleResponseDto> searchCards(Long userId, String keyword, SortType sort) {
     List<Card> cards = cardRepository.searchAccessibleCards(userId, keyword, sort.name());
 
+    List<Long> cardIds = cards.stream().map(Card::getId).toList();
+    Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
+
     return cards.stream()
-      .map(cardMapper::toSimpleResponseDto)
+      .map(card -> {
+        CardUserStatus status = statusMap.get(card.getId());
+        boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
+        boolean viewed = status != null && status.getViewedAt() != null;
+        return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+      })
       .toList();
   }
 

@@ -8,6 +8,9 @@ import com.nubo.domain.user.service.UserService;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,5 +84,19 @@ public class CardUserStatusService {
 
     // 최종 반영된 값 리턴
     return status.getIsFavorite();
+  }
+
+  /**
+   * 지정된 카드 목록에 대한 사용자의 상태를 모두 조회한다.
+   *
+   * @param userId  사용자 ID
+   * @param cardIds 카드 ID 리스트
+   * @return cardId → CardUserStatus 매핑
+   */
+  @Transactional(readOnly = true)
+  public Map<Long, CardUserStatus> getStatusMap(Long userId, List<Long> cardIds) {
+    return cardUserStatusRepository.findByUserIdAndCardIdIn(userId, cardIds)
+      .stream()
+      .collect(Collectors.toMap(cus -> cus.getCard().getId(), cus -> cus));
   }
 }

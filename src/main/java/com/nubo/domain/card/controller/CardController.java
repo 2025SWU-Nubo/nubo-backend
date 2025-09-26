@@ -12,12 +12,14 @@ import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.global.auth.UserUtil;
+import com.nubo.global.common.FilterType;
 import com.nubo.global.common.SortType;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -55,15 +57,22 @@ public class CardController {
   /**
    * 로그인한 사용자의 카드 목록을 조회한다.
    *
-   * @param sort 정렬 방식 (LATEST, OLDEST, ALPHABET)
+   * @param page   페이지 번호
+   * @param size   페이지 크기
+   * @param sort   정렬 기준
+   * @param filter 필터 기준 (전체 / 즐겨찾기 / 공유)
    * @return 카드 응답 DTO 리스트
    */
   @GetMapping
-  public ResponseEntity<List<CardSimpleResponseDto>> getMyCards(
-    @RequestParam(defaultValue = "LATEST") SortType sort
+  public ResponseEntity<Page<CardSimpleResponseDto>> getMyCards(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "20") int size,
+    @RequestParam(defaultValue = "LATEST") SortType sort,
+    @RequestParam(defaultValue = "ALL") FilterType filter
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardSimpleResponseDto> response = cardService.getCardsByUser(userId, sort);
+    Page<CardSimpleResponseDto> response =
+      cardService.getCardsByUser(userId, page, size, sort, filter);
     return ResponseEntity.ok(response);
   }
 

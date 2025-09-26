@@ -5,6 +5,8 @@ import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardType;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,6 +46,70 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     @Param("userId") Long userId,
     @Param("boardType") BoardType boardType,
     @Param("sort") String sort
+  );
+
+  @Query("""
+      SELECT DISTINCT b
+      FROM Board b
+      WHERE b.boardType = :boardType
+        AND (b.user.id = :userId OR b.user IS NULL)
+        AND (
+          b.source = 'USER'
+          OR EXISTS (
+            SELECT 1 FROM BoardCard bc
+            WHERE bc.board.id = b.id
+              AND bc.card.deletedAt IS NULL
+          )
+          OR EXISTS (
+            SELECT 1 FROM Board s
+            WHERE s.parentBoard.id = b.id
+          )
+          OR EXISTS (
+            SELECT 1 FROM BoardMember bm
+            WHERE bm.board.id = b.id
+              AND bm.user.id = :userId
+              AND bm.visible = true
+          )
+        )
+    """)
+  Page<Board> findVisibleBoardsForUser(
+    @Param("userId") Long userId,
+    @Param("boardType") BoardType boardType,
+    Pageable pageable
+  );
+
+  // 즐겨찾기된 보드
+  @Query("""
+      SELECT bm.board
+      FROM BoardMember bm
+      WHERE bm.user.id = :userId
+        AND bm.favorite = true
+        AND bm.board.boardType = 'BOARD'
+    """)
+  Page<Board> findFavoriteBoards(Long userId, Pageable pageable);
+
+  // 공유 보드
+  @Query("""
+      SELECT bm.board
+      FROM BoardMember bm
+      WHERE bm.user.id = :userId
+        AND bm.board.shared = true
+        AND bm.board.boardType = 'BOARD'
+    """)
+  Page<Board> findSharedBoards(Long userId, Pageable pageable);
+
+  // 즐겨찾기된 섹션 조회
+  @Query("""
+      SELECT bm.board
+      FROM BoardMember bm
+      WHERE bm.user.id = :userId
+        AND bm.favorite = true
+        AND bm.board.parentBoard.id = :parentBoardId
+        AND bm.board.boardType = 'SECTION'
+    """)
+  List<Board> findFavoriteSectionsByParentBoardId(
+    @Param("parentBoardId") Long parentBoardId,
+    @Param("userId") Long userId
   );
 
   // 보드 하위 섹션 목록 조회

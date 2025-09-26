@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -82,7 +83,7 @@ public class BoardMapper {
   public BoardDetailResponseDto toDetailResponseDto(
     Board board,
     List<BoardSummaryResponseDto> sections,
-    List<CardSimpleResponseDto> cards,
+    Page<CardSimpleResponseDto> cards,
     boolean favorite) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())

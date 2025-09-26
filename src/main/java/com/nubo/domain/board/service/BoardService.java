@@ -23,10 +23,15 @@ import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
+import com.nubo.domain.card.entity.Card;
+import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.card.service.CardUserStatusService;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
+import com.nubo.global.common.FilterType;
+import com.nubo.global.common.PageRequestUtil;
 import com.nubo.global.common.SortType;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
@@ -42,6 +47,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +67,7 @@ public class BoardService {
   private final BoardCardService boardCardService;
 
   private final BoardMemberService boardMemberService;
+  private final CardUserStatusService cardUserStatusService;
 
   /**
    * 주어진 사용자 소유 보드 중 이름 중복 여부를 확인한다.
@@ -165,15 +172,40 @@ public class BoardService {
   }
 
   /**
+   * 보드 ID로 보드를 조회한다.
+   *
+   * @param boardId 보드 ID
+   * @return 조회된 보드 엔티티
+   * @exception ApiException 보드가 존재하지 않는 경우 예외 발생
+   */
+  @Transactional(readOnly = true)
+  public Board getBoardById(Long boardId) {
+    return boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+  }
+
+  /**
    * 주어진 사용자 ID로 보드 목록을 조회한다. (섹션 제외)
    *
    * @param userId 사용자 ID
-   * @return 보드 응답 DTO 리스트
+   * @param page   페이지 번호
+   * @param size   페이지 크기
+   * @param sort   정렬 기준
+   * @param filter 필터 기준 (전체 / 즐겨찾기 / 공유)
+   * @return 보드 요약 DTO 페이지
    */
   @Transactional(readOnly = true)
-  public List<BoardSummaryResponseDto> getUserBoards(Long userId, SortType sort) {
-    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD,
-      sort.name());
+  public Page<BoardSummaryResponseDto> getUserBoards(
+    Long userId, int page, int size, SortType sort, FilterType filter) {
+
+    PageRequest pageable = PageRequestUtil.of(page, size, sort);
+
+    // 1. 보드 조회 (필터별 분기)
+    Page<Board> boards = switch (filter) {
+      case FAVORITE -> boardRepository.findFavoriteBoards(userId, pageable);
+      case SHARED -> boardRepository.findSharedBoards(userId, pageable);
+      default -> boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD, pageable);
+    };
 
     List<Long> boardIds = boards.stream()
       .map(Board::getId)
@@ -189,38 +221,23 @@ public class BoardService {
       .collect(Collectors.toMap(BoardStatsDto::getBoardId, Function.identity()));
 
     // 썸네일 조회
-    Map<Long, String> thumbnailMap = getThumbnailsForBoards(boards);
+    Map<Long, String> thumbnailMap = getThumbnailsForBoards(boards.getContent());
 
     // 매핑
-    return boards.stream()
-      .map(board -> {
-        BoardStatsDto stat = statsMap.getOrDefault(board.getId(),
-          new BoardStatsDto(board.getId(), 0L, 0L));
-        String thumbnailUrl = thumbnailMap.get(board.getId());
-        boolean favorite = favoriteMap.getOrDefault(board.getId(), false);
+    return boards.map(board -> {
+      BoardStatsDto stat = statsMap.getOrDefault(board.getId(),
+        new BoardStatsDto(board.getId(), 0L, 0L));
+      String thumbnailUrl = thumbnailMap.get(board.getId());
+      boolean favorite = favoriteMap.getOrDefault(board.getId(), false);
 
-        return boardMapper.toSummaryResponseDto(
-          board,
-          stat.getSectionCount(),
-          stat.getCardCount(),
-          thumbnailUrl,
-          favorite
-        );
-      })
-      .toList();
-  }
-
-  /**
-   * 보드 ID로 보드를 조회한다.
-   *
-   * @param boardId 보드 ID
-   * @return 조회된 보드 엔티티
-   * @exception ApiException 보드가 존재하지 않는 경우 예외 발생
-   */
-  @Transactional(readOnly = true)
-  public Board getBoardById(Long boardId) {
-    return boardRepository.findById(boardId)
-      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+      return boardMapper.toSummaryResponseDto(
+        board,
+        stat.getSectionCount(),
+        stat.getCardCount(),
+        thumbnailUrl,
+        favorite
+      );
+    });
   }
 
   /**
@@ -232,44 +249,68 @@ public class BoardService {
    * @exception ApiException 보드가 존재하지 않는 경우 예외 발생
    */
   @Transactional(readOnly = true)
-  public BoardDetailResponseDto getBoardDetail(Long boardId, Long userId) {
+  public BoardDetailResponseDto getBoardDetail(
+    Long boardId,
+    Long userId,
+    int page,
+    int size,
+    SortType sort,
+    FilterType filter
+  ) {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
+    // 마지막 방문 시간 갱신
     boardMemberService.updateLastVisitedAt(boardId, userId);
 
     // 즐겨찾기 상태 조회
     boolean favorite = boardMemberService.getFavoriteStatus(boardId, userId);
 
     // 섹션 리스트
-    List<Board> sectionBoards = boardRepository.findByParentBoard_Id(boardId);
-    List<Long> sectionIds = sectionBoards.stream().map(Board::getId).toList();
+    List<Board> sectionBoards = switch (filter) {
+      case FAVORITE -> boardRepository.findFavoriteSectionsByParentBoardId(boardId, userId);
+      default -> boardRepository.findByParentBoard_Id(boardId);
+    };
 
-    // 섹션별 즐겨찾기 상태 조회
+    List<Long> sectionIds = sectionBoards.stream().map(Board::getId).toList();
     Map<Long, Boolean> sectionFavoriteMap = sectionIds.isEmpty()
       ? Map.of()
       : boardMemberService.getFavoriteMapByUserAndBoardIds(userId, sectionIds);
 
-    List<BoardSummaryResponseDto> sections = new ArrayList<>();
-    for (Board section : sectionBoards) {
-      long cardCount = cardRepository.countActiveByBoardId(section.getId());
-      String thumbnailUrl = null;
-      if (cardCount > 0) {
-        var top1 = cardRepository.findRecentCardsByBoard(section, PageRequest.of(0, 1));
-        thumbnailUrl = top1.isEmpty()
-          ? null
-          : (top1.get(0).getVideo() != null ? top1.get(0).getVideo().getThumbnailUrl() : null);
-      }
-      boolean sectionFavorite = sectionFavoriteMap.getOrDefault(section.getId(), false);
-      sections.add(
-        boardMapper.toSummaryResponseDto(section, 0L, cardCount, thumbnailUrl, sectionFavorite));
-    }
+    List<BoardSummaryResponseDto> sections = sectionBoards.stream()
+      .map(section -> {
+        long cardCount = cardRepository.countActiveByBoardId(section.getId());
+        String thumbnailUrl = null;
+        if (cardCount > 0) {
+          var top1 = cardRepository.findRecentCardsByBoard(section, PageRequest.of(0, 1));
+          thumbnailUrl = !top1.isEmpty() && top1.get(0).getVideo() != null
+            ? top1.get(0).getVideo().getThumbnailUrl()
+            : null;
+        }
+        boolean sectionFavorite = sectionFavoriteMap.getOrDefault(section.getId(), false);
+        return boardMapper.toSummaryResponseDto(section, 0L, cardCount, thumbnailUrl,
+          sectionFavorite);
+      })
+      .toList();
 
     // 카드 리스트
-    List<CardSimpleResponseDto> cards = cardRepository.findByBoardIdOrderByCreatedAtDesc(boardId)
-      .stream()
-      .map(cardMapper::toSimpleResponseDto)
-      .toList();
+    PageRequest pageable = PageRequestUtil.of(page, size, sort);
+    Page<Card> cardPage = switch (filter) {
+      case FAVORITE -> cardRepository.findFavoriteCardsByBoard(boardId, userId, pageable);
+      default -> cardRepository.findActiveCardsByBoard(boardId, pageable);
+    };
+
+    // 상태 한 번에 조회
+    List<Long> cardIds = cardPage.stream().map(Card::getId).toList();
+    Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
+
+    // DTO 변환
+    Page<CardSimpleResponseDto> cards = cardPage.map(card -> {
+      CardUserStatus status = statusMap.get(card.getId());
+      boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
+      boolean viewed = status != null && status.getViewedAt() != null;
+      return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+    });
 
     return boardMapper.toDetailResponseDto(board, sections, cards, favorite);
   }

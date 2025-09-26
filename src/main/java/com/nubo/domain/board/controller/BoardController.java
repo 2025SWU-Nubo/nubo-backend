@@ -20,11 +20,13 @@ import com.nubo.domain.board.dto.BoardUpdateNameRequestDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
+import com.nubo.global.common.FilterType;
 import com.nubo.global.common.SortType;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,26 +74,46 @@ public class BoardController {
   /**
    * 로그인한 사용자의 보드 목록을 조회한다. (섹션 정보 미포함)
    *
+   * @param page   페이지 번호
+   * @param size   페이지 크기
+   * @param sort   정렬 기준
+   * @param filter 필터 기준 (전체 / 즐겨찾기 / 공유)
    * @return 사용자의 보드 리스트
    */
   @GetMapping
-  public List<BoardSummaryResponseDto> getUserBoards(
-    @RequestParam(defaultValue = "LATEST") SortType sort
+  public ResponseEntity<Page<BoardSummaryResponseDto>> getUserBoards(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "20") int size,
+    @RequestParam(defaultValue = "LATEST") SortType sort,
+    @RequestParam(defaultValue = "ALL") FilterType filter
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    return boardService.getUserBoards(userId, sort);
+    Page<BoardSummaryResponseDto> response =
+      boardService.getUserBoards(userId, page, size, sort, filter);
+    return ResponseEntity.ok(response);
   }
 
   /**
    * 보드 ID로 상세 정보를 조회한다.
    *
    * @param boardId 조회할 보드 ID
+   * @param page    페이지 번호
+   * @param size    페이지 크기
+   * @param sort    정렬 기준
+   * @param filter  필터 기준 (전체 / 즐겨찾기 / 공유)
    * @return 보드 상세 정보 응답 DTO
    */
   @GetMapping("/{boardId}")
-  public ResponseEntity<BoardDetailResponseDto> getBoardDetail(@PathVariable Long boardId) {
+  public ResponseEntity<BoardDetailResponseDto> getBoardDetail(
+    @PathVariable Long boardId,
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "20") int size,
+    @RequestParam(defaultValue = "LATEST") SortType sort,
+    @RequestParam(defaultValue = "ALL") FilterType filter
+  ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    BoardDetailResponseDto detail = boardService.getBoardDetail(boardId, userId);
+    BoardDetailResponseDto detail =
+      boardService.getBoardDetail(boardId, userId, page, size, sort, filter);
     return ResponseEntity.ok(detail);
   }
 
@@ -251,7 +273,7 @@ public class BoardController {
     @RequestBody BoardFavoriteRequestDto request
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    BoardFavoriteResponseDto response = boardService.updateBoardFavorite(boardId, userId, request);
+    BoardFavoriteResponseDto response = boardService.updateBoardFavorite(userId, boardId, request);
     return ResponseEntity.ok(response);
   }
 }

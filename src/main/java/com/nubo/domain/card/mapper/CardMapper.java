@@ -49,10 +49,12 @@ public class CardMapper {
   }
 
   // Card → CardSimpleResponseDto (리스트용, 썸네일만 포함)
-  public CardSimpleResponseDto toSimpleResponseDto(Card card) {
+  public CardSimpleResponseDto toSimpleResponseDto(Card card, boolean isFavorite, boolean viewed) {
     return CardSimpleResponseDto.builder()
       .cardId(card.getId())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .isFavorite(isFavorite)
+      .viewed(viewed)
       .build();
   }
 

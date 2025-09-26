@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -29,6 +30,31 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
   // 사용자 카드 전체 조회 (가나다순)
   List<Card> findAllByUserAndDeletedAtIsNullOrderByTitleAsc(User user);
+
+  // 사용자 카드 전체 조회
+  Page<Card> findByUserAndDeletedAtIsNull(User user, Pageable pageable);
+
+  // 즐겨찾기된 카드 조회
+  @Query("""
+      SELECT c FROM Card c
+      JOIN CardUserStatus cus ON cus.card = c
+      WHERE cus.user.id = :userId
+        AND cus.isFavorite = true
+        AND c.deletedAt IS NULL
+    """)
+  Page<Card> findFavoriteCards(Long userId, Pageable pageable);
+
+  // 공유된 카드 조회
+  @Query("""
+      SELECT DISTINCT c FROM Card c
+      JOIN BoardCard bc ON bc.card = c
+      JOIN Board b ON b = bc.board
+      JOIN BoardMember bm ON bm.board = b
+      WHERE bm.user.id = :userId
+        AND b.shared = true
+        AND c.deletedAt IS NULL
+    """)
+  Page<Card> findSharedBoardCards(Long userId, Pageable pageable);
 
   // 사용자 카드 단건 조회 (삭제되지 않은 것만)
   @Query("""
@@ -59,6 +85,36 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   List<Card> findAnyByUserAndVideoIdForUpdate(@Param("user") User user,
     @Param("videoId") String videoId);
+
+  // 보드 내 전체 카드
+  @Query("""
+      SELECT c
+      FROM BoardCard bc
+      JOIN bc.card c
+      WHERE bc.board.id = :boardId
+        AND c.deletedAt IS NULL
+    """)
+  Page<Card> findActiveCardsByBoard(
+    @Param("boardId") Long boardId,
+    Pageable pageable
+  );
+
+  // 보드 내 즐겨찾기 카드
+  @Query("""
+      SELECT c
+      FROM BoardCard bc
+      JOIN bc.card c
+      JOIN CardUserStatus cus ON cus.card = c
+      WHERE bc.board.id = :boardId
+        AND cus.user.id = :userId
+        AND cus.isFavorite = true
+        AND c.deletedAt IS NULL
+    """)
+  Page<Card> findFavoriteCardsByBoard(
+    @Param("boardId") Long boardId,
+    @Param("userId") Long userId,
+    Pageable pageable
+  );
 
   // 보드에 연결된 카드들 조회 (최신순)
   @Query("""
@@ -93,25 +149,24 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   List<Card> findRecentCardsByBoard(@Param("board") Board board, Pageable pageable);
 
   // 미열람 카드의 썸네일 리스트 랜덤 조회
-  @Query(value = """
-        SELECT c.*
-        FROM board_card bc
-        JOIN card c ON c.id = bc.card_id
-        WHERE bc.board_id = :boardId
-          AND c.deleted_at IS NULL
-          AND NOT EXISTS (
-            SELECT 1
-            FROM card_user_status cus
-            WHERE cus.user_id = :userId
-              AND cus.card_id = c.id
-              AND cus.viewed_at IS NOT NULL
+  @Query("""
+        SELECT c
+        FROM BoardCard bc
+        JOIN bc.card c
+        LEFT JOIN CardUserStatus cus ON cus.card = c
+        WHERE bc.board.id = :boardId
+          AND c.deletedAt IS NULL
+          AND (
+               cus IS NULL 
+               OR (cus.user.id = :userId AND cus.viewedAt IS NULL)
           )
-        ORDER BY RAND()
-        LIMIT :limit
-    """, nativeQuery = true)
-  List<Card> findUnviewedCardsByBoard(@Param("userId") Long userId,
+        ORDER BY function('RAND')
+    """)
+  List<Card> findUnviewedCardsByBoard(
+    @Param("userId") Long userId,
     @Param("boardId") Long boardId,
-    @Param("limit") int limit);
+    Pageable pageable
+  );
 
   // 카드 검색 (제목, 내용, 태그 내에서의 키워드 "일부" 일치)
   @Query("""
