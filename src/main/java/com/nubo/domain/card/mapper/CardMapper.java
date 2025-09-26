@@ -48,7 +48,7 @@ public class CardMapper {
       .build();
   }
 
-  // Card → CardSimpleResponseDto (리스트용, 썸네일만 포함)
+  // Card → CardSimpleResponseDto (리스트용, 썸네일+즐겨찾기+열람여부)
   public CardSimpleResponseDto toSimpleResponseDto(Card card, boolean isFavorite, boolean viewed) {
     return CardSimpleResponseDto.builder()
       .cardId(card.getId())
@@ -58,7 +58,7 @@ public class CardMapper {
       .build();
   }
 
-  // Card → CardDetailResponseDto (보드 컨텍스트 정보 포함 가능)
+  // Card → CardDetailResponseDto
   public CardDetailResponseDto toDetailResponseDto(
     Card card,
     int stage,

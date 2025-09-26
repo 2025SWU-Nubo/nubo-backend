@@ -22,15 +22,6 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   // 조회
   // =========================
 
-  // 사용자 카드 전체 조회 (최신순)
-  List<Card> findAllByUserAndDeletedAtIsNullOrderByCreatedAtDesc(User user);
-
-  // 사용자 카드 전체 조회 (오래된순)
-  List<Card> findAllByUserAndDeletedAtIsNullOrderByCreatedAtAsc(User user);
-
-  // 사용자 카드 전체 조회 (가나다순)
-  List<Card> findAllByUserAndDeletedAtIsNullOrderByTitleAsc(User user);
-
   // 사용자 카드 전체 조회
   Page<Card> findByUserAndDeletedAtIsNull(User user, Pageable pageable);
 
@@ -115,17 +106,6 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     @Param("userId") Long userId,
     Pageable pageable
   );
-
-  // 보드에 연결된 카드들 조회 (최신순)
-  @Query("""
-      select c
-        from BoardCard bc
-        join bc.card c
-       where bc.board.id = :boardId
-         and c.deletedAt is null
-       order by c.createdAt desc
-    """)
-  List<Card> findByBoardIdOrderByCreatedAtDesc(@Param("boardId") Long boardId);
 
   // 보드에 연결된 카드 개수
   @Query("""

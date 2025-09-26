@@ -13,7 +13,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-  // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우)
+  // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우) - list
   @Query("""
     SELECT DISTINCT b
     FROM Board b
@@ -48,6 +48,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     @Param("sort") String sort
   );
 
+  // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우) - paging
   @Query("""
       SELECT DISTINCT b
       FROM Board b
