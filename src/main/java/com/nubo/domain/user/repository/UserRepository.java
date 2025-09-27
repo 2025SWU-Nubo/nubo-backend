@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -17,4 +18,16 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
   // 여러 이메일로 사용자 조회
   List<User> findByEmailIn(Collection<String> emails);
+
+  // 미시청 카드가 1개 이상 존재하는 사용자 리스트 조회
+  @Query("""
+    SELECT DISTINCT u.id
+    FROM User u
+    JOIN Card c ON c.user.id = u.id
+    LEFT JOIN CardUserStatus cus 
+        ON cus.card.id = c.id AND cus.user.id = u.id
+    WHERE u.remindEnabled = true
+      AND (cus.viewedAt IS NULL)
+    """)
+  List<Long> findUserIdsForReminder();
 }

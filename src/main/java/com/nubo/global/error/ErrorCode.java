@@ -52,7 +52,13 @@ public enum ErrorCode {
   // VIDEO
   INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN),
   UNSUPPORTED_PLATFORM(400, "V002", "Unsupported video platform", LogLevel.WARN),
-  INVALID_VIDEO_URL(400, "V003", "Video Url is invalid", LogLevel.WARN);
+  INVALID_VIDEO_URL(400, "V003", "Video Url is invalid", LogLevel.WARN),
+
+  // NOTIFICATION
+  PUSH_SEND_FAILED(500, "N001", "Failed to send push notification", LogLevel.ERROR),
+  INVALID_FCM_TOKEN(400, "N002", "Invalid or expired FCM token", LogLevel.WARN),
+  NOTIFICATION_DISABLED(403, "N003", "User has disabled this notification type", LogLevel.WARN),
+  ;
 
   private final int status;
   private final String code;

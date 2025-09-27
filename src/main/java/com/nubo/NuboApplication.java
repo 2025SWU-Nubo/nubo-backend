@@ -2,12 +2,14 @@ package com.nubo;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableScheduling
 @SpringBootApplication
 public class NuboApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(NuboApplication.class, args);
-	}
+  public static void main(String[] args) {
+    SpringApplication.run(NuboApplication.class, args);
+  }
 
 }
