@@ -8,7 +8,7 @@ import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import java.io.Serializable;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -36,7 +36,7 @@ public class CardUserStatus {
   private Card card;
 
   private Boolean isFavorite = false;  // 즐겨찾기 여부
-  private Instant viewedAt;            // 열람 시각 (null = 미열람)
+  private LocalDateTime viewedAt;      // 열람 시각 (null = 미열람)
 
   @Getter
   @Setter

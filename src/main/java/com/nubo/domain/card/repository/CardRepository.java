@@ -4,7 +4,7 @@ import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
 import jakarta.persistence.LockModeType;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -203,7 +203,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   int softDeleteById(@Param("id") Long id,
     @Param("userId") Long userId,
-    @Param("now") Instant now);
+    @Param("now") LocalDateTime now);
 
   // 다건 소프트 삭제
   @Modifying(clearAutomatically = true, flushAutomatically = true)
@@ -216,5 +216,5 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   int softDeleteByIds(@Param("ids") Collection<Long> ids,
     @Param("userId") Long userId,
-    @Param("now") Instant now);
+    @Param("now") LocalDateTime now);
 }

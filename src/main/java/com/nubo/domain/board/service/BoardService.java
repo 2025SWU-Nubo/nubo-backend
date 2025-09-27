@@ -35,7 +35,7 @@ import com.nubo.global.common.PageRequestUtil;
 import com.nubo.global.common.SortType;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -733,7 +733,8 @@ public class BoardService {
         // (선택) 고아 카드만 soft delete 하고 싶으면 여기서 orphanIds만 추려서 삭제
         System.out.println("STEP-2b soft delete cards start");
         if (!allCardIds.isEmpty()) {
-          cardsSoftDeleted = cardRepository.softDeleteByIds(allCardIds, userId, Instant.now());
+          cardsSoftDeleted = cardRepository.softDeleteByIds(allCardIds, userId,
+            LocalDateTime.now());
         }
         System.out.println("STEP-2b soft delete cards done, cardsSoftDeleted=" + cardsSoftDeleted);
       }

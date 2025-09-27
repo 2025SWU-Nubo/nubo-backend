@@ -7,7 +7,7 @@ import com.nubo.domain.card.repository.CardUserStatusRepository;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,7 +42,7 @@ public class CardUserStatusService {
       status = CardUserStatus.builder()
         .user(userService.getUserById(userId))
         .card(card)
-        .viewedAt(Instant.now())
+        .viewedAt(LocalDateTime.now())
         .build();
       cardUserStatusRepository.save(status);
       return true;
@@ -50,7 +50,7 @@ public class CardUserStatusService {
 
     if (status.getViewedAt() == null) {
       // 레코드는 있는데 viewedAt이 비어있을 때 → UPDATE
-      status.setViewedAt(Instant.now());
+      status.setViewedAt(LocalDateTime.now());
       return true;
     }
 

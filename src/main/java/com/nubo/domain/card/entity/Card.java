@@ -14,7 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -63,7 +63,7 @@ public class Card extends BaseTimeEntity {
   private Set<BoardCard> boardCards = new HashSet<>();
 
   // 소프트 삭제 정보
-  private Instant deletedAt; // 삭제 시각
+  private LocalDateTime deletedAt; // 삭제 시각
   private Long deletedBy;    // 삭제한 사용자 ID
 
   // AI 메타데이터 업데이트

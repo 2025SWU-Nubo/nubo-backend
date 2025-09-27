@@ -34,7 +34,7 @@ import com.nubo.global.common.SortType;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -516,7 +516,7 @@ public class CardService {
   @Transactional
   public List<CardDeleteResultDto> deleteCardsGlobally(List<Long> cardIds, Long userId) {
     List<CardDeleteResultDto> results = new ArrayList<>();
-    Instant now = Instant.now();
+    LocalDateTime now = LocalDateTime.now();
 
     for (Long cardId : cardIds) {
       var opt = cardRepository.findByIdForUpdate(cardId);
