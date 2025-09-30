@@ -41,8 +41,6 @@ public class User extends BaseTimeEntity {
   @Column(columnDefinition = "TEXT")
   private String profileImageUrl;
 
-  private Boolean pushEnabled;
-
   @Column(nullable = false, unique = true)
   private String email;
 

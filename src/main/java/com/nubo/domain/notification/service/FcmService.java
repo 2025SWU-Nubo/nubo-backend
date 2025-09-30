@@ -5,6 +5,7 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.nubo.domain.notification.entity.DeviceToken;
+import com.nubo.domain.notification.type.NotificationType;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.error.ErrorCode;
@@ -19,17 +20,32 @@ public class FcmService {
 
   private final DeviceTokenService deviceTokenService;
   private final UserService userService;
+  private final NotificationService notificationService;
+
 
   /**
-   * 특정 유저의 모든 기기에 알림 발송
+   * 특정 유저의 모든 기기에 알림 발송 및 DB 저장
+   *
+   * @param userId 알림을 받을 유저 ID
+   * @param type   알림 종류
+   * @param title  알림 제목
+   * @param body   알림 본문
    */
-  public void sendNotificationToUser(Long userId, String title, String body) {
+  public void sendNotificationToUser(
+    Long userId,
+    NotificationType type,
+    String title,
+    String body) {
     List<DeviceToken> tokens = deviceTokenService.getTokensByUserId(userId);
 
     if (tokens.isEmpty()) {
       throw new ApiException(ErrorCode.PUSH_SEND_FAILED);
     }
 
+    // DB 저장
+    notificationService.createNotification(userId, type, title, body);
+
+    // FCM 발송
     for (DeviceToken token : tokens) {
       sendNotificationToToken(token.getToken(), title, body);
     }
@@ -37,6 +53,10 @@ public class FcmService {
 
   /**
    * 단일 토큰에 알림 발송
+   *
+   * @param token FCM 디바이스 토큰
+   * @param title 알림 제목
+   * @param body  알림 본문
    */
   public void sendNotificationToToken(String token, String title, String body) {
     Notification notification = Notification.builder()
@@ -56,30 +76,55 @@ public class FcmService {
     }
   }
 
-  /*
-   * 알림 유형별 편의 메서드
+
+  /**
+   * 정기 리마인더 알림 발송
+   *
+   * @param userId 알림을 받을 유저 ID
    */
-  // 정기 리마인더
   public void sendReminderNotification(Long userId) {
     User user = userService.getUserById(userId);
 
     if (!user.isRemindEnabled()) {
       return;
     }
-    sendNotificationToUser(userId,
+
+    sendNotificationToUser(
+      userId,
+      NotificationType.REMINDER,
       "리마인드 알림",
-      "아직 열어보지 않은 카드가 있어요. 잊기 전에 확인해보세요!");
+      "아직 열어보지 않은 카드가 있어요. 잊기 전에 확인해보세요!"
+    );
   }
 
-  // 공유보드 초대 알림
+  /**
+   * 공유보드 초대 알림 발송
+   *
+   * @param inviteeId  초대받는 유저 ID
+   * @param boardName  보드 이름
+   * @param memberName 초대하는 멤버 이름
+   */
   public void sendBoardInviteNotification(Long inviteeId, String boardName, String memberName) {
-    sendNotificationToUser(inviteeId, "보드 초대",
-      memberName + "님이 '" + boardName + "' 보드를 공유하고 싶어해요.");
+    sendNotificationToUser(
+      inviteeId,
+      NotificationType.BOARD,
+      "보드 초대",
+      memberName + "님이 '" + boardName + "' 보드를 공유하고 싶어해요."
+    );
   }
 
-  // 공유보드 초대 수락 알림
+  /**
+   * 공유보드 초대 수락 알림 발송
+   *
+   * @param ownerId    보드 소유자 ID
+   * @param memberName 초대 수락한 멤버 이름
+   */
   public void sendBoardAcceptNotification(Long ownerId, String memberName) {
-    sendNotificationToUser(ownerId, "초대 수락",
-      memberName + "님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!");
+    sendNotificationToUser(
+      ownerId,
+      NotificationType.BOARD,
+      "초대 수락",
+      memberName + "님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!"
+    );
   }
 }

@@ -62,6 +62,10 @@ public class UserService {
       boardRepository.saveAll(defaultBoards);
       boardMemberRepository.saveAll(memberships);
 
+      // 푸시알림 기본값 true 설정
+      userCandidate.setRemindEnabled(true);
+      userCandidate.setAcceptEnabled(true);
+
       return newUser;
     });
   }
