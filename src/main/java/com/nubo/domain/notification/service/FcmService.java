@@ -36,16 +36,22 @@ public class FcmService {
     NotificationType type,
     String title,
     String body) {
+    // 1. 우선 DB 저장
+    notificationService.createNotification(userId, type, title, body);
+
+    // 2. 알림 설정 확인
+    User user = userService.getUserById(userId);
+    if (!user.isPushEnabled()) {
+      return;
+    }
+
+    // 3. 알림 발송
     List<DeviceToken> tokens = deviceTokenService.getTokensByUserId(userId);
 
     if (tokens.isEmpty()) {
       throw new ApiException(ErrorCode.PUSH_SEND_FAILED);
     }
 
-    // DB 저장
-    notificationService.createNotification(userId, type, title, body);
-
-    // FCM 발송
     for (DeviceToken token : tokens) {
       sendNotificationToToken(token.getToken(), title, body);
     }
@@ -125,6 +131,21 @@ public class FcmService {
       NotificationType.BOARD,
       "초대 수락",
       memberName + "님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!"
+    );
+  }
+
+  /**
+   * 공유보드 초대 수락 후 알림 발송
+   *
+   * @param inviteeId 초대받은 유저 ID
+   * @param boardName 보드 이름
+   */
+  public void sendBoardAddedNotification(Long inviteeId, String boardName) {
+    sendNotificationToUser(
+      inviteeId,
+      NotificationType.BOARD,
+      "보드 추가",
+      "'" + boardName + "' 공유 보드가 내 보드에 추가되었습니다. 지금 바로 보드를 확인해 보세요."
     );
   }
 }

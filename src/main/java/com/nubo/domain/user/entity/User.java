@@ -68,11 +68,11 @@ public class User extends BaseTimeEntity {
    */
   @Setter
   @Column(nullable = false)
-  private boolean remindEnabled = true;
+  private boolean pushEnabled = true;
 
   @Setter
   @Column(nullable = false)
-  private boolean acceptEnabled = true;
+  private boolean remindEnabled = true;
 
   // 사용자 닉네임 수정
   public void updateNickname(String nickname) {
