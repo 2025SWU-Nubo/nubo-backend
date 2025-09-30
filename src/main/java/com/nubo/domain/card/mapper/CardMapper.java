@@ -63,7 +63,8 @@ public class CardMapper {
     Card card,
     int stage,
     boolean berryGained,
-    boolean stageUp
+    boolean stageUp,
+    boolean isFavorite
   ) {
     List<HighlightRange> highlights = List.of();
 
@@ -85,6 +86,7 @@ public class CardMapper {
       .title(card.getTitle())
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
+      .isFavorite(isFavorite)
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
@@ -141,6 +143,7 @@ public class CardMapper {
     return Arrays.stream(tags.split(","))
       .map(String::trim)
       .filter(s -> !s.isEmpty())
+      .map(s -> "#" + s)
       .toList();
   }
 }

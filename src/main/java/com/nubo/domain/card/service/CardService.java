@@ -288,11 +288,15 @@ public class CardService {
       result = new DropResultDto(stage, false, false);
     }
 
+    // 즐겨찾기 여부 조회
+    boolean isFavorite = cardUserStatusService.getFavoriteStatus(userId, card.getId());
+
     return cardMapper.toDetailResponseDto(
       card,
       result.getStage(),
       result.isBerryGained(),
-      result.isStageUp()
+      result.isStageUp(),
+      isFavorite
     );
   }
 

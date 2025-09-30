@@ -99,4 +99,18 @@ public class CardUserStatusService {
       .stream()
       .collect(Collectors.toMap(cus -> cus.getCard().getId(), cus -> cus));
   }
+
+  /**
+   * 특정 카드에 대한 즐겨찾기 여부를 조회한다.
+   *
+   * @param userId 사용자 ID
+   * @param cardId 카드 ID
+   * @return 즐겨찾기 여부 t/f
+   */
+  @Transactional(readOnly = true)
+  public boolean getFavoriteStatus(Long userId, Long cardId) {
+    return cardUserStatusRepository.findByUserIdAndCardId(userId, cardId)
+      .map(CardUserStatus::getIsFavorite)
+      .orElse(false);
+  }
 }
