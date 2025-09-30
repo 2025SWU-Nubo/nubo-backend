@@ -309,7 +309,7 @@ public class CardService {
   public List<CardSimpleResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
     int limit) {
     List<Card> unviewedCards =
-      cardRepository.findUnviewedCardsByBoard(userId, boardId, PageRequest.of(0, limit));
+      cardRepository.findUnviewedCardsByBoard(userId, boardId, limit);
 
     List<Long> cardIds = unviewedCards.stream().map(Card::getId).toList();
     Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);

@@ -145,7 +145,7 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   List<Card> findUnviewedCardsByBoard(
     @Param("userId") Long userId,
     @Param("boardId") Long boardId,
-    Pageable pageable
+    @Param("limit") int limit
   );
 
   // 카드 검색 (제목, 내용, 태그 내에서의 키워드 "일부" 일치)
