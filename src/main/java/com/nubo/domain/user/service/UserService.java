@@ -8,6 +8,7 @@ import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.user.dto.MyPageResponseDto;
 import com.nubo.domain.user.dto.UserProfileUpdateResponseDto;
+import com.nubo.domain.user.dto.UserPushSettingRequestDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
@@ -60,6 +61,10 @@ public class UserService {
 
       boardRepository.saveAll(defaultBoards);
       boardMemberRepository.saveAll(memberships);
+
+      // 푸시알림 기본값 true 설정
+      userCandidate.setRemindEnabled(true);
+      userCandidate.setAcceptEnabled(true);
 
       return newUser;
     });
@@ -130,6 +135,16 @@ public class UserService {
   }
 
   /**
+   * 리마인더를 위한 사용자들을 조회한다.
+   *
+   * @return 조회된 사용자의 id 리스트
+   */
+  @Transactional(readOnly = true)
+  public List<Long> getUserIdsForReminder() {
+    return userRepository.findUserIdsForReminder();
+  }
+
+  /**
    * 주어진 사용자 ID의 닉네임을 수정한다.
    *
    * @param userId   사용자 ID
@@ -142,6 +157,13 @@ public class UserService {
     user.updateNickname(nickname);
   }
 
+  /**
+   * 주어진 사용자 ID의 프로필 이미지를 수정한다.
+   *
+   * @param userId   사용자 ID
+   * @param imageUrl 새 프로필 이미지 url
+   * @return 업데이트된 정보를 담은 DTO
+   */
   @Transactional
   public UserProfileUpdateResponseDto updateProfileImage(Long userId, String imageUrl) {
     User user = userRepository.findById(userId)
@@ -157,4 +179,16 @@ public class UserService {
       .build();
   }
 
+  /**
+   * 주어진 사용자 ID의 푸시알림 설정 여부를 수정한다.
+   *
+   * @param userId 사용자 ID
+   * @param dto    푸시알림 설정 정보를 담은 DTO
+   */
+  @Transactional
+  public void updatePushSettings(Long userId, UserPushSettingRequestDto dto) {
+    User user = getUserById(userId);
+    user.setRemindEnabled(dto.isRemindEnabled());
+    user.setAcceptEnabled(dto.isAcceptEnabled());
+  }
 }

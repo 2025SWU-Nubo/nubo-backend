@@ -14,6 +14,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Getter
@@ -40,8 +41,6 @@ public class User extends BaseTimeEntity {
   @Column(columnDefinition = "TEXT")
   private String profileImageUrl;
 
-  private Boolean pushEnabled;
-
   @Column(nullable = false, unique = true)
   private String email;
 
@@ -59,8 +58,21 @@ public class User extends BaseTimeEntity {
    */
   @Column(nullable = false)
   private int currentDrops;   // 현재 사이클에서 누적된 물방울 개수 (0~25)
+
   @Column(nullable = false)
   private int berryCount;     // 누적 누베리 개수
+
+  // 푸시알림 설정 - 리마인더
+  /**
+   * 푸시알림 설정 여부 정보
+   */
+  @Setter
+  @Column(nullable = false)
+  private boolean pushEnabled = true;
+
+  @Setter
+  @Column(nullable = false)
+  private boolean remindEnabled = true;
 
   // 사용자 닉네임 수정
   public void updateNickname(String nickname) {

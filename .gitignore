@@ -66,3 +66,6 @@ env/
 
 # Downloaded files
 downloads/
+
+# Firebase service account key
+src/main/resources/firebase/serviceAccountKey.json

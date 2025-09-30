@@ -5,6 +5,7 @@ import com.nubo.domain.user.dto.PresignedUrlResponseDto;
 import com.nubo.domain.user.dto.UserNicknameUpdateRequestDto;
 import com.nubo.domain.user.dto.UserProfileImageUpdateRequestDto;
 import com.nubo.domain.user.dto.UserProfileUpdateResponseDto;
+import com.nubo.domain.user.dto.UserPushSettingRequestDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.auth.UserUtil;
@@ -96,4 +97,18 @@ public class UserController {
     return ResponseEntity.ok(response);
   }
 
+  /**
+   * 현재 로그인한 사용자의 푸시알림 설정을 업데이트 한다.
+   *
+   * @param dto 푸시알림 설정 여부(t/f)가 담긴 요청 DTO
+   * @return 204 No Content
+   */
+  @PatchMapping("/push-settings")
+  public ResponseEntity<Void> updatePushSettings(
+    @RequestBody UserPushSettingRequestDto dto
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    userService.updatePushSettings(userId, dto);
+    return ResponseEntity.ok().build();
+  }
 }
