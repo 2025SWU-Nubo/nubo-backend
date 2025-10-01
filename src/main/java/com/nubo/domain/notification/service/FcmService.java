@@ -12,8 +12,10 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FcmService {
@@ -49,7 +51,8 @@ public class FcmService {
     List<DeviceToken> tokens = deviceTokenService.getTokensByUserId(userId);
 
     if (tokens.isEmpty()) {
-      throw new ApiException(ErrorCode.PUSH_SEND_FAILED);
+      log.warn("푸시 발송 대상 토큰이 없습니다. userId={}", userId);
+      return;
     }
 
     for (DeviceToken token : tokens) {
