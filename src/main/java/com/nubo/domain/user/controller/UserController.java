@@ -103,12 +103,12 @@ public class UserController {
    * @param dto 푸시알림 설정 여부(t/f)가 담긴 요청 DTO
    * @return 204 No Content
    */
-  @PatchMapping("/push-settings")
+  @PatchMapping("/me/notification")
   public ResponseEntity<Void> updatePushSettings(
     @RequestBody UserPushSettingRequestDto dto
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
     userService.updatePushSettings(userId, dto);
-    return ResponseEntity.ok().build();
+    return ResponseEntity.noContent().build();
   }
 }

@@ -62,14 +62,15 @@ public class User extends BaseTimeEntity {
   @Column(nullable = false)
   private int berryCount;     // 누적 누베리 개수
 
-  // 푸시알림 설정 - 리마인더
   /**
    * 푸시알림 설정 여부 정보
    */
+  // 전체 알림
   @Setter
   @Column(nullable = false)
   private boolean pushEnabled = true;
 
+  // 리마인더
   @Setter
   @Column(nullable = false)
   private boolean remindEnabled = true;

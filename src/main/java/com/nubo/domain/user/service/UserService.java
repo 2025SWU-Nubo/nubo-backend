@@ -188,7 +188,25 @@ public class UserService {
   @Transactional
   public void updatePushSettings(Long userId, UserPushSettingRequestDto dto) {
     User user = getUserById(userId);
-    user.setRemindEnabled(dto.isRemindEnabled());
-    user.setPushEnabled(dto.isPushEnabled());
+
+    // pushEnabled 값이 들어왔을 때
+    if (dto.getPushEnabled() != null) {
+      user.setPushEnabled(dto.getPushEnabled());
+      // 전체 푸시를 끄면 리마인더도 자동으로 끔
+      if (!dto.getPushEnabled()) {
+        user.setRemindEnabled(false);
+      }
+    }
+
+    // remindEnabled 값이 들어왔을 때
+    if (dto.getRemindEnabled() != null) {
+      // 단, 전체 푸시가 켜져 있을 때만 반영
+      if (user.isPushEnabled()) {
+        user.setRemindEnabled(dto.getRemindEnabled());
+      } else {
+        // 전체 푸시가 꺼져 있으면 리마인더는 무조건 false
+        user.setRemindEnabled(false);
+      }
+    }
   }
 }

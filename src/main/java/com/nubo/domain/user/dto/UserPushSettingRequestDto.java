@@ -11,6 +11,6 @@ import lombok.Setter;
 @AllArgsConstructor
 public class UserPushSettingRequestDto {
 
-  private boolean remindEnabled;
-  private boolean pushEnabled;
+  private Boolean pushEnabled;
+  private Boolean remindEnabled;
 }
