@@ -9,10 +9,10 @@ import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.repository.UserRepository;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
-import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
