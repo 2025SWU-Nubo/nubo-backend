@@ -2,6 +2,7 @@ package com.nubo.domain.notification.entity;
 
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardInvitation;
+import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.notification.type.NotificationType;
 import com.nubo.domain.user.entity.User;
 import com.nubo.global.common.BaseTimeEntity;
@@ -59,6 +60,11 @@ public class Notification extends BaseTimeEntity {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "invitation_id")
   private BoardInvitation invitation;
+
+  // -- 카드 알림 관련 연관관계 --
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "card_id")
+  private Card card;
 
   public void markAsRead() {
     this.isRead = true;

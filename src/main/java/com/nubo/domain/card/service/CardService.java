@@ -19,6 +19,7 @@ import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.notification.service.FcmService;
 import com.nubo.domain.stat.dto.DropResultDto;
 import com.nubo.domain.stat.service.GrowthService;
 import com.nubo.domain.user.entity.User;
@@ -66,6 +67,7 @@ public class CardService {
   private final YtDlpService ytDlpService;
   private final TranscribeService transcribeService;
   private final GrowthService growthService;
+  private final FcmService fcmService;
 
   // 문자열 유틸
   private static String truncate(String s, int max) {
@@ -224,6 +226,10 @@ public class CardService {
 
     List<Long> boardIds = boardCardService.findBoardIdsByCardId(savedCard.getId());
     log.info("카드 생성 완료 - 총 {}ms", System.currentTimeMillis() - startTime);
+
+    // 생성 완료 알림 발송
+    fcmService.sendCardCreatedNotification(userId, savedCard.getTitle(), savedCard);
+
     return cardMapper.toResponseDto(savedCard, boardIds);
   }
 

@@ -546,7 +546,7 @@ public class BoardService {
    *
    * @param boardId       대상 보드 ID
    * @param currentUserId 요청 사용자 ID (보드 소유자여야 함)
-   * @param requestDto    초대 대상 이메일 목록
+   * @param dto           초대 대상 이메일 목록
    * @return 초대 응답 DTO 목록
    */
   @Transactional

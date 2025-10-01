@@ -2,8 +2,7 @@ package com.nubo.domain.notification.service;
 
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardInvitation;
-import com.nubo.domain.board.service.BoardInvitationService;
-import com.nubo.domain.board.service.BoardService;
+import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.notification.dto.NotificationResponseDto;
 import com.nubo.domain.notification.entity.Notification;
 import com.nubo.domain.notification.repository.NotificationRepository;
@@ -24,8 +23,6 @@ public class NotificationService {
 
   private final NotificationRepository notificationRepository;
   private final UserService userService;
-  private final BoardService boardService;
-  private final BoardInvitationService boardInvitationService;
 
   /**
    * 알림 생성 및 저장
@@ -58,12 +55,12 @@ public class NotificationService {
   /**
    * 알림 생성 및 저장 (공유보드 관련)
    *
-   * @param userId       알림을 받을 유저 ID
-   * @param type         알림 종류
-   * @param title        알림 제목
-   * @param body         알림 본문
-   * @param boardId      공유보드 ID
-   * @param invitationId 공유보드 초대 ID
+   * @param userId     알림을 받을 유저 ID
+   * @param type       알림 종류
+   * @param title      알림 제목
+   * @param body       알림 본문
+   * @param board      공유보드 엔티티
+   * @param invitation 공유보드 초대 엔티티
    * @return 생성된 알림
    */
   @Transactional
@@ -72,14 +69,10 @@ public class NotificationService {
     NotificationType type,
     String title,
     String body,
-    Long boardId,
-    Long invitationId
+    Board board,
+    BoardInvitation invitation
   ) {
     User user = userService.getUserById(userId);
-
-    Board board = (boardId != null) ? boardService.getBoardById(boardId) : null;
-    BoardInvitation invitation =
-      (invitationId != null) ? boardInvitationService.findById(invitationId).orElse(null) : null;
 
     Notification notification = Notification.builder()
       .user(user)
@@ -89,6 +82,38 @@ public class NotificationService {
       .isRead(false)
       .board(board)
       .invitation(invitation)
+      .build();
+
+    return notificationRepository.save(notification);
+  }
+
+  /**
+   * 알림 생성 및 저장 (카드 관련)
+   *
+   * @param userId 알림을 받을 유저 ID
+   * @param type   알림 종류
+   * @param title  알림 제목
+   * @param body   알림 본문
+   * @param card   카드 엔티티
+   * @return 생성된 알림
+   */
+  @Transactional
+  public Notification createNotification(
+    Long userId,
+    NotificationType type,
+    String title,
+    String body,
+    Card card
+  ) {
+    User user = userService.getUserById(userId);
+
+    Notification notification = Notification.builder()
+      .user(user)
+      .type(type)
+      .title(title)
+      .body(body)
+      .isRead(false)
+      .card(card)
       .build();
 
     return notificationRepository.save(notification);

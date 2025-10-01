@@ -4,6 +4,9 @@ import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
+import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardInvitation;
+import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.notification.entity.DeviceToken;
 import com.nubo.domain.notification.type.NotificationType;
 import com.nubo.domain.user.entity.User;
@@ -63,23 +66,62 @@ public class FcmService {
   /**
    * 특정 유저의 모든 기기에 알림 발송 및 DB 저장 (공유보드 관련)
    *
-   * @param userId       알림을 받을 유저 ID
-   * @param type         알림 종류
-   * @param title        알림 제목
-   * @param body         알림 본문
-   * @param boardId      공유보드 ID
-   * @param invitationId 공유보드 초대 ID
+   * @param userId     알림을 받을 유저 ID
+   * @param type       알림 종류
+   * @param title      알림 제목
+   * @param body       알림 본문
+   * @param board      공유보드 엔티티
+   * @param invitation 공유보드 초대 엔티티
    */
   public void sendNotificationToUser(
     Long userId,
     NotificationType type,
     String title,
     String body,
-    Long boardId,
-    Long invitationId
+    Board board,
+    BoardInvitation invitation
   ) {
     // 1. 우선 DB 저장
-    notificationService.createNotification(userId, type, title, body, boardId, invitationId);
+    notificationService.createNotification(userId, type, title, body, board, invitation);
+
+    // 2. 알림 설정 확인
+    User user = userService.getUserById(userId);
+    if (!user.isPushEnabled()) {
+      return;
+    }
+
+    // 3. 알림 발송
+    List<DeviceToken> tokens = deviceTokenService.getTokensByUserId(userId);
+
+    if (tokens.isEmpty()) {
+      log.warn("푸시 발송 대상 토큰이 없습니다. userId={}", userId);
+      return;
+    }
+
+    for (DeviceToken token : tokens) {
+      sendNotificationToToken(token.getToken(), title, body);
+    }
+  }
+
+
+  /**
+   * 특정 유저의 모든 기기에 알림 발송 및 DB 저장 (카드 관련)
+   *
+   * @param userId 알림을 받을 유저 ID
+   * @param type   알림 종류
+   * @param title  알림 제목
+   * @param body   알림 본문
+   * @param card   카드 엔티티
+   */
+  public void sendNotificationToUser(
+    Long userId,
+    NotificationType type,
+    String title,
+    String body,
+    Card card
+  ) {
+    // 1. 우선 DB 저장
+    notificationService.createNotification(userId, type, title, body, card);
 
     // 2. 알림 설정 확인
     User user = userService.getUserById(userId);
@@ -147,6 +189,23 @@ public class FcmService {
   }
 
   /**
+   * 카드 생성 완료 알림 발송
+   *
+   * @param userId    카드 생성한 유저 ID
+   * @param cardTitle 생성된 카드 제목
+   * @param card      생성된 카드 엔티티
+   */
+  public void sendCardCreatedNotification(Long userId, String cardTitle, Card card) {
+    sendNotificationToUser(
+      userId,
+      NotificationType.CARD_ADDED,
+      "카드 생성 완료",
+      "'" + cardTitle + "' 카드가 성공적으로 생성되었습니다.",
+      card
+    );
+  }
+
+  /**
    * 공유보드 초대 알림 발송
    *
    * @param inviteeId  초대받는 유저 ID
@@ -155,15 +214,15 @@ public class FcmService {
    */
   public void sendBoardInviteNotification(
     Long inviteeId, String boardName, String memberName,
-    Long boardId, Long invitationId) {
+    Board board, BoardInvitation invitation) {
 
     sendNotificationToUser(
       inviteeId,
       NotificationType.BOARD,
       "보드 초대",
       memberName + " 님이 '" + boardName + "' 보드를 공유하고 싶어해요.",
-      boardId,
-      invitationId
+      board,
+      invitation
     );
   }
 
@@ -175,13 +234,13 @@ public class FcmService {
    */
   public void sendBoardAcceptNotification(
     Long ownerId, String memberName,
-    Long boardId) {
+    Board board) {
     sendNotificationToUser(
       ownerId,
       NotificationType.BOARD,
       "초대 수락",
       memberName + " 님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!",
-      boardId,
+      board,
       null
     );
   }
@@ -194,13 +253,13 @@ public class FcmService {
    */
   public void sendBoardAddedNotification(
     Long inviteeId, String boardName,
-    Long boardId) {
+    Board board) {
     sendNotificationToUser(
       inviteeId,
       NotificationType.BOARD,
       "보드 추가",
       "'" + boardName + "' 공유 보드가 내 보드에 추가되었습니다. 지금 바로 보드를 확인해 보세요.",
-      boardId,
+      board,
       null
     );
   }
