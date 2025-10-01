@@ -1,6 +1,6 @@
 package com.nubo.domain.notification.controller;
 
-import com.nubo.domain.notification.entity.Notification;
+import com.nubo.domain.notification.dto.NotificationResponseDto;
 import com.nubo.domain.notification.service.NotificationService;
 import com.nubo.global.auth.UserUtil;
 import java.util.List;
@@ -26,9 +26,10 @@ public class NotificationController {
    * @return 알림 DTO 리스트
    */
   @GetMapping
-  public ResponseEntity<List<Notification>> getNotifications() {
+  public ResponseEntity<List<NotificationResponseDto>> getNotifications() {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<Notification> notifications = notificationService.getRecentNotifications(userId);
+    List<NotificationResponseDto> notifications = notificationService.getRecentNotifications(
+      userId);
     return ResponseEntity.ok(notifications);
   }
 

@@ -17,6 +17,9 @@ public class NotificationResponseDto {
   private boolean read;
   private LocalDateTime createdAt;
 
+  private Long boardId;
+  private Long invitationId;
+
   public static NotificationResponseDto toNotificationResponseDto(Notification notification) {
     return NotificationResponseDto.builder()
       .notificationId(notification.getId())
@@ -25,6 +28,9 @@ public class NotificationResponseDto {
       .body(notification.getBody())
       .read(notification.isRead())
       .createdAt(notification.getCreatedAt())
+      .boardId(notification.getBoard() != null ? notification.getBoard().getId() : null)
+      .invitationId(
+        notification.getInvitation() != null ? notification.getInvitation().getId() : null)
       .build();
   }
 }

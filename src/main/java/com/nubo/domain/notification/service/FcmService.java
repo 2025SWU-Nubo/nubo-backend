@@ -24,7 +24,6 @@ public class FcmService {
   private final UserService userService;
   private final NotificationService notificationService;
 
-
   /**
    * 특정 유저의 모든 기기에 알림 발송 및 DB 저장
    *
@@ -37,9 +36,50 @@ public class FcmService {
     Long userId,
     NotificationType type,
     String title,
-    String body) {
+    String body
+  ) {
     // 1. 우선 DB 저장
     notificationService.createNotification(userId, type, title, body);
+
+    // 2. 알림 설정 확인
+    User user = userService.getUserById(userId);
+    if (!user.isPushEnabled()) {
+      return;
+    }
+
+    // 3. 알림 발송
+    List<DeviceToken> tokens = deviceTokenService.getTokensByUserId(userId);
+
+    if (tokens.isEmpty()) {
+      log.warn("푸시 발송 대상 토큰이 없습니다. userId={}", userId);
+      return;
+    }
+
+    for (DeviceToken token : tokens) {
+      sendNotificationToToken(token.getToken(), title, body);
+    }
+  }
+
+  /**
+   * 특정 유저의 모든 기기에 알림 발송 및 DB 저장 (공유보드 관련)
+   *
+   * @param userId       알림을 받을 유저 ID
+   * @param type         알림 종류
+   * @param title        알림 제목
+   * @param body         알림 본문
+   * @param boardId      공유보드 ID
+   * @param invitationId 공유보드 초대 ID
+   */
+  public void sendNotificationToUser(
+    Long userId,
+    NotificationType type,
+    String title,
+    String body,
+    Long boardId,
+    Long invitationId
+  ) {
+    // 1. 우선 DB 저장
+    notificationService.createNotification(userId, type, title, body, boardId, invitationId);
 
     // 2. 알림 설정 확인
     User user = userService.getUserById(userId);
@@ -113,12 +153,17 @@ public class FcmService {
    * @param boardName  보드 이름
    * @param memberName 초대하는 멤버 이름
    */
-  public void sendBoardInviteNotification(Long inviteeId, String boardName, String memberName) {
+  public void sendBoardInviteNotification(
+    Long inviteeId, String boardName, String memberName,
+    Long boardId, Long invitationId) {
+
     sendNotificationToUser(
       inviteeId,
       NotificationType.BOARD,
       "보드 초대",
-      memberName + "님이 '" + boardName + "' 보드를 공유하고 싶어해요."
+      memberName + " 님이 '" + boardName + "' 보드를 공유하고 싶어해요.",
+      boardId,
+      invitationId
     );
   }
 
@@ -128,12 +173,16 @@ public class FcmService {
    * @param ownerId    보드 소유자 ID
    * @param memberName 초대 수락한 멤버 이름
    */
-  public void sendBoardAcceptNotification(Long ownerId, String memberName) {
+  public void sendBoardAcceptNotification(
+    Long ownerId, String memberName,
+    Long boardId) {
     sendNotificationToUser(
       ownerId,
       NotificationType.BOARD,
       "초대 수락",
-      memberName + "님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!"
+      memberName + " 님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!",
+      boardId,
+      null
     );
   }
 
@@ -143,12 +192,16 @@ public class FcmService {
    * @param inviteeId 초대받은 유저 ID
    * @param boardName 보드 이름
    */
-  public void sendBoardAddedNotification(Long inviteeId, String boardName) {
+  public void sendBoardAddedNotification(
+    Long inviteeId, String boardName,
+    Long boardId) {
     sendNotificationToUser(
       inviteeId,
       NotificationType.BOARD,
       "보드 추가",
-      "'" + boardName + "' 공유 보드가 내 보드에 추가되었습니다. 지금 바로 보드를 확인해 보세요."
+      "'" + boardName + "' 공유 보드가 내 보드에 추가되었습니다. 지금 바로 보드를 확인해 보세요.",
+      boardId,
+      null
     );
   }
 }

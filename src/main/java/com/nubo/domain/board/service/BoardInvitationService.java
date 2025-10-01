@@ -97,7 +97,9 @@ public class BoardInvitationService {
     fcmService.sendBoardInviteNotification(
       invitee.getId(),
       board.getName(),
-      inviter.getNickname()
+      inviter.getNickname(),
+      board.getId(),
+      saved.getId()
     );
 
     return saved;
@@ -147,13 +149,15 @@ public class BoardInvitationService {
     // 초대한 사람에게 알림
     fcmService.sendBoardAcceptNotification(
       invitation.getInviter().getId(),
-      invitation.getInvitee().getNickname()
+      invitation.getInvitee().getNickname(),
+      invitation.getBoard().getId()
     );
 
     // 수락한 본인에게도 알림
     fcmService.sendBoardAddedNotification(
       invitation.getInvitee().getId(),
-      invitation.getBoard().getName()
+      invitation.getBoard().getName(),
+      invitation.getBoard().getId()
     );
   }
 

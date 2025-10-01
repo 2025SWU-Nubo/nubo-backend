@@ -1,5 +1,10 @@
 package com.nubo.domain.notification.service;
 
+import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardInvitation;
+import com.nubo.domain.board.service.BoardInvitationService;
+import com.nubo.domain.board.service.BoardService;
+import com.nubo.domain.notification.dto.NotificationResponseDto;
 import com.nubo.domain.notification.entity.Notification;
 import com.nubo.domain.notification.repository.NotificationRepository;
 import com.nubo.domain.notification.type.NotificationType;
@@ -19,6 +24,8 @@ public class NotificationService {
 
   private final NotificationRepository notificationRepository;
   private final UserService userService;
+  private final BoardService boardService;
+  private final BoardInvitationService boardInvitationService;
 
   /**
    * 알림 생성 및 저장
@@ -27,7 +34,7 @@ public class NotificationService {
    * @param type   알림 종류
    * @param title  알림 제목
    * @param body   알림 본문
-   * @return 저장된 알림 DTO
+   * @return 저장된 알림
    */
   @Transactional
   public Notification createNotification(
@@ -49,15 +56,57 @@ public class NotificationService {
   }
 
   /**
+   * 알림 생성 및 저장 (공유보드 관련)
+   *
+   * @param userId       알림을 받을 유저 ID
+   * @param type         알림 종류
+   * @param title        알림 제목
+   * @param body         알림 본문
+   * @param boardId      공유보드 ID
+   * @param invitationId 공유보드 초대 ID
+   * @return 생성된 알림
+   */
+  @Transactional
+  public Notification createNotification(
+    Long userId,
+    NotificationType type,
+    String title,
+    String body,
+    Long boardId,
+    Long invitationId
+  ) {
+    User user = userService.getUserById(userId);
+
+    Board board = (boardId != null) ? boardService.getBoardById(boardId) : null;
+    BoardInvitation invitation =
+      (invitationId != null) ? boardInvitationService.findById(invitationId).orElse(null) : null;
+
+    Notification notification = Notification.builder()
+      .user(user)
+      .type(type)
+      .title(title)
+      .body(body)
+      .isRead(false)
+      .board(board)
+      .invitation(invitation)
+      .build();
+
+    return notificationRepository.save(notification);
+  }
+
+  /**
    * 특정 유저의 최근 일주일 알림 조회
    *
    * @param userId 조회할 유저 ID
    * @return 알림 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<Notification> getRecentNotifications(Long userId) {
+  public List<NotificationResponseDto> getRecentNotifications(Long userId) {
     LocalDateTime since = LocalDateTime.now().minusDays(7);
-    return notificationRepository.findRecentByUserId(userId, since);
+
+    return notificationRepository.findRecentByUserId(userId, since).stream()
+      .map(NotificationResponseDto::toNotificationResponseDto)
+      .toList();
   }
 
   /**
@@ -75,7 +124,7 @@ public class NotificationService {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
-    notification.setRead(true);
+    notification.markAsRead();
   }
 
   /**
@@ -85,7 +134,14 @@ public class NotificationService {
    */
   @Transactional
   public void markAllAsRead(Long userId) {
-    List<Notification> notifications = getRecentNotifications(userId);
-    notifications.forEach(n -> n.setRead(true));
+    List<Notification> notifications = getRecentNotificationEntities(userId);
+    notifications.forEach(n -> n.markAsRead());
+  }
+
+  // 전체 알림 읽음 처리를위한 엔티티용 조회 메서드
+  @Transactional(readOnly = true)
+  public List<Notification> getRecentNotificationEntities(Long userId) {
+    LocalDateTime since = LocalDateTime.now().minusDays(7);
+    return notificationRepository.findRecentByUserId(userId, since);
   }
 }

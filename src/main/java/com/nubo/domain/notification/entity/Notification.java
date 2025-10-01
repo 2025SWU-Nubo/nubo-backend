@@ -1,5 +1,7 @@
 package com.nubo.domain.notification.entity;
 
+import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardInvitation;
 import com.nubo.domain.notification.type.NotificationType;
 import com.nubo.domain.user.entity.User;
 import com.nubo.global.common.BaseTimeEntity;
@@ -19,7 +21,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Getter
@@ -47,7 +48,19 @@ public class Notification extends BaseTimeEntity {
   @Column(nullable = false, length = 255)
   private String body;
 
-  @Setter
   @Column(nullable = false)
   private boolean isRead = false; // 읽음 여부
+
+  // -- 공유보드 알림 관련 연관관계 --
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "board_id")
+  private Board board;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "invitation_id")
+  private BoardInvitation invitation;
+
+  public void markAsRead() {
+    this.isRead = true;
+  }
 }
