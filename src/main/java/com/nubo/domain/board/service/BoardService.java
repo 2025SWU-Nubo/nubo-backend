@@ -8,8 +8,9 @@ import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
+import com.nubo.domain.board.dto.BoardInvitationRequestDto;
+import com.nubo.domain.board.dto.BoardInvitationResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
-import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
 import com.nubo.domain.board.dto.BoardPreviewResponseDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
@@ -17,11 +18,14 @@ import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
 import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardInvitation;
 import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.mapper.BoardMapper;
+import com.nubo.domain.board.mapper.BoardMemberMapper;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
+import com.nubo.domain.board.type.InvitationStatus;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.entity.CardUserStatus;
@@ -68,6 +72,8 @@ public class BoardService {
 
   private final BoardMemberService boardMemberService;
   private final CardUserStatusService cardUserStatusService;
+  private final BoardInvitationService boardInvitationService;
+  private final BoardMemberMapper boardMemberMapper;
 
   /**
    * 주어진 사용자 소유 보드 중 이름 중복 여부를 확인한다.
@@ -134,9 +140,8 @@ public class BoardService {
       // 항상 OWNER 멤버 생성
       boardMemberService.createOwner(savedBoard, owner);
 
-      // 공유 보드일 경우 ADMIN 멤버도 추가
+      // 공유 보드일 경우 초대 생성
       if (dto.isShared()) {
-        // 4-1. 이메일 정제
         Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
           .orElse(List.of())
           .stream()
@@ -147,11 +152,9 @@ public class BoardService {
           .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
           .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        // 4-2. 유저 조회 + 누락 이메일 검증
-        List<User> admins = List.of();
         if (!inviteEmails.isEmpty()) {
-          admins = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
-          Set<String> found = admins.stream()
+          List<User> invitees = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
+          Set<String> found = invitees.stream()
             .map(u -> u.getEmail().toLowerCase())
             .collect(Collectors.toSet());
           List<String> missing = inviteEmails.stream()
@@ -160,10 +163,10 @@ public class BoardService {
           if (!missing.isEmpty()) {
             throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
           }
-        }
 
-        // 4-3. ADMIN 멤버 생성
-        boardMemberService.createAdmins(savedBoard, admins);
+          // BoardInvitation 생성 (PENDING)
+          boardInvitationService.createInvitations(savedBoard, owner, invitees);
+        }
       }
     }
 
@@ -539,30 +542,89 @@ public class BoardService {
   }
 
   /**
-   * 공유 보드의 멤버 목록을 수정한다.
+   * 멤버 초대 생성
    *
    * @param boardId       대상 보드 ID
-   * @param currentUserId 요청자 ID
-   * @param dto           추가할 멤버 이메일 리스트 DTO
-   * @return 추가된 멤버 정보 목록
-   * @exception ApiException ENTITY_NOT_FOUND 보드 또는 사용자 없을 때
-   * @exception ApiException ACCESS_DENIED 권한이 없을 때
+   * @param currentUserId 요청 사용자 ID (보드 소유자여야 함)
+   * @param requestDto    초대 대상 이메일 목록
+   * @return 초대 응답 DTO 목록
    */
   @Transactional
-  public BoardMemberListResponseDto updateMembers(Long boardId, Long currentUserId,
-    BoardMemberUpdateRequestDto dto) {
+  public List<BoardInvitationResponseDto> inviteMembers(Long boardId, Long currentUserId,
+    BoardInvitationRequestDto dto) {
 
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    // 권한 체크
+    // 권한 체크 (보드 소유자만 가능)
     if (board.getSource() != BoardSource.USER || !board.getUser().getId().equals(currentUserId)) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
-    return boardMemberService.updateMembers(board, dto);
+    List<User> invitees = userService.getUsersByEmails(dto.getEmails());
+    boardInvitationService.createInvitations(board, board.getUser(), invitees);
+
+    // 방금 생성된 초대들 반환
+    List<BoardInvitation> invitations = boardInvitationService.getInvitations(board);
+    return invitations.stream()
+      .filter(inv -> inv.getStatus() == InvitationStatus.PENDING)
+      .map(inv -> BoardInvitationResponseDto.builder()
+        .invitationId(inv.getId())
+        .email(inv.getInvitee().getEmail())
+        .nickname(inv.getInvitee().getNickname())
+        .status(inv.getStatus())
+        .build())
+      .toList();
   }
 
+  /**
+   * 초대 취소 (삭제 처리)
+   *
+   * @param boardId       대상 보드 ID
+   * @param currentUserId 요청 사용자 ID (보드 소유자여야 함)
+   * @param invitationId  취소할 초대 ID
+   */
+  @Transactional
+  public void cancelInvitation(Long boardId, Long currentUserId, Long invitationId) {
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    // 보드 소유자만 가능
+    if (board.getSource() != BoardSource.USER || !board.getUser().getId().equals(currentUserId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    BoardInvitation invitation = boardInvitationService.findById(invitationId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    if (invitation.getStatus() == InvitationStatus.PENDING) {
+      boardInvitationService.delete(invitation);
+    } else {
+      throw new ApiException(ErrorCode.INVALID_STATE);
+    }
+  }
+
+  /**
+   * 멤버 + 초대 목록 조회
+   *
+   * @param boardId       대상 보드 ID
+   * @param currentUserId 요청 사용자 ID
+   * @return 멤버 및 초대 목록 응답
+   */
+  @Transactional(readOnly = true)
+  public BoardMemberListResponseDto getMembersWithInvitations(Long boardId, Long currentUserId) {
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    if (board.getSource() != BoardSource.USER || !board.getUser().getId().equals(currentUserId)) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    List<BoardMember> members = boardMemberService.getMembers(board);
+    List<BoardInvitation> invitations = boardInvitationService.getInvitations(board);
+
+    return boardMemberMapper.toMemberListResponseDto(board, members, invitations);
+  }
 
   /**
    * 사용자 보드의 이름을 수정한다.

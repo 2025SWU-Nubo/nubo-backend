@@ -1,9 +1,13 @@
 package com.nubo.domain.board.mapper;
 
+import com.nubo.domain.board.dto.BoardInvitationResponseDto;
+import com.nubo.domain.board.dto.BoardMemberListResponseDto;
 import com.nubo.domain.board.dto.BoardMemberResponseDto;
 import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardInvitation;
 import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.type.BoardMemberRole;
+import com.nubo.domain.board.type.InvitationStatus;
 import com.nubo.domain.user.entity.User;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,6 +54,36 @@ public class BoardMemberMapper {
     return BoardMemberResponseDto.builder()
       .userId(member.getUser().getId())
       .nickname(member.getUser().getNickname())
+      .role(member.getRole())
+      .build();
+  }
+
+  /**
+   * 멤버 + 초대 목록을 포함한 응답 DTO 생성
+   */
+  public BoardMemberListResponseDto toMemberListResponseDto(
+    Board board,
+    List<BoardMember> members,
+    List<BoardInvitation> invitations
+  ) {
+    List<BoardMemberResponseDto> memberDtos = members.stream()
+      .map(this::toResponseDto)
+      .toList();
+
+    List<BoardInvitationResponseDto> invitationDtos = invitations.stream()
+      .filter(inv -> inv.getStatus() == InvitationStatus.PENDING)
+      .map(invite -> BoardInvitationResponseDto.builder()
+        .invitationId(invite.getId())
+        .email(invite.getInvitee().getEmail())
+        .nickname(invite.getInvitee().getNickname())
+        .status(invite.getStatus())
+        .build())
+      .toList();
+
+    return BoardMemberListResponseDto.builder()
+      .boardId(board.getId())
+      .members(memberDtos)
+      .invitations(invitationDtos)
       .build();
   }
 

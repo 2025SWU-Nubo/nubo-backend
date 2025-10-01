@@ -9,8 +9,9 @@ import com.nubo.domain.board.dto.BoardDeleteResultDto;
 import com.nubo.domain.board.dto.BoardDetailResponseDto;
 import com.nubo.domain.board.dto.BoardFavoriteRequestDto;
 import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
+import com.nubo.domain.board.dto.BoardInvitationRequestDto;
+import com.nubo.domain.board.dto.BoardInvitationResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
-import com.nubo.domain.board.dto.BoardMemberUpdateRequestDto;
 import com.nubo.domain.board.dto.BoardNameCheckResponseDto;
 import com.nubo.domain.board.dto.BoardShareRequestDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
@@ -18,6 +19,7 @@ import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardUpdateNameRequestDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
+import com.nubo.domain.board.service.BoardInvitationService;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
 import com.nubo.global.common.FilterType;
@@ -45,6 +47,7 @@ public class BoardController {
 
   private final BoardService boardService;
   private final UserUtil userUtil;
+  private final BoardInvitationService boardInvitationService;
 
   /**
    * 보드 이름 중복 여부를 확인한다.
@@ -179,22 +182,73 @@ public class BoardController {
   }
 
   /**
-   * 공유 보드의 멤버 목록을 수정한다.
+   * 공유 보드에 새로운 멤버를 초대한다.
    *
    * @param boardId    대상 보드 ID
-   * @param requestDto 추가/삭제할 사용자 목록
-   * @return 최종 멤버 목록
+   * @param requestDto 초대할 사용자 이메일 목록
+   * @return 생성된 초대 목록
    */
-  @PatchMapping("/{boardId}/members")
-  public ResponseEntity<BoardMemberListResponseDto> updateMembers(
+  @PostMapping("/{boardId}/invitation")
+  public ResponseEntity<List<BoardInvitationResponseDto>> inviteMembers(
     @PathVariable Long boardId,
-    @RequestBody BoardMemberUpdateRequestDto requestDto) {
+    @RequestBody BoardInvitationRequestDto requestDto
+  ) {
+    Long currentUserId = userUtil.getAuthenticatedUserId();
+    List<BoardInvitationResponseDto> result =
+      boardService.inviteMembers(boardId, currentUserId, requestDto);
+    return ResponseEntity.ok(result);
+  }
 
+  /**
+   * 공유 보드 초대를 취소한다. (초대 목록에서 삭제)
+   *
+   * @param boardId      대상 보드 ID
+   * @param invitationId 초대를 취소할 ID
+   */
+  @DeleteMapping("/{boardId}/invitation/{invitationId}")
+  public ResponseEntity<Void> cancelInvitation(
+    @PathVariable Long boardId,
+    @PathVariable Long invitationId
+  ) {
+    Long currentUserId = userUtil.getAuthenticatedUserId();
+    boardService.cancelInvitation(boardId, currentUserId, invitationId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * 공유 보드의 멤버와 초대 현황을 조회한다.
+   *
+   * @param boardId 대상 보드 ID
+   * @return 멤버 목록과 초대 목록
+   */
+  @GetMapping("/{boardId}/members")
+  public ResponseEntity<BoardMemberListResponseDto> getMembersWithInvitations(
+    @PathVariable Long boardId
+  ) {
     Long currentUserId = userUtil.getAuthenticatedUserId();
     BoardMemberListResponseDto result =
-      boardService.updateMembers(boardId, currentUserId, requestDto);
-
+      boardService.getMembersWithInvitations(boardId, currentUserId);
     return ResponseEntity.ok(result);
+  }
+
+  /**
+   * 초대 수락
+   */
+  @PostMapping("/invitation/{invitationId}/accept")
+  public ResponseEntity<Void> acceptInvitation(@PathVariable Long invitationId) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    boardInvitationService.acceptInvitation(userId, invitationId);
+    return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * 초대 거절
+   */
+  @PostMapping("/invitation/{invitationId}/reject")
+  public ResponseEntity<Void> rejectInvitation(@PathVariable Long invitationId) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    boardInvitationService.rejectInvitation(userId, invitationId);
+    return ResponseEntity.noContent().build();
   }
 
   /**

@@ -28,6 +28,7 @@ public enum ErrorCode {
   ENTITY_NOT_FOUND(404, "E001", "Entity not found", LogLevel.WARN),
   DUPLICATE_RESOURCE(409, "E002", "Resource already exists", LogLevel.WARN),
   ILLEGAL_STATE(400, "E003", "Illegal state", LogLevel.ERROR),
+  INVALID_STATE(400, "E004", "Invalid state", LogLevel.WARN),
 
   // VALIDATION
   FIELD_REQUIRED(400, "V001", "Required field is missing", LogLevel.WARN),

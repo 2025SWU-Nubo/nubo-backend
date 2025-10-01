@@ -31,6 +31,13 @@ public class BoardMemberService {
   private final UserService userService;
 
   /**
+   * 특정 보드의 멤버 전체 조회
+   */
+  public List<BoardMember> getMembers(Board board) {
+    return boardMemberRepository.findAllByBoardIdOrderByRoleAndCreatedAt(board.getId());
+  }
+
+  /**
    * OWNER와 ADMIN 멤버를 생성하여 저장한다.
    */
   @Transactional
@@ -141,7 +148,6 @@ public class BoardMemberService {
       boardMemberRepository.save(adminMember);
     }
   }
-
 
   /**
    * 보드에 사용자가 속해 있는지 여부를 확인한다.

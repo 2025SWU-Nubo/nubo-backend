@@ -78,4 +78,14 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
      WHERE bm.user.id = :userId
     """)
   int bulkResetVisible(@Param("userId") Long userId);
+
+  @Query("""
+    SELECT bm
+    FROM BoardMember bm
+    WHERE bm.board.id = :boardId
+    ORDER BY 
+      CASE WHEN bm.role = 'OWNER' THEN 0 ELSE 1 END,
+      bm.createdAt ASC
+    """)
+  List<BoardMember> findAllByBoardIdOrderByRoleAndCreatedAt(Long boardId);
 }
