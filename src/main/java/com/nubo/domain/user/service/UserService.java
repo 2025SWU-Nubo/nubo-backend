@@ -64,7 +64,7 @@ public class UserService {
 
       // 푸시알림 기본값 true 설정
       userCandidate.setRemindEnabled(true);
-      userCandidate.setAcceptEnabled(true);
+      userCandidate.setPushEnabled(true);
 
       return newUser;
     });
@@ -189,6 +189,6 @@ public class UserService {
   public void updatePushSettings(Long userId, UserPushSettingRequestDto dto) {
     User user = getUserById(userId);
     user.setRemindEnabled(dto.isRemindEnabled());
-    user.setAcceptEnabled(dto.isAcceptEnabled());
+    user.setPushEnabled(dto.isPushEnabled());
   }
 }

@@ -12,5 +12,5 @@ import lombok.Setter;
 public class UserPushSettingRequestDto {
 
   private boolean remindEnabled;
-  private boolean acceptEnabled;
+  private boolean pushEnabled;
 }
