@@ -183,7 +183,7 @@ public class FcmService {
     sendNotificationToUser(
       userId,
       NotificationType.REMINDER,
-      "리마인드 알림",
+      "미시청 카드 리마인드",
       "아직 열어보지 않은 카드가 있어요. 잊기 전에 확인해보세요!"
     );
   }
@@ -199,8 +199,8 @@ public class FcmService {
     sendNotificationToUser(
       userId,
       NotificationType.CARD_ADDED,
-      "카드 생성 완료",
-      "'" + cardTitle + "' 카드가 성공적으로 생성되었습니다.",
+      "추가하기",
+      cardTitle + "카드가 성공적으로 생성되었어요.",
       card
     );
   }
@@ -219,7 +219,7 @@ public class FcmService {
     sendNotificationToUser(
       inviteeId,
       NotificationType.BOARD,
-      "보드 초대",
+      "공유하기",
       memberName + " 님이 '" + boardName + "' 보드를 공유하고 싶어해요.",
       board,
       invitation
@@ -238,7 +238,7 @@ public class FcmService {
     sendNotificationToUser(
       ownerId,
       NotificationType.BOARD,
-      "초대 수락",
+      "공유하기",
       memberName + " 님이 회원님의 공유 보드 초대를 수락했습니다. 이제 함께 보드를 관리할 수 있어요!",
       board,
       null
@@ -257,7 +257,7 @@ public class FcmService {
     sendNotificationToUser(
       inviteeId,
       NotificationType.BOARD,
-      "보드 추가",
+      "공유하기",
       "'" + boardName + "' 공유 보드가 내 보드에 추가되었습니다. 지금 바로 보드를 확인해 보세요.",
       board,
       null
