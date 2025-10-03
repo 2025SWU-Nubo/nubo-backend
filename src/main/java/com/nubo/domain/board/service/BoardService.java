@@ -17,7 +17,10 @@ import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
+import com.nubo.domain.board.dto.BulkActionRequestDto;
+import com.nubo.domain.board.dto.BulkActionResponseDto;
 import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardCard;
 import com.nubo.domain.board.entity.BoardInvitation;
 import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.mapper.BoardMapper;
@@ -662,6 +665,168 @@ public class BoardService {
   }
 
   /**
+   * 선택된 보드와 카드를 복제한다.
+   *
+   * 규칙:
+   * - AI 보드는 복제 불가
+   * - 사용자 보드는 하위 섹션과 카드까지 포함 복제
+   * - 카드가 대상 보드에 이미 존재하면 새 카드 엔티티를 만들어 "(1)", "(2)" 같은 suffix 붙임
+   * - 섹션도 동일 구조로 복제
+   * - 대상 보드가 공유 보드면 예외 발생
+   *
+   * @param sourceBoardId 요청이 발생한 원본 보드 ID (컨텍스트용)
+   * @param dto           복제 요청 (boardIds, cardIds, targetBoardId)
+   * @param userId        요청 사용자 ID
+   * @return 생성된 보드/카드 ID 리스트와 대상 보드 ID
+   */
+  @Transactional
+  public BulkActionResponseDto copyBoardsAndCards(Long sourceBoardId, BulkActionRequestDto dto,
+    Long userId) {
+    // 1. 대상 보드 확인
+    Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+    if (targetBoard.isShared()) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    List<Long> createdBoardIds = new ArrayList<>();
+    List<Long> createdCardIds = new ArrayList<>();
+
+    // 2. 보드 복제
+    if (dto.getBoardIds() != null) {
+      for (Long boardId : dto.getBoardIds()) {
+        Board source = boardRepository.findById(boardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+        if (source.getSource() == BoardSource.AI) {
+          continue;
+        }
+
+        String newName = resolveDuplicateBoardName(source.getName(), targetBoard, userId);
+        User user = userService.getUserById(userId);
+        Board copied = boardMapper.toCopiedBoard(source, newName, user, targetBoard);
+        boardRepository.save(copied);
+        createdBoardIds.add(copied.getId());
+
+        List<BoardCard> boardCards = boardCardService.getByBoardId(source.getId());
+        for (BoardCard bc : boardCards) {
+          Long newCardId = copyOrLinkCard(bc.getCard(), copied, userId);
+          if (newCardId != null) {
+            createdCardIds.add(newCardId);
+          }
+        }
+      }
+    }
+
+    // 3. 카드 복제
+    if (dto.getCardIds() != null) {
+      for (Long cardId : dto.getCardIds()) {
+        Card card = cardRepository.findById(cardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+        Long newCardId = copyOrLinkCard(card, targetBoard, userId);
+        if (newCardId != null) {
+          createdCardIds.add(newCardId);
+        }
+      }
+    }
+
+    // 4. 결과 반환
+    return BulkActionResponseDto.builder()
+      .boardIds(createdBoardIds)
+      .cardIds(createdCardIds)
+      .targetBoardId(targetBoard.getId())
+      .build();
+  }
+  
+  /**
+   * 선택된 보드와 카드를 이동한다.
+   *
+   * 규칙:
+   * - AI 보드, 공유 보드는 이동 불가
+   * - 보드 이동: 다른 보드 밑으로 가면 섹션으로 전환, 상위 제거되면 보드로 승격
+   * - 카드 이동: sourceBoardId와의 링크 제거 후 targetBoard에 새 링크 추가
+   * - 카드가 targetBoard에 이미 있으면 무시
+   * - 대상 보드가 공유 보드면 예외 발생
+   *
+   * @param sourceBoardId 원본 보드 ID
+   * @param dto           이동 요청 (boardIds, cardIds, targetBoardId)
+   * @param userId        요청 사용자 ID
+   * @return 이동된 보드/카드 ID 리스트와 대상 보드 ID
+   */
+  @Transactional
+  public BulkActionResponseDto moveBoardsAndCards(Long sourceBoardId, BulkActionRequestDto dto,
+    Long userId) {
+    // 1. 대상 보드 확인
+    Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+    if (targetBoard.isShared()) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    List<Long> movedBoardIds = new ArrayList<>();
+    List<Long> movedCardIds = new ArrayList<>();
+
+    // 2. 보드 이동
+    if (dto.getBoardIds() != null) {
+      for (Long boardId : dto.getBoardIds()) {
+        Board source = boardRepository.findById(boardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+        // AI 보드, 공유 보드는 이동 불가
+        if (source.getSource() == BoardSource.AI || source.isShared()) {
+          continue;
+        }
+
+        // 같은 대상이면 무시
+        if (Objects.equals(source.getParentBoard(), targetBoard)) {
+          continue;
+        }
+
+        // 보드 → 다른 보드 밑으로 이동 (섹션 전환)
+        if (targetBoard.getBoardType() == BoardType.BOARD) {
+          source.setBoardType(BoardType.SECTION);
+          source.setParentBoard(targetBoard);
+        }
+        // 보드 승격 (섹션 → 보드로 이동)
+        else {
+          source.setBoardType(BoardType.BOARD);
+          source.setParentBoard(null);
+        }
+
+        boardRepository.save(source);
+        movedBoardIds.add(source.getId());
+      }
+    }
+
+    // 3. 카드 이동
+    if (dto.getCardIds() != null) {
+      for (Long cardId : dto.getCardIds()) {
+        Card card = cardRepository.findById(cardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+        // source → target 이동
+        boolean alreadyLinked = boardCardService.exists(targetBoard.getId(), cardId);
+        if (alreadyLinked) {
+          continue;
+        }
+
+        // 기존 소스 보드와의 링크 제거
+        boardCardService.detachCard(sourceBoardId, cardId);
+
+        // 타겟 보드에 링크 추가
+        boardCardService.add(targetBoard, card);
+        movedCardIds.add(card.getId());
+      }
+    }
+
+    // 4. 결과 반환
+    return BulkActionResponseDto.builder()
+      .boardIds(movedBoardIds)
+      .cardIds(movedCardIds)
+      .targetBoardId(targetBoard.getId())
+      .build();
+  }
+
+  /**
    * 보드 다중 삭제/숨김.
    * - AI 보드(기본 제공): per-user 숨김 처리 (보드/카드 실삭제 없음)
    * - 사용자 생성 보드(개인/공유): 보드/섹션은 하드 삭제(자식 → 부모),
@@ -907,6 +1072,47 @@ public class BoardService {
     }
 
     return thumbnailMap;
+  }
+
+  // 벌크 액션 헬퍼 메서드
+
+  // 카드 복제/링크 처리
+  private Long copyOrLinkCard(Card card, Board targetBoard, Long userId) {
+    boolean exists = boardCardService.exists(targetBoard.getId(), card.getId());
+    if (exists) {
+      String newTitle = resolveDuplicateCardTitle(card.getTitle(), targetBoard);
+      User user = userService.getUserById(userId);
+      Card copied = cardMapper.toCopiedCard(card, newTitle, user);
+      cardRepository.save(copied);
+      boardCardService.add(targetBoard, copied);
+      return copied.getId();
+    }
+    boardCardService.add(targetBoard, card);
+    return card.getId();
+  }
+
+  // 보드 이름 중복 처리
+  private String resolveDuplicateBoardName(String baseName, Board targetBoard, Long userId) {
+    String candidate = baseName;
+    int count = 1;
+    User user = userService.getUserById(userId);
+
+    while (boardRepository.existsByNameConflict(candidate, user, targetBoard)) {
+      candidate = baseName + " (" + count + ")";
+      count++;
+    }
+    return candidate;
+  }
+
+  // 카드 제목 중복 처리
+  private String resolveDuplicateCardTitle(String baseTitle, Board targetBoard) {
+    String candidate = baseTitle;
+    int count = 1;
+    while (boardCardService.existsByTitleInBoard(targetBoard.getId(), candidate)) {
+      candidate = baseTitle + " (" + count + ")";
+      count++;
+    }
+    return candidate;
   }
 
 }

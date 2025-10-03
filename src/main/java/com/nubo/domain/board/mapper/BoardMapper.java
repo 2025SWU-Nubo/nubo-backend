@@ -165,4 +165,15 @@ public class BoardMapper {
         .build())
       .toList();
   }
+
+  // 보드 복제용
+  public Board toCopiedBoard(Board source, String newName, User user, Board parentBoard) {
+    return Board.builder()
+      .name(newName)
+      .boardType(source.getBoardType())
+      .source(BoardSource.USER)
+      .user(user)
+      .parentBoard(parentBoard.getBoardType() == BoardType.BOARD ? parentBoard : null)
+      .build();
+  }
 }

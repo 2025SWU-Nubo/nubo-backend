@@ -43,10 +43,31 @@ public class BoardCardService {
   @Transactional
   public void attachCard(Board board, Card card) {
     if (!existsLink(board.getId(), card.getId())) {
-      BoardCard link = new BoardCard();
-      link.setBoard(board);
-      link.setCard(card);
+      BoardCard link = BoardCard.builder()
+        .board(board)
+        .card(card)
+        .build();
       boardCardRepository.save(link);
     }
+  }
+
+  public List<BoardCard> getByBoardId(Long boardId) {
+    return boardCardRepository.findByBoardId(boardId);
+  }
+
+  public boolean exists(Long boardId, Long cardId) {
+    return boardCardRepository.existsByBoardIdAndCardId(boardId, cardId);
+  }
+
+  public boolean existsByTitleInBoard(Long boardId, String title) {
+    return boardCardRepository.existsByBoardIdAndCardTitle(boardId, title);
+  }
+
+  public void add(Board board, Card card) {
+    BoardCard bc = BoardCard.builder()
+      .board(board)
+      .card(card)
+      .build();
+    boardCardRepository.save(bc);
   }
 }

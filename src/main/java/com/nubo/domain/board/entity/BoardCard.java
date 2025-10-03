@@ -9,6 +9,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import java.io.Serializable;
 import java.time.Instant;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +23,9 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @IdClass(BoardCard.BoardCardId.class) // 내부 static class로 지정
 public class BoardCard {
 

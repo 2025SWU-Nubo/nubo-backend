@@ -38,4 +38,18 @@ public interface BoardCardRepository extends JpaRepository<BoardCard, BoardCard.
   @Modifying
   @Query("delete from BoardCard bc where bc.board.id in :boardIds")
   int deleteByBoardIds(Collection<Long> boardIds);
+
+  // --- 벌크 액션 ---
+  // 보드 아이디로 연관관계 조회
+  List<BoardCard> findByBoardId(Long boardId);
+
+  // 보드/카드 아이디로 존재여부 반환
+  boolean existsByBoardIdAndCardId(Long boardId, Long cardId);
+
+  // 보드 아이디 + 카드 이름으로 존재여부 반환
+  @Query("SELECT CASE WHEN COUNT(bc) > 0 THEN true ELSE false END " +
+    "FROM BoardCard bc " +
+    "WHERE bc.board.id = :boardId AND bc.card.title = :title")
+  boolean existsByBoardIdAndCardTitle(@Param("boardId") Long boardId, @Param("title") String title);
+
 }

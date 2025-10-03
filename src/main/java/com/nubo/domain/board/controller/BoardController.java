@@ -19,6 +19,8 @@ import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardSummaryResponseDto;
 import com.nubo.domain.board.dto.BoardUpdateNameRequestDto;
 import com.nubo.domain.board.dto.BoardWithSectionsSimpleResponseDto;
+import com.nubo.domain.board.dto.BulkActionRequestDto;
+import com.nubo.domain.board.dto.BulkActionResponseDto;
 import com.nubo.domain.board.service.BoardInvitationService;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.global.auth.UserUtil;
@@ -269,6 +271,40 @@ public class BoardController {
     Long userId = userUtil.getAuthenticatedUserId();
     BoardSimpleResponseDto response =
       boardService.updateBoardName(boardId, request.getName(), userId);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 선택된 보드/카드를 복제한다.
+   *
+   * @param sourceBoardId 현재 보드 위치 id
+   * @param dto           복제 요청 DTO (boardIds, cardIds, targetBoardId)
+   * @return 복제된 보드/카드 ID 목록
+   */
+  @PostMapping("/{sourceBoardId}/bulk-copy")
+  public ResponseEntity<BulkActionResponseDto> copyBoardsAndCards(
+    @PathVariable Long sourceBoardId,
+    @RequestBody BulkActionRequestDto dto
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    BulkActionResponseDto response = boardService.copyBoardsAndCards(sourceBoardId, dto, userId);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 선택된 보드/카드를 이동한다.
+   *
+   * @param sourceBoardId 현재 보드 위치 id
+   * @param dto           이동 요청 DTO (boardIds, cardIds, targetBoardId)
+   * @return 이동된 보드/카드 ID 목록
+   */
+  @PostMapping("/{sourceBoardId}/bulk-move")
+  public ResponseEntity<BulkActionResponseDto> moveBoardsAndCards(
+    @PathVariable Long sourceBoardId,
+    @RequestBody BulkActionRequestDto dto
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    BulkActionResponseDto response = boardService.moveBoardsAndCards(sourceBoardId, dto, userId);
     return ResponseEntity.ok(response);
   }
 

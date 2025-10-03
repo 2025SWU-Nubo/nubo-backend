@@ -3,6 +3,7 @@ package com.nubo.domain.board.repository;
 import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardType;
+import com.nubo.domain.user.entity.User;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -233,4 +234,18 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     @Param("keyword") String keyword,
     @Param("sort") String sort
   );
+
+  @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
+    "FROM Board b " +
+    "WHERE b.name = :name " +
+    "AND (b.user = :user OR b.source = com.nubo.domain.board.type.BoardSource.AI) " +
+    "AND ( (b.boardType = com.nubo.domain.board.type.BoardType.BOARD AND :parentBoard IS NULL) " +
+    "   OR (b.boardType = com.nubo.domain.board.type.BoardType.SECTION AND b.parentBoard = "
+    + ":parentBoard) )")
+  boolean existsByNameConflict(
+    @Param("name") String name,
+    @Param("user") User user,
+    @Param("parentBoard") Board parentBoard
+  );
+
 }

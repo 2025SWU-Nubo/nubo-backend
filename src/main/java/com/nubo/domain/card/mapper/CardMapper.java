@@ -132,6 +132,16 @@ public class CardMapper {
       .build();
   }
 
+  // 카드 복제용
+  public Card toCopiedCard(Card source, String newTitle, User user) {
+    return Card.builder()
+      .title(newTitle)
+      .summary(source.getSummary())
+      .video(source.getVideo())
+      .user(user)
+      .build();
+  }
+
   // =========================
   // 유틸
   // =========================
