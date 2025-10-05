@@ -28,6 +28,18 @@ public class FcmService {
   private final NotificationService notificationService;
 
   /**
+   * NotificationType별 Android channel ID 매핑
+   */
+  private String resolveChannelId(NotificationType type) {
+    return switch (type) {
+      case REMINDER -> "reminder_channel";
+      case CARD_ADDED -> "card_channel";
+      case BOARD -> "board_channel";
+      default -> "default_channel";
+    };
+  }
+
+  /**
    * 특정 유저의 모든 기기에 알림 발송 및 DB 저장
    *
    * @param userId 알림을 받을 유저 ID
@@ -58,8 +70,9 @@ public class FcmService {
       return;
     }
 
+    String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendNotificationToToken(token.getToken(), title, body);
+      sendHybridMessageToToken(token.getToken(), type, title, body, channelId);
     }
   }
 
@@ -98,8 +111,9 @@ public class FcmService {
       return;
     }
 
+    String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendNotificationToToken(token.getToken(), title, body);
+      sendHybridMessageToToken(token.getToken(), type, title, body, channelId);
     }
   }
 
@@ -137,8 +151,9 @@ public class FcmService {
       return;
     }
 
+    String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendNotificationToToken(token.getToken(), title, body);
+      sendHybridMessageToToken(token.getToken(), type, title, body, channelId);
     }
   }
 
@@ -149,7 +164,8 @@ public class FcmService {
    * @param title 알림 제목
    * @param body  알림 본문
    */
-  public void sendNotificationToToken(String token, String title, String body) {
+  public void sendHybridMessageToToken(
+    String token, NotificationType type, String title, String body, String channelId) {
     Notification notification = Notification.builder()
       .setTitle(title)
       .setBody(body)
@@ -158,6 +174,10 @@ public class FcmService {
     Message message = Message.builder()
       .setToken(token)
       .setNotification(notification)
+      .putData("title", title)
+      .putData("body", body)
+      .putData("type", type.name())
+      .putData("channel_id", channelId)
       .build();
 
     try {
@@ -200,7 +220,7 @@ public class FcmService {
       userId,
       NotificationType.CARD_ADDED,
       "추가하기",
-      cardTitle + "카드가 성공적으로 생성되었어요.",
+      cardTitle + " 카드가 성공적으로 생성되었어요.",
       card
     );
   }
