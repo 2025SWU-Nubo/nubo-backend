@@ -2,9 +2,9 @@ package com.nubo.domain.card.mapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteResponseDto;
-import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
@@ -35,9 +35,9 @@ public class CardMapper {
   // 응답 매핑
   // =========================
 
-  // Card → CardResponseDto (보드 ID 리스트 포함)
-  public CardResponseDto toResponseDto(Card card, List<Long> boardIds) {
-    return CardResponseDto.builder()
+  // Card → CardCreateResponseDto (보드 ID 리스트 포함)
+  public CardCreateResponseDto toResponseDto(Card card, List<Long> boardIds) {
+    return CardCreateResponseDto.builder()
       .cardId(card.getId())
       .title(card.getTitle())
       .summary(card.getSummary())

@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CardResponseDto {
+public class CardCreateResponseDto {
 
   private Long cardId;
   private String title;

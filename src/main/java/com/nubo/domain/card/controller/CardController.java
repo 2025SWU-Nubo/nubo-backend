@@ -1,11 +1,11 @@
 package com.nubo.domain.card.controller;
 
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteRequestDto;
 import com.nubo.domain.card.dto.CardFavoriteResponseDto;
-import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryPromptRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto;
@@ -47,10 +47,10 @@ public class CardController {
    * @return 생성된 카드 정보 DTO
    */
   @PostMapping
-  public ResponseEntity<CardResponseDto> createCard(@RequestBody CardCreateRequestDto dto)
+  public ResponseEntity<CardCreateResponseDto> createCard(@RequestBody CardCreateRequestDto dto)
     throws IOException, InterruptedException {
     Long userId = userUtil.getAuthenticatedUserId();
-    CardResponseDto response = cardService.createCard(dto, userId);
+    CardCreateResponseDto response = cardService.createCard(dto, userId);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 

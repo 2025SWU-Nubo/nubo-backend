@@ -6,11 +6,11 @@ import com.nubo.domain.board.service.BoardCardService;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
+import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteRequestDto;
 import com.nubo.domain.card.dto.CardFavoriteResponseDto;
-import com.nubo.domain.card.dto.CardResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
@@ -100,7 +100,7 @@ public class CardService {
    * @exception ApiException board, section, user가 존재하지 않는 경우
    */
   @Transactional
-  public CardResponseDto createCard(CardCreateRequestDto dto, Long userId)
+  public CardCreateResponseDto createCard(CardCreateRequestDto dto, Long userId)
     throws IOException, InterruptedException {
 
     long startTime = System.currentTimeMillis();
