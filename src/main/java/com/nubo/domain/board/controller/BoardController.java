@@ -281,9 +281,9 @@ public class BoardController {
    * @param dto           복제 요청 DTO (boardIds, cardIds, targetBoardId)
    * @return 복제된 보드/카드 ID 목록
    */
-  @PostMapping("/{sourceBoardId}/bulk-copy")
+  @PostMapping({"/bulk-copy", "/{sourceBoardId}/bulk-copy"})
   public ResponseEntity<BulkActionResponseDto> copyBoardsAndCards(
-    @PathVariable Long sourceBoardId,
+    @PathVariable(required = false) Long sourceBoardId,
     @RequestBody BulkActionRequestDto dto
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
@@ -298,9 +298,9 @@ public class BoardController {
    * @param dto           이동 요청 DTO (boardIds, cardIds, targetBoardId)
    * @return 이동된 보드/카드 ID 목록
    */
-  @PostMapping("/{sourceBoardId}/bulk-move")
+  @PostMapping({"/bulk-move", "/{sourceBoardId}/bulk-move"})
   public ResponseEntity<BulkActionResponseDto> moveBoardsAndCards(
-    @PathVariable Long sourceBoardId,
+    @PathVariable(required = false) Long sourceBoardId,
     @RequestBody BulkActionRequestDto dto
   ) {
     Long userId = userUtil.getAuthenticatedUserId();

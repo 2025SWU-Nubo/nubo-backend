@@ -672,7 +672,7 @@ public class BoardService {
    * - 사용자 보드는 하위 섹션과 카드까지 포함 복제
    * - 카드가 대상 보드에 이미 존재하면 새 카드 엔티티를 만들어 "(1)", "(2)" 같은 suffix 붙임
    * - 섹션도 동일 구조로 복제
-   * - 대상 보드가 공유 보드면 예외 발생
+   * - 대상 보드가 공유 보드거나 null(루트)이면 예외 발생
    *
    * @param sourceBoardId 요청이 발생한 원본 보드 ID (컨텍스트용)
    * @param dto           복제 요청 (boardIds, cardIds, targetBoardId)
@@ -682,9 +682,15 @@ public class BoardService {
   @Transactional
   public BulkActionResponseDto copyBoardsAndCards(Long sourceBoardId, BulkActionRequestDto dto,
     Long userId) {
-    // 1. 대상 보드 확인
+
+    // 1. 대상 보드 확인 (루트 복제 금지)
+    if (dto.getTargetBoardId() == null) {
+      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    }
+
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
     if (targetBoard.isShared()) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
@@ -736,7 +742,7 @@ public class BoardService {
       .targetBoardId(targetBoard.getId())
       .build();
   }
-  
+
   /**
    * 선택된 보드와 카드를 이동한다.
    *
@@ -755,9 +761,15 @@ public class BoardService {
   @Transactional
   public BulkActionResponseDto moveBoardsAndCards(Long sourceBoardId, BulkActionRequestDto dto,
     Long userId) {
-    // 1. 대상 보드 확인
+
+    // 1. 대상 보드 확인 (루트 이동 불가)
+    if (dto.getTargetBoardId() == null) {
+      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    }
+
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
     if (targetBoard.isShared()) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
@@ -810,7 +822,9 @@ public class BoardService {
         }
 
         // 기존 소스 보드와의 링크 제거
-        boardCardService.detachCard(sourceBoardId, cardId);
+        if (sourceBoardId != null) {
+          boardCardService.detachCard(sourceBoardId, cardId);
+        }
 
         // 타겟 보드에 링크 추가
         boardCardService.add(targetBoard, card);
@@ -1078,6 +1092,11 @@ public class BoardService {
 
   // 카드 복제/링크 처리
   private Long copyOrLinkCard(Card card, Board targetBoard, Long userId) {
+    if (targetBoard == null) {
+      // 루트에 카드를 직접 복제할 수 없음 → 무시
+      return null;
+    }
+
     boolean exists = boardCardService.exists(targetBoard.getId(), card.getId());
     if (exists) {
       String newTitle = resolveDuplicateCardTitle(card.getTitle(), targetBoard);
@@ -1097,15 +1116,25 @@ public class BoardService {
     int count = 1;
     User user = userService.getUserById(userId);
 
-    while (boardRepository.existsByNameConflict(candidate, user, targetBoard)) {
-      candidate = baseName + " (" + count + ")";
-      count++;
+    if (targetBoard == null) {
+      while (boardRepository.existsByUserAndNameAndParentBoardIsNull(user, candidate)) {
+        candidate = baseName + " (" + count + ")";
+        count++;
+      }
+    } else {
+      while (boardRepository.existsByNameConflict(candidate, user, targetBoard)) {
+        candidate = baseName + " (" + count + ")";
+        count++;
+      }
     }
     return candidate;
   }
 
   // 카드 제목 중복 처리
   private String resolveDuplicateCardTitle(String baseTitle, Board targetBoard) {
+    if (targetBoard == null) {
+      return baseTitle; // 루트에 카드는 없음
+    }
     String candidate = baseTitle;
     int count = 1;
     while (boardCardService.existsByTitleInBoard(targetBoard.getId(), candidate)) {
@@ -1114,5 +1143,6 @@ public class BoardService {
     }
     return candidate;
   }
+
 
 }

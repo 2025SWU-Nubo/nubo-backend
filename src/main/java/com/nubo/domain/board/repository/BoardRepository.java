@@ -248,4 +248,5 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     @Param("parentBoard") Board parentBoard
   );
 
+  boolean existsByUserAndNameAndParentBoardIsNull(User user, String candidate);
 }
