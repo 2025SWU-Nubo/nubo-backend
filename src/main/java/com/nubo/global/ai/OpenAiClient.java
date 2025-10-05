@@ -30,7 +30,7 @@ public class OpenAiClient {
   private String apiKey;
 
   /**
-   * 카드와 원본 영상 데이터를 기반으로 summary를 재가공한다.
+   * 카드와 원본 영상 데이터를 기반으로 summary를 생성한다.
    *
    * @param inputText 가공할 원본 메타데이터의 합본 텍스트
    * @param userId    사용자 id
@@ -73,14 +73,33 @@ public class OpenAiClient {
       JsonNode json = mapper.readTree(content);
 
       String title = json.has("title") ? json.get("title").asText("") : "";
-      String summary = json.get("summary").asText();
+      String summary = json.has("summary") ? json.get("summary").asText("") : "";
       List<String> tags = mapper.convertValue(json.get("tags"), new TypeReference<List<String>>() {
       });
-      String boardName = json.get("board").asText();
+      String boardName = json.has("board") ? json.get("board").asText("") : "";
+
+      // 불충분한 콘텐츠 감지
+      boolean insufficient = (inputText == null || inputText.strip().length() < 30)
+        || summary.isBlank()
+        || boardName.isBlank()
+        || (tags == null || tags.isEmpty());
+
+      if (insufficient) {
+        log.info("불충분 콘텐츠 감지됨 → fallback 메타 적용");
+        summary = "이 영상은 자동 요약이 어려워요. 필요한 내용을 직접 메모로 추가해 주세요.";
+
+        // 태그 생략
+        tags = List.of();
+
+        // 보드 매핑은 '기타'
+        boardName = "기타";
+      }
+
+      final String resolvedBoardName = boardName;
 
       Long boardId = boardRepository
-        .findByUserIdAndName(userId, boardName)
-        .orElseThrow(() -> new RuntimeException("해당 이름의 보드를 찾을 수 없습니다: " + boardName))
+        .findByUserIdAndName(userId, resolvedBoardName)
+        .orElseThrow(() -> new RuntimeException("해당 이름의 보드를 찾을 수 없습니다: " + resolvedBoardName))
         .getId();
 
       return AiCardMetaDto.builder()
