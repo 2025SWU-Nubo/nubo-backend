@@ -2,6 +2,9 @@ package com.nubo.domain.card.mapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nubo.domain.board.entity.Board;
+import com.nubo.domain.board.entity.BoardCard;
+import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteResponseDto;
@@ -80,6 +83,13 @@ public class CardMapper {
         highlights = List.of();
       }
     }
+    
+    String boardName = card.getBoardCards().stream()
+      .map(BoardCard::getBoard)
+      .filter(board -> board.getSource() == BoardSource.AI)
+      .map(Board::getName)
+      .findFirst()
+      .orElse(null);
 
     return CardDetailResponseDto.builder()
       .cardId(card.getId())
@@ -90,6 +100,7 @@ public class CardMapper {
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
+      .boardName(boardName)
       .highlights(highlights)
       .createdAt(card.getCreatedAt())
       .updatedAt(card.getUpdatedAt())
