@@ -139,37 +139,35 @@ public class BoardService {
     Board savedBoard = boardRepository.save(newBoard);
 
     // 4. 멤버십 생성
-    if (dto.getBoardType() == BoardType.BOARD) {
-      // 항상 OWNER 멤버 생성
-      boardMemberService.createOwner(savedBoard, owner);
+    // 항상 OWNER 멤버 생성
+    boardMemberService.createOwner(savedBoard, owner);
 
-      // 공유 보드일 경우 초대 생성
-      if (dto.isShared()) {
-        Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
-          .orElse(List.of())
-          .stream()
-          .filter(Objects::nonNull)
-          .map(String::trim)
-          .map(String::toLowerCase)
-          .filter(s -> !s.isBlank())
-          .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
-          .collect(Collectors.toCollection(LinkedHashSet::new));
+    // 공유 보드일 경우 초대 생성
+    if (dto.getBoardType() == BoardType.BOARD && dto.isShared()) {
+      Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
+        .orElse(List.of())
+        .stream()
+        .filter(Objects::nonNull)
+        .map(String::trim)
+        .map(String::toLowerCase)
+        .filter(s -> !s.isBlank())
+        .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
+        .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        if (!inviteEmails.isEmpty()) {
-          List<User> invitees = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
-          Set<String> found = invitees.stream()
-            .map(u -> u.getEmail().toLowerCase())
-            .collect(Collectors.toSet());
-          List<String> missing = inviteEmails.stream()
-            .filter(e -> !found.contains(e))
-            .toList();
-          if (!missing.isEmpty()) {
-            throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
-          }
-
-          // BoardInvitation 생성 (PENDING)
-          boardInvitationService.createInvitations(savedBoard, owner, invitees);
+      if (!inviteEmails.isEmpty()) {
+        List<User> invitees = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
+        Set<String> found = invitees.stream()
+          .map(u -> u.getEmail().toLowerCase())
+          .collect(Collectors.toSet());
+        List<String> missing = inviteEmails.stream()
+          .filter(e -> !found.contains(e))
+          .toList();
+        if (!missing.isEmpty()) {
+          throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
         }
+
+        // BoardInvitation 생성 (PENDING)
+        boardInvitationService.createInvitations(savedBoard, owner, invitees);
       }
     }
 
