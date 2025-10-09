@@ -245,7 +245,7 @@ public class CardService {
     Long userId, int page, int size, SortType sort, FilterType filter) {
 
     User user = userService.getUserById(userId);
-    PageRequest pageable = PageRequestUtil.of(page, size, sort);
+    PageRequest pageable = PageRequestUtil.of(page, size, sort, Card.class);
 
     // 1. 카드 조회 (필터 적용)
     Page<Card> cards = switch (filter) {

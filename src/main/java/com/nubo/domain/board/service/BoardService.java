@@ -203,7 +203,7 @@ public class BoardService {
   public Page<BoardSummaryResponseDto> getUserBoards(
     Long userId, int page, int size, SortType sort, FilterType filter) {
 
-    PageRequest pageable = PageRequestUtil.of(page, size, sort);
+    PageRequest pageable = PageRequestUtil.of(page, size, sort, Board.class);
 
     // 1. 보드 조회 (필터별 분기)
     Page<Board> boards = switch (filter) {
@@ -271,18 +271,18 @@ public class BoardService {
     // 즐겨찾기 상태 조회
     boolean favorite = boardMemberService.getFavoriteStatus(boardId, userId);
 
-    // 섹션 리스트
-    List<Board> sectionBoards = switch (filter) {
-      case FAVORITE -> boardRepository.findFavoriteSectionsByParentBoardId(boardId, userId);
-      default -> boardRepository.findByParentBoard_Id(boardId);
-    };
+    // 섹션 리스트 (상단 고정 리스트를 위해 page값 고정)
+    PageRequest sectionPageable = PageRequestUtil.of(0, size, sort, Board.class);
+    Page<Board> sectionPage = filter == FilterType.FAVORITE
+      ? boardRepository.findFavoriteSectionsByParentBoardId(boardId, userId, sectionPageable)
+      : boardRepository.findByParentBoardId(boardId, sectionPageable);
 
-    List<Long> sectionIds = sectionBoards.stream().map(Board::getId).toList();
+    List<Long> sectionIds = sectionPage.stream().map(Board::getId).toList();
     Map<Long, Boolean> sectionFavoriteMap = sectionIds.isEmpty()
       ? Map.of()
       : boardMemberService.getFavoriteMapByUserAndBoardIds(userId, sectionIds);
 
-    List<BoardSummaryResponseDto> sections = sectionBoards.stream()
+    List<BoardSummaryResponseDto> sections = sectionPage.getContent().stream()
       .map(section -> {
         long cardCount = cardRepository.countActiveByBoardId(section.getId());
         String thumbnailUrl = null;
@@ -299,11 +299,10 @@ public class BoardService {
       .toList();
 
     // 카드 리스트
-    PageRequest pageable = PageRequestUtil.of(page, size, sort);
-    Page<Card> cardPage = switch (filter) {
-      case FAVORITE -> cardRepository.findFavoriteCardsByBoard(boardId, userId, pageable);
-      default -> cardRepository.findActiveCardsByBoard(boardId, pageable);
-    };
+    PageRequest cardPageable = PageRequestUtil.of(page, size, sort, Card.class);
+    Page<Card> cardPage = filter == FilterType.FAVORITE
+      ? cardRepository.findFavoriteCardsByBoard(boardId, userId, cardPageable)
+      : cardRepository.findActiveCardsByBoard(boardId, cardPageable);
 
     // 상태 한 번에 조회
     List<Long> cardIds = cardPage.stream().map(Card::getId).toList();

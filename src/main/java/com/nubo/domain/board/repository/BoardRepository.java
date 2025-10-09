@@ -118,13 +118,26 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         AND bm.board.boardType = 'SECTION'
         AND bm.board.deletedAt IS NULL
     """)
-  List<Board> findFavoriteSectionsByParentBoardId(
+  Page<Board> findFavoriteSectionsByParentBoardId(
     @Param("parentBoardId") Long parentBoardId,
-    @Param("userId") Long userId
+    @Param("userId") Long userId,
+    Pageable pageable
   );
 
-  // 보드 하위 섹션 목록 조회
+  // 보드 하위 섹션 목록 조회 - list
   List<Board> findByParentBoard_Id(Long parentBoardId);
+
+  // 보드 하위 섹션 목록 조회 - paging
+  @Query("""
+    SELECT b
+    FROM Board b
+    WHERE b.parentBoard.id = :parentBoardId
+      AND b.deletedAt IS NULL
+    """)
+  Page<Board> findByParentBoardId(
+    @Param("parentBoardId") Long parentBoardId,
+    Pageable pageable
+  );
 
   // 기본 제공 보드 매핑용 (사용자 + 이름 기준)
   Optional<Board> findByUserIdAndName(Long userId, String name);

@@ -5,12 +5,13 @@ import org.springframework.data.domain.Sort;
 
 public class PageRequestUtil {
 
-  public static PageRequest of(int page, int size, SortType sort) {
-    Sort sortOption = switch (sort) {
-      case OLDEST -> Sort.by("createdAt").ascending();
-      case ALPHABET -> Sort.by("title").ascending();
-      default -> Sort.by("createdAt").descending();
-    };
-    return PageRequest.of(page, size, sortOption);
+  public static PageRequest of(int page, int size, SortType sort, Class<?> entityClass) {
+    String field = sort.getFieldFor(entityClass);
+    Sort.Direction dir = (sort == SortType.OLDEST) ? Sort.Direction.ASC : Sort.Direction.DESC;
+    if (sort == SortType.ALPHABET) {
+      dir = Sort.Direction.ASC;
+    }
+    return PageRequest.of(page, size, Sort.by(dir, field));
   }
+
 }

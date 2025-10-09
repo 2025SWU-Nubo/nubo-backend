@@ -80,8 +80,8 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   // 보드 내 전체 카드
   @Query("""
       SELECT c
-      FROM BoardCard bc
-      JOIN bc.card c
+      FROM Card c
+      JOIN BoardCard bc ON bc.card = c
       WHERE bc.board.id = :boardId
         AND c.deletedAt IS NULL
     """)
@@ -93,8 +93,8 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   // 보드 내 즐겨찾기 카드
   @Query("""
       SELECT c
-      FROM BoardCard bc
-      JOIN bc.card c
+      FROM Card c
+      JOIN BoardCard bc ON bc.card = c
       JOIN CardUserStatus cus ON cus.card = c
       WHERE bc.board.id = :boardId
         AND cus.user.id = :userId
