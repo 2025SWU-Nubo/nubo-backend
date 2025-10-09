@@ -4,11 +4,13 @@ import com.nubo.domain.board.dto.BoardStatsDto;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.user.entity.User;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,6 +21,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     SELECT DISTINCT b
     FROM Board b
     WHERE b.boardType = :boardType
+      AND b.deletedAt IS NULL
       AND (b.user.id = :userId OR b.user IS NULL)
       AND (
         b.source = 'USER'
@@ -30,6 +33,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         OR EXISTS (
           SELECT 1 FROM Board s
           WHERE s.parentBoard.id = b.id
+            AND s.deletedAt IS NULL
         )
         OR EXISTS (
           SELECT 1 FROM BoardMember bm
@@ -54,6 +58,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       SELECT DISTINCT b
       FROM Board b
       WHERE b.boardType = :boardType
+        AND b.deletedAt IS NULL
         AND (b.user.id = :userId OR b.user IS NULL)
         AND (
           b.source = 'USER'
@@ -65,6 +70,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
           OR EXISTS (
             SELECT 1 FROM Board s
             WHERE s.parentBoard.id = b.id
+              AND s.deletedAt IS NULL
           )
           OR EXISTS (
             SELECT 1 FROM BoardMember bm
@@ -87,6 +93,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       WHERE bm.user.id = :userId
         AND bm.favorite = true
         AND bm.board.boardType = 'BOARD'
+        AND bm.board.deletedAt IS NULL
     """)
   Page<Board> findFavoriteBoards(Long userId, Pageable pageable);
 
@@ -97,6 +104,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       WHERE bm.user.id = :userId
         AND bm.board.shared = true
         AND bm.board.boardType = 'BOARD'
+        AND bm.board.deletedAt IS NULL
     """)
   Page<Board> findSharedBoards(Long userId, Pageable pageable);
 
@@ -108,6 +116,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         AND bm.favorite = true
         AND bm.board.parentBoard.id = :parentBoardId
         AND bm.board.boardType = 'SECTION'
+        AND bm.board.deletedAt IS NULL
     """)
   List<Board> findFavoriteSectionsByParentBoardId(
     @Param("parentBoardId") Long parentBoardId,
@@ -132,6 +141,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     LEFT JOIN BoardCard bc ON bc.board.id = b.id
     LEFT JOIN Card c ON c.id = bc.card.id
     WHERE b.id IN :boardIds
+      AND b.deletedAt IS NULL
     GROUP BY b.id
     """)
   List<BoardStatsDto> getBoardStats(@Param("boardIds") List<Long> boardIds);
@@ -144,37 +154,39 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     SELECT DISTINCT b
     FROM Board b
     LEFT JOIN FETCH b.sections s
-    WHERE (
-        b.user.id = :userId OR b.user IS NULL
-        OR EXISTS (
-          SELECT 1
-          FROM BoardMember bm
-          WHERE bm.board.id = b.id
-            AND bm.user.id = :userId
-        )
-    )
-    AND (
-        b.source = 'USER'
-        OR EXISTS (
-          SELECT 1
-          FROM BoardCard bc
-          WHERE bc.board.id = b.id
-            AND bc.card.deletedAt IS NULL
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM Board sb
-          WHERE sb.parentBoard.id = b.id
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM BoardMember bm2
-          WHERE bm2.board.id = b.id
-            AND bm2.user.id = :userId
-            AND bm2.visible = true
-        )
-    )
-    AND b.parentBoard IS NULL
+    WHERE b.deletedAt IS NULL
+      AND (
+          b.user.id = :userId OR b.user IS NULL
+          OR EXISTS (
+            SELECT 1
+            FROM BoardMember bm
+            WHERE bm.board.id = b.id
+              AND bm.user.id = :userId
+          )
+      )
+      AND (
+          b.source = 'USER'
+          OR EXISTS (
+            SELECT 1
+            FROM BoardCard bc
+            WHERE bc.board.id = b.id
+              AND bc.card.deletedAt IS NULL
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM Board sb
+            WHERE sb.parentBoard.id = b.id
+              AND sb.deletedAt IS NULL
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM BoardMember bm2
+            WHERE bm2.board.id = b.id
+              AND bm2.user.id = :userId
+              AND bm2.visible = true
+          )
+      )
+      AND b.parentBoard IS NULL
     ORDER BY b.id
     """)
   List<Board> findAllAccessibleBoards(@Param("userId") Long userId);
@@ -189,6 +201,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     WHERE b.user.id = :userId
       AND b.source = 'AI'
       AND b.boardType = 'BOARD'
+      AND b.deletedAt IS NULL
     """)
   List<Board> findAllDefaultBoardsByUserId(@Param("userId") Long userId);
 
@@ -199,31 +212,33 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
   @Query("""
     SELECT DISTINCT b
     FROM Board b
-    WHERE (b.user.id = :userId OR b.user IS NULL
-           OR EXISTS (
-             SELECT 1 FROM BoardMember bm
-             WHERE bm.board.id = b.id
-               AND bm.user.id = :userId
-           )
-    )
-    AND (
-      b.source = 'USER'
-      OR (
-        b.source = 'AI'
-        AND (
-          EXISTS (
-            SELECT 1 FROM BoardCard bc
-            WHERE bc.board.id = b.id
-              AND bc.card.deletedAt IS NULL
-          )
-          OR EXISTS (
-            SELECT 1 FROM Board s
-            WHERE s.parentBoard.id = b.id
+    WHERE b.deletedAt IS NULL
+      AND (b.user.id = :userId OR b.user IS NULL
+             OR EXISTS (
+               SELECT 1 FROM BoardMember bm
+               WHERE bm.board.id = b.id
+                 AND bm.user.id = :userId
+             )
+      )
+      AND (
+        b.source = 'USER'
+        OR (
+          b.source = 'AI'
+          AND (
+            EXISTS (
+              SELECT 1 FROM BoardCard bc
+              WHERE bc.board.id = b.id
+                AND bc.card.deletedAt IS NULL
+            )
+            OR EXISTS (
+              SELECT 1 FROM Board s
+              WHERE s.parentBoard.id = b.id
+               AND s.deletedAt IS NULL 
+            )
           )
         )
       )
-    )
-    AND LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+      AND LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
     ORDER BY
       CASE WHEN :sort = 'LATEST' THEN b.createdAt END DESC,
       CASE WHEN :sort = 'OLDEST' THEN b.createdAt END ASC,
@@ -235,13 +250,18 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     @Param("sort") String sort
   );
 
-  @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
-    "FROM Board b " +
-    "WHERE b.name = :name " +
-    "AND (b.user = :user OR b.source = com.nubo.domain.board.type.BoardSource.AI) " +
-    "AND ( (b.boardType = com.nubo.domain.board.type.BoardType.BOARD AND :parentBoard IS NULL) " +
-    "   OR (b.boardType = com.nubo.domain.board.type.BoardType.SECTION AND b.parentBoard = "
-    + ":parentBoard) )")
+  // 이름 중복 확인
+  @Query("""
+    SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END
+    FROM Board b
+    WHERE b.name = :name
+      AND b.deletedAt IS NULL
+      AND (b.user = :user OR b.source = com.nubo.domain.board.type.BoardSource.AI)
+      AND (
+        (b.boardType = com.nubo.domain.board.type.BoardType.BOARD AND :parentBoard IS NULL)
+        OR (b.boardType = com.nubo.domain.board.type.BoardType.SECTION AND b.parentBoard = :parentBoard)
+      )
+    """)
   boolean existsByNameConflict(
     @Param("name") String name,
     @Param("user") User user,
@@ -249,4 +269,28 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
   );
 
   boolean existsByUserAndNameAndParentBoardIsNull(User user, String candidate);
+
+  // 보드 삭제 (soft-delete)
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    update Board b
+       set b.deletedAt = :now,
+           b.deletedBy = :userId
+     where b.id in :ids
+       and b.deletedAt is null
+    """)
+  int softDeleteByIds(@Param("ids") List<Long> ids,
+    @Param("userId") Long userId,
+    @Param("now") LocalDateTime now);
+
+  // 삭제 복원
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    update Board b
+       set b.deletedAt = null,
+           b.deletedBy = null
+     where b.id in :ids
+       and b.deletedAt is not null
+    """)
+  int restoreByIds(@Param("ids") List<Long> ids);
 }

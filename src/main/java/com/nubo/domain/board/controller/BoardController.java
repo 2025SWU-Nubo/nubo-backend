@@ -13,6 +13,8 @@ import com.nubo.domain.board.dto.BoardInvitationRequestDto;
 import com.nubo.domain.board.dto.BoardInvitationResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
 import com.nubo.domain.board.dto.BoardNameCheckResponseDto;
+import com.nubo.domain.board.dto.BoardRestoreRequestDto;
+import com.nubo.domain.board.dto.BoardRestoreResponseDto;
 import com.nubo.domain.board.dto.BoardShareRequestDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
@@ -364,6 +366,20 @@ public class BoardController {
   ) {
     Long userId = userUtil.getAuthenticatedUserId();
     BoardFavoriteResponseDto response = boardService.updateBoardFavorite(userId, boardId, request);
+    return ResponseEntity.ok(response);
+  }
+
+  /**
+   * 삭제된 보드를 복원한다 (되돌리기)
+   *
+   * @param req 복원할 보드 ID 목록
+   * @return 복원 결과 갯수
+   */
+  @PatchMapping("/restore")
+  public ResponseEntity<BoardRestoreResponseDto> restoreBoards(
+    @RequestBody BoardRestoreRequestDto req) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    BoardRestoreResponseDto response = boardService.restoreBoards(req.getBoardIds(), userId);
     return ResponseEntity.ok(response);
   }
 }

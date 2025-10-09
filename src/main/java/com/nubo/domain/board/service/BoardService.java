@@ -12,6 +12,7 @@ import com.nubo.domain.board.dto.BoardInvitationRequestDto;
 import com.nubo.domain.board.dto.BoardInvitationResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
 import com.nubo.domain.board.dto.BoardPreviewResponseDto;
+import com.nubo.domain.board.dto.BoardRestoreResponseDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.dto.BoardStatsDto;
@@ -1005,29 +1006,52 @@ public class BoardService {
         throw e;
       }
 
-      try {
-        System.out.println("STEP-4 delete boards reverse start");
-        deleteBoardsInReverse(targets);
-        System.out.println("STEP-4 delete boards reverse done");
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw e;
-      }
-
-      deleteBoardsInReverse(targets);
-
       int sectionsDeleted = (int) targets.stream()
         .filter(t -> t.getBoardType() == BoardType.SECTION).count();
+      LocalDateTime now = LocalDateTime.now();
+      int boardsSoftDeleted = boardRepository.softDeleteByIds(targetBoardIds, userId, now);
 
       return BoardDeleteResultDto.builder()
         .boardId(boardId)
-        .status("DELETED")
+        .status("SOFT_DELETED")
         .option(option.name())
         .linksDetached(linksDetached)
         .cardsSoftDeleted(cardsSoftDeleted)
-        .sectionsDeleted(sectionsDeleted)
+        .sectionsDeleted(boardsSoftDeleted - 1) // 루트 제외
         .build();
     }
+  }
+
+  /**
+   * 삭제된 보드를 복원한다.
+   *
+   * @param boardIds 복원할 보드 ID 목록
+   * @param userId   현재 요청을 보낸 사용자 ID
+   * @return 복원된 보드 갯수 DTO
+   */
+  @Transactional
+  public BoardRestoreResponseDto restoreBoards(List<Long> boardIds, Long userId) {
+    int restored = 0;
+
+    for (Long boardId : boardIds) {
+      Board board = boardRepository.findById(boardId)
+        .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+      // 본인 보드인지, 또는 공유보드 멤버인지 체크
+      boolean isOwner = board.getUser() != null && board.getUser().getId().equals(userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(boardId, userId);
+
+      if (!isOwner && !isMember) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
+
+      if (board.isDeleted()) {
+        board.restore();
+        restored++;
+      }
+    }
+
+    return new BoardRestoreResponseDto(restored);
   }
 
   /**
@@ -1045,16 +1069,6 @@ public class BoardService {
       collectDfs(child, out);
     }
     out.add(node); // 후위: 자식들 뒤에 부모
-  }
-
-  /**
-   * 역순 삭제
-   */
-  private void deleteBoardsInReverse(List<Board> boardsPostOrder) {
-    // boardsPostOrder는 이미 자식→부모 순으로 정렬되어 있으므로 그대로 순회하며 delete
-    for (Board b : boardsPostOrder) {
-      boardRepository.delete(b);
-    }
   }
 
   /**

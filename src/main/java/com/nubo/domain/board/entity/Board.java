@@ -67,22 +67,30 @@ public class Board extends BaseTimeEntity {
   @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<BoardCard> boardCards = new HashSet<>();
 
-  @OneToMany(mappedBy = "parentBoard", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "parentBoard", cascade = CascadeType.ALL, orphanRemoval = false)
   private Set<Board> sections = new HashSet<>();
+
+  // Soft delete용 필드
+  private LocalDateTime deletedAt;
+  private Long deletedBy;
 
   // 마지막 수정시간 업데이트를 위한 dummy 변경
   public void touch() {
     this.setUpdatedAtForTouch(LocalDateTime.now());
   }
 
-  // === 연관관계 편의 메서드 ===
-  public void addSection(Board section) {
-    this.sections.add(section);
-    section.setParentBoard(this);
+  public boolean isDeleted() {
+    return deletedAt != null;
   }
 
-  public void removeSection(Board section) {
-    this.sections.remove(section);
-    section.setParentBoard(null);
+  public void markDeleted(Long userId) {
+    this.deletedAt = LocalDateTime.now();
+    this.deletedBy = userId;
   }
+
+  public void restore() {
+    this.deletedAt = null;
+    this.deletedBy = null;
+  }
+
 }
