@@ -1102,23 +1102,21 @@ public class BoardService {
   // 벌크 액션 헬퍼 메서드
 
   // 카드 복제/링크 처리
-  private Long copyOrLinkCard(Card card, Board targetBoard, Long userId) {
+  private Long copyOrLinkCard(Card original, Board targetBoard, Long userId) {
     if (targetBoard == null) {
       // 루트에 카드를 직접 복제할 수 없음 → 무시
       return null;
     }
 
-    boolean exists = boardCardService.exists(targetBoard.getId(), card.getId());
-    if (exists) {
-      String newTitle = resolveDuplicateCardTitle(card.getTitle(), targetBoard);
-      User user = userService.getUserById(userId);
-      Card copied = cardMapper.toCopiedCard(card, newTitle, user);
-      cardRepository.save(copied);
-      boardCardService.add(targetBoard, copied);
-      return copied.getId();
-    }
-    boardCardService.add(targetBoard, card);
-    return card.getId();
+    User user = userService.getUserById(userId);
+
+    String newTitle = resolveDuplicateCardTitle(original.getTitle(), targetBoard);
+    Card copied = cardMapper.toCopiedCard(original, newTitle, user);
+    cardRepository.save(copied);
+
+    boardCardService.add(targetBoard, copied);
+
+    return copied.getId();
   }
 
   // 보드 이름 중복 처리
