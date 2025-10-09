@@ -72,7 +72,9 @@ public class FcmService {
 
     String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendHybridMessageToToken(token.getToken(), type, title, body, channelId);
+      sendHybridMessageToToken(token.getToken(), type, title, body, channelId,
+        null,
+        null);
     }
   }
 
@@ -113,7 +115,9 @@ public class FcmService {
 
     String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendHybridMessageToToken(token.getToken(), type, title, body, channelId);
+      sendHybridMessageToToken(token.getToken(), type, title, body, channelId,
+        board.getId(),
+        null);
     }
   }
 
@@ -153,7 +157,9 @@ public class FcmService {
 
     String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendHybridMessageToToken(token.getToken(), type, title, body, channelId);
+      sendHybridMessageToToken(token.getToken(), type, title, body, channelId,
+        null,
+        card.getId());
     }
   }
 
@@ -165,20 +171,29 @@ public class FcmService {
    * @param body  알림 본문
    */
   public void sendHybridMessageToToken(
-    String token, NotificationType type, String title, String body, String channelId) {
+    String token, NotificationType type, String title, String body, String channelId,
+    Long boardId, Long cardId) {
     Notification notification = Notification.builder()
       .setTitle(title)
       .setBody(body)
       .build();
 
-    Message message = Message.builder()
+    Message.Builder messageBuilder = Message.builder()
       .setToken(token)
       .setNotification(notification)
       .putData("title", title)
       .putData("body", body)
       .putData("type", type.name())
-      .putData("channel_id", channelId)
-      .build();
+      .putData("channel_id", channelId);
+
+    if (boardId != null) {
+      messageBuilder.putData("board_id", String.valueOf(boardId));
+    }
+    if (cardId != null) {
+      messageBuilder.putData("card_id", String.valueOf(cardId));
+    }
+
+    Message message = messageBuilder.build();
 
     try {
       FirebaseMessaging.getInstance().send(message);
