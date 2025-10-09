@@ -2,9 +2,11 @@ package com.nubo.domain.card.repository;
 
 import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.entity.CardUserStatus.CardUserStatusId;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 
 public interface CardUserStatusRepository extends JpaRepository<CardUserStatus, CardUserStatusId> {
@@ -20,4 +22,8 @@ public interface CardUserStatusRepository extends JpaRepository<CardUserStatus, 
         AND cus.card.id IN :cardIds
     """)
   List<CardUserStatus> findByUserIdAndCardIdIn(Long userId, List<Long> cardIds);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT s FROM CardUserStatus s WHERE s.user.id = :userId AND s.card.id = :cardId")
+  Optional<CardUserStatus> findByUserIdAndCardIdForUpdate(Long userId, Long cardId);
 }

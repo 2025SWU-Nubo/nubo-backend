@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,34 +34,34 @@ public class CardUserStatusService {
    */
   @Transactional
   public boolean markAsViewed(Long userId, Card card) {
-    Optional<CardUserStatus> optionalStatus =
-      cardUserStatusRepository.findByUserIdAndCardId(userId, card.getId());
+    LocalDateTime now = LocalDateTime.now();
 
-    if (optionalStatus.isEmpty()) {
-      try {
-        // 완전 처음 보는 카드 → INSERT
-        CardUserStatus status = CardUserStatus.builder()
-          .user(userService.getUserById(userId))
-          .card(card)
-          .viewedAt(LocalDateTime.now())
-          .isFavorite(false)
-          .build();
+    // (1) PESSIMISTIC_WRITE 락으로 중복 방지
+    Optional<CardUserStatus> existing =
+      cardUserStatusRepository.findByUserIdAndCardIdForUpdate(userId, card.getId());
+
+    if (existing.isPresent()) {
+      CardUserStatus status = existing.get();
+
+      // (2) viewedAt 없을 때만 업데이트
+      if (status.getViewedAt() == null) {
+        status.setViewedAt(now);
         cardUserStatusRepository.save(status);
-        return true;
-      } catch (DataIntegrityViolationException e) {
-        // 다른 트랜잭션이 거의 동시에 insert한 경우 → 중복 방어
-        return false;
+        return true; // 첫 열람
       }
+      return false; // 이미 본 적 있음
     }
 
-    CardUserStatus status = optionalStatus.get();
-    if (status.getViewedAt() == null) {
-      // 레코드는 있는데 viewedAt이 비어있을 때 → UPDATE
-      status.setViewedAt(LocalDateTime.now());
-      return true;
-    }
+    // (3) 처음 보는 카드 → insert
+    CardUserStatus status = CardUserStatus.builder()
+      .user(userService.getUserById(userId))
+      .card(card)
+      .viewedAt(now)
+      .isFavorite(false)
+      .build();
 
-    return false; // 이미 본 카드
+    cardUserStatusRepository.save(status);
+    return true;
   }
 
   /**
