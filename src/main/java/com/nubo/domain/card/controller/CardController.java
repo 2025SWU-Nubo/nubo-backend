@@ -6,6 +6,8 @@ import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteRequestDto;
 import com.nubo.domain.card.dto.CardFavoriteResponseDto;
+import com.nubo.domain.card.dto.CardRestoreRequestDto;
+import com.nubo.domain.card.dto.CardRestoreResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryPromptRequestDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto;
@@ -170,5 +172,19 @@ public class CardController {
     Long userId = userUtil.getAuthenticatedUserId();
     var results = cardService.deleteCardsGlobally(req.getCardIds(), userId);
     return ResponseEntity.ok(Map.of("results", results));
+  }
+
+  /**
+   * 삭제된 카드를 복원한다 (되돌리기)
+   *
+   * @param req 복원할 카드 ID 목록
+   * @return 복원 결과 갯수
+   */
+  @PatchMapping("/restore")
+  public ResponseEntity<CardRestoreResponseDto> restoreCards(
+    @RequestBody CardRestoreRequestDto req) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    CardRestoreResponseDto response = cardService.restoreCards(req.getCardIds(), userId);
+    return ResponseEntity.ok(response);
   }
 }

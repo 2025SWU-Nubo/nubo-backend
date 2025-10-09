@@ -11,6 +11,7 @@ import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteRequestDto;
 import com.nubo.domain.card.dto.CardFavoriteResponseDto;
+import com.nubo.domain.card.dto.CardRestoreResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
 import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
@@ -551,4 +552,33 @@ public class CardService {
     return results;
   }
 
+  /**
+   * 여러 카드를 복원한다. (soft delete 해제)
+   *
+   * @param cardIds 복원할 카드 ID 목록
+   * @param userId  현재 요청을 보낸 사용자 ID
+   * @return 복원된 카드 갯수 dto
+   */
+  @Transactional
+  public CardRestoreResponseDto restoreCards(List<Long> cardIds, Long userId) {
+    int restoredCount = 0;
+
+    for (Long cardId : cardIds) {
+      Card card = cardRepository.findByIdForUpdate(cardId)
+        .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+      if (!card.getUser().getId().equals(userId)) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
+
+      if (card.getDeletedAt() == null) {
+        continue; // 이미 복원된 카드
+      }
+
+      cardRepository.restoreById(cardId);
+      restoredCount++;
+    }
+
+    return new CardRestoreResponseDto(restoredCount);
+  }
 }

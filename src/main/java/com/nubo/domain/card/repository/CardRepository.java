@@ -217,4 +217,14 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   int softDeleteByIds(@Param("ids") Collection<Long> ids,
     @Param("userId") Long userId,
     @Param("now") LocalDateTime now);
+
+  @Modifying(clearAutomatically = true, flushAutomatically = true)
+  @Query("""
+    update Card c
+       set c.deletedAt = null,
+           c.deletedBy = null
+     where c.id = :id
+       and c.deletedAt is not null
+    """)
+  int restoreById(@Param("id") Long id);
 }
