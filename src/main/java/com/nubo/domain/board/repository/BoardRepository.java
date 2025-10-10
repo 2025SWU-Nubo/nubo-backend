@@ -26,9 +26,14 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       AND (
         b.source = 'USER'
         OR EXISTS (
-          SELECT 1 FROM BoardCard bc
+          SELECT 1
+          FROM BoardCard bc
+          JOIN bc.card c
+          LEFT JOIN CardUserStatus cus
+            ON cus.card = c AND cus.user.id = :userId
           WHERE bc.board.id = b.id
-            AND bc.card.deletedAt IS NULL
+            AND c.deletedAt IS NULL
+            AND (cus IS NULL OR cus.viewedAt IS NULL)
         )
         OR EXISTS (
           SELECT 1 FROM Board s
@@ -39,7 +44,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
           SELECT 1 FROM BoardMember bm
           WHERE bm.board.id = b.id
             AND bm.user.id = :userId
-            AND bm.visible = true
+            AND (bm.visible = true OR bm.lastVisitedAt IS NOT NULL)
         )
       )
     ORDER BY

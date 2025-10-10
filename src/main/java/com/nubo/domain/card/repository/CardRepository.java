@@ -130,18 +130,19 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
   // 미열람 카드의 썸네일 리스트 랜덤 조회
   @Query("""
-    SELECT c
+    SELECT DISTINCT c
     FROM BoardMember bm
     JOIN bm.board b
-    JOIN b.boardCards bc
+    JOIN BoardCard bc ON bc.board.id = b.id OR bc.board.parentBoard.id = b.id
     JOIN bc.card c
-    LEFT JOIN CardUserStatus cus ON cus.card = c
+    LEFT JOIN CardUserStatus cus 
+      ON cus.card = c AND cus.user.id = :userId
     WHERE bm.user.id = :userId
       AND b.id = :boardId
       AND c.deletedAt IS NULL
       AND (
            cus IS NULL
-           OR (cus.user.id = :userId AND cus.viewedAt IS NULL)
+           OR cus.viewedAt IS NULL
       )
     ORDER BY function('RAND')
     """)
