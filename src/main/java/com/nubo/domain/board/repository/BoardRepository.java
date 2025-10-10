@@ -161,9 +161,9 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       COUNT(DISTINCT c)
     )
     FROM Board b
-    LEFT JOIN Board s ON s.parentBoard.id = b.id
+    LEFT JOIN Board s ON s.parentBoard.id = b.id AND s.deletedAt IS NULL
     LEFT JOIN BoardCard bc ON bc.board.id = b.id
-    LEFT JOIN Card c ON c.id = bc.card.id
+    LEFT JOIN Card c ON c.id = bc.card.id AND c.deletedAt IS NULL
     WHERE b.id IN :boardIds
       AND b.deletedAt IS NULL
     GROUP BY b.id
