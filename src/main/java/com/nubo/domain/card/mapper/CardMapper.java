@@ -83,7 +83,7 @@ public class CardMapper {
         highlights = List.of();
       }
     }
-    
+
     String boardName = card.getBoardCards().stream()
       .map(BoardCard::getBoard)
       .filter(board -> board.getSource() == BoardSource.AI)
@@ -148,8 +148,12 @@ public class CardMapper {
     return Card.builder()
       .title(newTitle)
       .summary(source.getSummary())
+      .tags(source.getTags())
+      .highlightInfo(source.getHighlightInfo())
       .video(source.getVideo())
       .user(user)
+      .deletedAt(null)
+      .deletedBy(null)
       .build();
   }
 
