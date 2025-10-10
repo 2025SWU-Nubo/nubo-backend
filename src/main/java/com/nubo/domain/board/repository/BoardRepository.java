@@ -202,7 +202,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
             FROM BoardMember bm2
             WHERE bm2.board.id = b.id
               AND bm2.user.id = :userId
-              AND bm2.visible = true
+              AND (bm2.visible = true OR bm2.lastVisitedAt IS NOT NULL)
           )
       )
       AND b.parentBoard IS NULL
