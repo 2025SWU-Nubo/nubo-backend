@@ -9,21 +9,24 @@ public class CardDeleteResultDto {
 
   private Long cardId;
   private String status;
-  private String action;
 
-  public static CardDeleteResultDto notFound(Long id) {
-    return CardDeleteResultDto.builder().cardId(id).status("NOT_FOUND").build();
+  public static CardDeleteResultDto deleted(Long id) {
+    return new CardDeleteResultDto(id, "DELETED");
+  }
+
+  public static CardDeleteResultDto detached(Long id) {
+    return new CardDeleteResultDto(id, "DETACHED");
   }
 
   public static CardDeleteResultDto forbidden(Long id) {
-    return CardDeleteResultDto.builder().cardId(id).status("FORBIDDEN").build();
+    return new CardDeleteResultDto(id, "FORBIDDEN");
+  }
+
+  public static CardDeleteResultDto notFound(Long id) {
+    return new CardDeleteResultDto(id, "NOT_FOUND");
   }
 
   public static CardDeleteResultDto alreadyDeleted(Long id) {
-    return CardDeleteResultDto.builder().cardId(id).status("ALREADY_DELETED").build();
-  }
-
-  public static CardDeleteResultDto deleted(Long id) {
-    return CardDeleteResultDto.builder().cardId(id).status("OK").action("SOFT_DELETED").build();
+    return new CardDeleteResultDto(id, "ALREADY_DELETED");
   }
 }

@@ -7,6 +7,7 @@ import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardCreateResponseDto;
+import com.nubo.domain.card.dto.CardDeleteRequestDto;
 import com.nubo.domain.card.dto.CardDeleteResultDto;
 import com.nubo.domain.card.dto.CardDetailResponseDto;
 import com.nubo.domain.card.dto.CardFavoriteRequestDto;
@@ -548,34 +549,44 @@ public class CardService {
   /**
    * 여러 카드를 전역 삭제(소프트 삭제)한다.
    *
-   * @param cardIds 삭제할 카드 ID 목록
-   * @param userId  현재 요청을 보낸 사용자 ID (권한 검사에 사용)
+   * @param req    삭제 요청 DTO
+   * @param userId 현재 요청을 보낸 사용자 ID (권한 검사에 사용)
    * @return 카드별 처리 결과 리스트
    */
   @Transactional
-  public List<CardDeleteResultDto> deleteCardsGlobally(List<Long> cardIds, Long userId) {
+  public List<CardDeleteResultDto> deleteCardsByMode(CardDeleteRequestDto req, Long userId) {
     List<CardDeleteResultDto> results = new ArrayList<>();
     LocalDateTime now = LocalDateTime.now();
 
-    for (Long cardId : cardIds) {
+    for (Long cardId : req.getCardIds()) {
       var opt = cardRepository.findByIdForUpdate(cardId);
       if (opt.isEmpty()) {
         results.add(CardDeleteResultDto.notFound(cardId));
         continue;
       }
+
       Card card = opt.get();
 
       if (!card.getUser().getId().equals(userId)) {
         results.add(CardDeleteResultDto.forbidden(cardId));
         continue;
       }
+
       if (card.getDeletedAt() != null) {
         results.add(CardDeleteResultDto.alreadyDeleted(cardId));
         continue;
       }
 
-      cardRepository.softDeleteById(cardId, userId, now);
-      results.add(CardDeleteResultDto.deleted(cardId));
+      switch (req.getDeleteMode()) {
+        case DETACH_ONLY -> {
+          boardCardService.detachCardFromAllBoards(cardId, userId);
+          results.add(CardDeleteResultDto.detached(cardId));
+        }
+        case SOFT_DELETE -> {
+          cardRepository.softDeleteById(cardId, userId, now);
+          results.add(CardDeleteResultDto.deleted(cardId));
+        }
+      }
     }
     return results;
   }

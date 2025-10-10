@@ -168,9 +168,11 @@ public class CardController {
    * @return 카드별 처리 결과 리스트
    */
   @DeleteMapping
-  public ResponseEntity<Map<String, Object>> deleteCards(@RequestBody CardDeleteRequestDto req) {
+  public ResponseEntity<Map<String, Object>> deleteCards(
+    @RequestBody CardDeleteRequestDto req
+  ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    var results = cardService.deleteCardsGlobally(req.getCardIds(), userId);
+    var results = cardService.deleteCardsByMode(req, userId);
     return ResponseEntity.ok(Map.of("results", results));
   }
 

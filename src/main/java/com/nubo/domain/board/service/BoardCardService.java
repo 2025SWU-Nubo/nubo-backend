@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BoardCardService {
 
   private final BoardCardRepository boardCardRepository;
+  private final BoardMemberService boardMemberService;
 
   @Transactional(readOnly = true)
   public List<Long> findBoardIdsByCardId(Long cardId) {
@@ -69,5 +70,18 @@ public class BoardCardService {
       .card(card)
       .build();
     boardCardRepository.save(bc);
+  }
+
+  @Transactional
+  public void detachCardFromAllBoards(Long cardId, Long userId) {
+    List<Long> boardIds = boardCardRepository.findBoardIdsByCardId(cardId);
+
+    for (Long boardId : boardIds) {
+      if (!boardMemberService.existsByBoardAndUser(boardId, userId)) {
+        // 접근 불가 보드는 무시하거나 로그만 남김
+        continue;
+      }
+      boardCardRepository.deleteByBoardIdAndCardId(boardId, cardId);
+    }
   }
 }
