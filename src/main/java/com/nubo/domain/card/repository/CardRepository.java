@@ -130,23 +130,46 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
   // 미열람 카드의 썸네일 리스트 랜덤 조회
   @Query("""
-        SELECT c
-        FROM BoardCard bc
-        JOIN bc.card c
-        LEFT JOIN CardUserStatus cus ON cus.card = c
-        WHERE bc.board.id = :boardId
-          AND c.deletedAt IS NULL
-          AND (
-               cus IS NULL 
-               OR (cus.user.id = :userId AND cus.viewedAt IS NULL)
-          )
-        ORDER BY function('RAND')
+    SELECT c
+    FROM BoardMember bm
+    JOIN bm.board b
+    JOIN b.boardCards bc
+    JOIN bc.card c
+    LEFT JOIN CardUserStatus cus ON cus.card = c
+    WHERE bm.user.id = :userId
+      AND b.id = :boardId
+      AND c.deletedAt IS NULL
+      AND (
+           cus IS NULL
+           OR (cus.user.id = :userId AND cus.viewedAt IS NULL)
+      )
+    ORDER BY function('RAND')
     """)
   List<Card> findUnviewedCardsByBoard(
     @Param("userId") Long userId,
     @Param("boardId") Long boardId,
-    @Param("limit") int limit
+    Pageable pageable
   );
+
+  // 미시청 카드 중 video_id 기준으로 중복 제거하여 조회
+  @Query("""
+    SELECT c
+    FROM Card c
+    WHERE c.id IN (
+      SELECT MAX(c2.id)
+      FROM Card c2
+      LEFT JOIN CardUserStatus s
+        ON s.card.id = c2.id AND s.user.id = :userId
+      WHERE c2.user.id = :userId
+        AND c2.deletedAt IS NULL
+        AND (
+          s IS NULL OR s.viewedAt IS NULL
+        )
+      GROUP BY c2.video.id
+    )
+    ORDER BY function('RAND')
+    """)
+  List<Card> findDistinctUnviewedCardsForHome(@Param("userId") Long userId, Pageable pageable);
 
   // 카드 검색 (제목, 내용, 태그 내에서의 키워드 "일부" 일치)
   @Query("""

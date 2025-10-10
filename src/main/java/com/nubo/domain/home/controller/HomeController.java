@@ -69,4 +69,19 @@ public class HomeController {
       limit);
     return ResponseEntity.ok(cards);
   }
+
+  /**
+   * 홈 화면용 미열람 카드 썸네일 리스트를 복제 카드의 중복을 제외한 후 조회한다. ('전체'보드)
+   *
+   * @param limit 한 번에 조회할 카드 개수 (기본값 20)
+   * @return 미시청 카드 리스트 (랜덤 순서, 중복 제거)
+   */
+  @GetMapping("/boards/all/unviewed-cards")
+  public ResponseEntity<List<CardSimpleResponseDto>> getHomeRecommendations(
+    @RequestParam(defaultValue = "20") int limit
+  ) {
+    Long userId = userUtil.getAuthenticatedUserId();
+    List<CardSimpleResponseDto> result = cardService.getDistinctUnviewedCards(userId, limit);
+    return ResponseEntity.ok(result);
+  }
 }

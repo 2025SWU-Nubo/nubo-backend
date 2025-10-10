@@ -45,6 +45,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -319,13 +320,40 @@ public class CardService {
   @Transactional(readOnly = true)
   public List<CardSimpleResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
     int limit) {
+    Pageable pageable = PageRequest.of(0, limit);
+
     List<Card> unviewedCards =
-      cardRepository.findUnviewedCardsByBoard(userId, boardId, limit);
+      cardRepository.findUnviewedCardsByBoard(userId, boardId, pageable);
 
     List<Long> cardIds = unviewedCards.stream().map(Card::getId).toList();
     Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
 
     return unviewedCards.stream()
+      .map(card -> {
+        CardUserStatus status = statusMap.get(card.getId());
+        boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
+        boolean viewed = status != null && status.getViewedAt() != null;
+        return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+      })
+      .toList();
+  }
+
+  /**
+   * 홈탭용 미시청 카드 목록 조회 (중복 제거, '전체'칩용)
+   *
+   * @param userId 사용자 ID
+   * @param limit  조회할 최대 카드 개수
+   * @return 미시청 카드 목록 (랜덤 순서, 중복 제거됨)
+   */
+  @Transactional(readOnly = true)
+  public List<CardSimpleResponseDto> getDistinctUnviewedCards(Long userId, int limit) {
+    Pageable pageable = PageRequest.of(0, limit);
+    List<Card> cards = cardRepository.findDistinctUnviewedCardsForHome(userId, pageable);
+
+    List<Long> cardIds = cards.stream().map(Card::getId).toList();
+    Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
+
+    return cards.stream()
       .map(card -> {
         CardUserStatus status = statusMap.get(card.getId());
         boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
