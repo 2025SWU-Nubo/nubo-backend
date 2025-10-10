@@ -141,7 +141,9 @@ public class BoardService {
 
     // 4. 멤버십 생성
     // 항상 OWNER 멤버 생성
-    boardMemberService.createOwner(savedBoard, owner);
+    if (dto.getBoardType() == BoardType.SECTION || dto.getBoardType() == BoardType.BOARD) {
+      boardMemberService.createOwner(savedBoard, owner);
+    }
 
     // 공유 보드일 경우 초대 생성
     if (dto.getBoardType() == BoardType.BOARD && dto.isShared()) {
@@ -709,6 +711,7 @@ public class BoardService {
         User user = userService.getUserById(userId);
         Board copied = boardMapper.toCopiedBoard(source, newName, user, targetBoard);
         boardRepository.save(copied);
+        boardMemberService.createOwner(copied, user);
         createdBoardIds.add(copied.getId());
 
         List<BoardCard> boardCards = boardCardService.getByBoardId(source.getId());
