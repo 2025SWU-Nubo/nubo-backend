@@ -78,6 +78,12 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
               AND bm.user.id = :userId
               AND bm.visible = true
           )
+          OR EXISTS (
+            SELECT 1 FROM BoardMember bm2
+            WHERE bm2.board.id = b.id
+              AND bm2.user.id = :userId
+              AND (bm2.visible = true OR bm2.lastVisitedAt IS NOT NULL)
+          )
         )
     """)
   Page<Board> findVisibleBoardsForUser(
