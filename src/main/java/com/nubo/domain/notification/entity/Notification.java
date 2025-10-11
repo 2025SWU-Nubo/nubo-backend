@@ -61,6 +61,9 @@ public class Notification extends BaseTimeEntity {
   @JoinColumn(name = "invitation_id")
   private BoardInvitation invitation;
 
+  @Column(nullable = false)
+  private boolean visible = true; // 초대 수락 후 false 처리
+
   // -- 카드 알림 관련 연관관계 --
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "card_id")
@@ -68,5 +71,9 @@ public class Notification extends BaseTimeEntity {
 
   public void markAsRead() {
     this.isRead = true;
+  }
+
+  public void setVisible(boolean visible) {
+    this.visible = visible;
   }
 }

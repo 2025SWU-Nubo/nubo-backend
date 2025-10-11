@@ -8,6 +8,7 @@ import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.type.BoardMemberRole;
 import com.nubo.domain.board.type.InvitationStatus;
 import com.nubo.domain.notification.service.FcmService;
+import com.nubo.domain.notification.service.NotificationService;
 import com.nubo.domain.user.entity.User;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
@@ -24,6 +25,7 @@ public class BoardInvitationService {
   private final BoardInvitationRepository invitationRepository;
   private final BoardMemberRepository boardMemberRepository;
   private final FcmService fcmService;
+  private final NotificationService notificationService;
 
   /**
    * 초대 ID로 초대 조회
@@ -145,6 +147,9 @@ public class BoardInvitationService {
       .role(BoardMemberRole.ADMIN) // 정책상 ADMIN
       .visible(true)
       .build());
+
+    // 초대 알림 숨기기
+    notificationService.hideByInvitationId(invitation.getId());
 
     // 초대한 사람에게 알림
     fcmService.sendBoardAcceptNotification(

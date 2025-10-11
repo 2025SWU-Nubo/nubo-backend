@@ -47,6 +47,7 @@ public class NotificationService {
       .title(title)
       .body(body)
       .isRead(false)
+      .visible(true)
       .build();
 
     return notificationRepository.save(notification);
@@ -80,6 +81,7 @@ public class NotificationService {
       .title(title)
       .body(body)
       .isRead(false)
+      .visible(true)
       .board(board)
       .invitation(invitation)
       .build();
@@ -113,6 +115,7 @@ public class NotificationService {
       .title(title)
       .body(body)
       .isRead(false)
+      .visible(true)
       .card(card)
       .build();
 
@@ -163,10 +166,20 @@ public class NotificationService {
     notifications.forEach(n -> n.markAsRead());
   }
 
-  // 전체 알림 읽음 처리를위한 엔티티용 조회 메서드
+  // 전체 알림 읽음 처리를 위한 엔티티용 조회 메서드
   @Transactional(readOnly = true)
   public List<Notification> getRecentNotificationEntities(Long userId) {
     LocalDateTime since = LocalDateTime.now().minusDays(7);
     return notificationRepository.findRecentByUserId(userId, since);
+  }
+
+  // 초대 수락 후 알림 숨김 처리
+  @Transactional
+  public void hideByInvitationId(Long invitationId) {
+    notificationRepository.findByInvitationId(invitationId)
+      .ifPresent(notification -> {
+        notification.setVisible(false);
+        notificationRepository.save(notification);
+      });
   }
 }

@@ -289,7 +289,7 @@ public class FcmService {
   public void sendBoardAddedNotification(
     Long inviteeId, String boardName,
     Board board) {
-    sendNotificationToUser(
+    notificationService.createNotification(
       inviteeId,
       NotificationType.BOARD,
       "공유하기",
