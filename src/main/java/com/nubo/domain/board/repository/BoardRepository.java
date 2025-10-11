@@ -177,8 +177,9 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
   @Query("""
     SELECT DISTINCT b
     FROM Board b
-    LEFT JOIN FETCH b.sections s WITH s.deletedAt IS NULL
+    LEFT JOIN FETCH b.sections s
     WHERE b.deletedAt IS NULL
+      AND (s.deletedAt IS NULL OR s IS NULL)
       AND (
           b.user.id = :userId OR b.user IS NULL
           OR EXISTS (
@@ -191,20 +192,17 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       AND (
           b.source = 'USER'
           OR EXISTS (
-            SELECT 1
-            FROM BoardCard bc
+            SELECT 1 FROM BoardCard bc
             WHERE bc.board.id = b.id
               AND bc.card.deletedAt IS NULL
           )
           OR EXISTS (
-            SELECT 1
-            FROM Board sb
+            SELECT 1 FROM Board sb
             WHERE sb.parentBoard.id = b.id
               AND sb.deletedAt IS NULL
           )
           OR EXISTS (
-            SELECT 1
-            FROM BoardMember bm2
+            SELECT 1 FROM BoardMember bm2
             WHERE bm2.board.id = b.id
               AND bm2.user.id = :userId
               AND (bm2.visible = true OR bm2.lastVisitedAt IS NOT NULL)
