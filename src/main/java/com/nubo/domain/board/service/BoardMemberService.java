@@ -126,7 +126,6 @@ public class BoardMemberService {
   }
 
   // OWNER 자격을 생성한다.
-  @Transactional
   public void createOwner(Board board, User owner) {
     BoardMember ownerMember = BoardMember.builder()
       .board(board)
