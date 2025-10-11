@@ -11,6 +11,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -93,7 +94,7 @@ public class GrowthService {
 
     // 이번 주 범위 계산 (일요일 ~ 토요일)
     LocalDate today = LocalDate.now();
-    LocalDate startOfWeek = today.with(DayOfWeek.SUNDAY);
+    LocalDate startOfWeek = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.SUNDAY));
     LocalDate endOfWeek = startOfWeek.plusDays(6);
 
     List<DailyWaterDrop> weeklyRecords =
