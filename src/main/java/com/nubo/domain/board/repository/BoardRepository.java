@@ -177,7 +177,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
   @Query("""
     SELECT DISTINCT b
     FROM Board b
-    LEFT JOIN FETCH b.sections s
+    LEFT JOIN FETCH b.sections s WITH s.deletedAt IS NULL
     WHERE b.deletedAt IS NULL
       AND (
           b.user.id = :userId OR b.user IS NULL
