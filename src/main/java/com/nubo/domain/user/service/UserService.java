@@ -106,6 +106,10 @@ public class UserService {
   public List<UserSearchResponseDto> searchUsersByEmail(String keyword) {
     Long currentUserId = userUtil.getAuthenticatedUserId();
 
+    if (keyword == null || keyword.isBlank()) {
+      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    }
+
     List<User> users = userRepository.findByEmailContainingIgnoreCase(keyword);
     return users.stream()
       .filter(user -> !user.getId().equals(currentUserId)) // 자기 자신 제외
