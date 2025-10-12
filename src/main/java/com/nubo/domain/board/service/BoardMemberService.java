@@ -114,7 +114,7 @@ public class BoardMemberService {
     }
 
     // 최종 멤버 목록 조회
-    List<BoardMember> members = boardMemberRepository.findAllByBoardId(board.getId());
+    List<BoardMember> members = boardMemberRepository.findActiveMembersByBoardId(board.getId());
     List<BoardMemberResponseDto> memberDtos = members.stream()
       .map(boardMemberMapper::toResponseDto)
       .toList();

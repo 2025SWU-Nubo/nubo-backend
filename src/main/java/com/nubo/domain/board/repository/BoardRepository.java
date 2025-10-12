@@ -103,6 +103,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       FROM BoardMember bm
       WHERE bm.user.id = :userId
         AND bm.favorite = true
+        AND bm.user.deletedAt IS NULL
         AND bm.board.boardType = 'BOARD'
         AND bm.board.deletedAt IS NULL
     """)
@@ -113,6 +114,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       SELECT bm.board
       FROM BoardMember bm
       WHERE bm.user.id = :userId
+        AND bm.user.deletedAt IS NULL
         AND bm.board.shared = true
         AND bm.board.boardType = 'BOARD'
         AND bm.board.deletedAt IS NULL
@@ -124,6 +126,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       SELECT bm.board
       FROM BoardMember bm
       WHERE bm.user.id = :userId
+        AND bm.user.deletedAt IS NULL
         AND bm.favorite = true
         AND bm.board.parentBoard.id = :parentBoardId
         AND bm.board.boardType = 'SECTION'

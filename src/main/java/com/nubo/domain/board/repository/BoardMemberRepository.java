@@ -28,8 +28,14 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
   List<BoardMember> findByUserIdAndBoardIds(@Param("userId") Long userId,
     @Param("boardIds") List<Long> boardIds);
 
-  // 특정 보드에 소속된 멤버 목록 조회용
-  List<BoardMember> findAllByBoardId(Long boardId);
+  // 특정 보드에 소속된 멤버 목록 조회용 (탈퇴 회원 제외)
+  @Query("""
+    SELECT bm
+    FROM BoardMember bm
+    WHERE bm.board.id = :boardId
+      AND bm.user.deletedAt IS NULL
+    """)
+  List<BoardMember> findActiveMembersByBoardId(@Param("boardId") Long boardId);
 
   // 최근 방문한 보드 리스트 조회
   @Query("""
@@ -79,10 +85,12 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
     """)
   int bulkResetVisible(@Param("userId") Long userId);
 
+  // 멤버 정렬 조회 (owner 우선)
   @Query("""
     SELECT bm
     FROM BoardMember bm
     WHERE bm.board.id = :boardId
+      AND bm.user.deletedAt IS NULL
     ORDER BY 
       CASE WHEN bm.role = 'OWNER' THEN 0 ELSE 1 END,
       bm.createdAt ASC
