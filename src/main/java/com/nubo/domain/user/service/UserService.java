@@ -10,6 +10,7 @@ import com.nubo.domain.user.dto.MyPageResponseDto;
 import com.nubo.domain.user.dto.UserProfileUpdateResponseDto;
 import com.nubo.domain.user.dto.UserPushSettingRequestDto;
 import com.nubo.domain.user.dto.UserSearchResponseDto;
+import com.nubo.domain.user.dto.UserWithStatusDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
 import com.nubo.domain.user.repository.UserRepository;
@@ -18,6 +19,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,30 +46,47 @@ public class UserService {
    * @return 기존 사용자 또는 새로 저장된 사용자
    */
   @Transactional
-  public User getOrCreateUser(User userCandidate) {
-    return userRepository.findByProviderAndProviderUserId(
+  public UserWithStatusDto getOrCreateUser(User userCandidate) {
+    boolean reactivated = false;
+    User user;
+
+    // 기존 사용자 조회
+    Optional<User> existingOpt = userRepository.findByProviderAndProviderUserId(
       userCandidate.getProvider(),
       userCandidate.getProviderUserId()
-    ).orElseGet(() -> {
-      // 1. 사용자 저장
-      User newUser = userRepository.save(userCandidate);
+    );
 
-      // 2. 기본 보드 생성
-      List<Board> defaultBoards = boardMapper.toDefaultBoards(newUser);
+    if (existingOpt.isPresent()) {
+      // ✅ 기존 유저 존재
+      user = existingOpt.get();
 
-      // 3. 각 보드에 대해 BoardMember(owner) 생성
-      List<BoardMember> memberships = boardMemberMapper.toDefaultBoardMembers(defaultBoards,
-        newUser);
+      // 탈퇴 이력이 있으면 복구 처리
+      if (user.getDeletedAt() != null) {
+        user.setDeletedAt(null);
+        userRepository.save(user);
+        reactivated = true; // 복구됨
+      }
+
+    } else {
+      // ✅ 신규 유저 생성
+      user = userRepository.save(userCandidate);
+
+      // 기본 보드 생성
+      List<Board> defaultBoards = boardMapper.toDefaultBoards(user);
+      List<BoardMember> memberships = boardMemberMapper.toDefaultBoardMembers(defaultBoards, user);
 
       boardRepository.saveAll(defaultBoards);
       boardMemberRepository.saveAll(memberships);
 
       // 푸시알림 기본값 true 설정
-      userCandidate.setRemindEnabled(true);
-      userCandidate.setPushEnabled(true);
+      user.setRemindEnabled(true);
+      user.setPushEnabled(true);
 
-      return newUser;
-    });
+      // 신규 가입자 (복구값 false)
+      reactivated = false;
+    }
+
+    return new UserWithStatusDto(user, reactivated);
   }
 
   /**
@@ -212,5 +231,34 @@ public class UserService {
         user.setRemindEnabled(false);
       }
     }
+  }
+
+  /**
+   * 회원 탈퇴 (Soft Delete)
+   *
+   * @param userId 탈퇴할 사용자 ID
+   * @exception ApiException 존재하지 않거나 이미 탈퇴된 사용자인 경우
+   */
+  @Transactional
+  public void deactivateUser(Long userId) {
+    User user = userRepository.findActiveById(userId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    // 이미 탈퇴된 유저인지 한 번 더 체크
+    if (user.getDeletedAt() != null) {
+      throw new ApiException(ErrorCode.ALREADY_DELETED);
+    }
+
+    user.markAsDeleted();
+    userRepository.save(user);
+  }
+
+  /**
+   * 현재 로그인한 유저를 탈퇴 처리 한다.
+   */
+  @Transactional
+  public void deactivateCurrentUser() {
+    Long userId = userUtil.getAuthenticatedUserId();
+    deactivateUser(userId);
   }
 }

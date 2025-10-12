@@ -10,4 +10,6 @@ public class LoginResponseDto {
 
   private String accessToken;
   private UserInfoDto user;
+
+  private boolean reactivated;
 }

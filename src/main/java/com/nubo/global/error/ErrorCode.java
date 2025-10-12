@@ -37,6 +37,9 @@ public enum ErrorCode {
 
   /* 필요한 도메인 에러코드 추가 */
 
+  // USER
+  ALREADY_DELETED(409, "US001", "user already deleted", LogLevel.WARN),
+
   // CARD
   DUPLICATE_CARD(409, "CD001", "card already exists", LogLevel.WARN),
   AI_SUMMARY_FAILED(500, "CD002", "AI summary regeneration failed", LogLevel.ERROR),

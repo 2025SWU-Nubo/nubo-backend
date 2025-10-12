@@ -5,6 +5,7 @@ import com.nubo.auth.dto.GoogleTokenResponseDto;
 import com.nubo.auth.dto.GoogleUserInfoDto;
 import com.nubo.auth.dto.LoginResponseDto;
 import com.nubo.auth.dto.TokenCheckResponseDto;
+import com.nubo.domain.user.dto.UserWithStatusDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
 import com.nubo.domain.user.service.UserService;
@@ -38,12 +39,16 @@ public class AuthService {
 
     // 3. DB에 사용자 등록 또는 조회
     User userCandidate = userMapper.fromGoogleUserInfo(userInfo);
-    User user = userService.getOrCreateUser(userCandidate);
+    UserWithStatusDto userStatus = userService.getOrCreateUser(userCandidate);
 
     // 4. 서버 토큰(JWT) 발급
-    String jwt = jwtProvider.createAccessToken(user.getId());
+    String jwt = jwtProvider.createAccessToken(userStatus.getUser().getId());
 
-    return new LoginResponseDto(jwt, userMapper.toDto(user));
+    return new LoginResponseDto(
+      jwt,
+      userMapper.toInfoDto(userStatus.getUser()),
+      userStatus.isReactivated()
+    );
   }
 
   /**

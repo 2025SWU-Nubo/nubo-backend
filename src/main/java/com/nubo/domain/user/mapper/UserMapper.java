@@ -33,9 +33,10 @@ public class UserMapper {
    * @param user User 엔티티
    * @return 사용자 정보 DTO
    */
-  public static UserInfoDto toDto(User user) {
+  public static UserInfoDto toInfoDto(User user) {
     return UserInfoDto.builder()
       .id(user.getId())
+      .email(user.getEmail())
       .nickname(user.getNickname())
       .profileImageUrl(user.getProfileImageUrl())
       .build();

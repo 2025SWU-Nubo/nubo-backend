@@ -9,6 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -75,6 +76,15 @@ public class User extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean remindEnabled = true;
 
+  /**
+   * 탈퇴 시각 (Soft Delete)
+   * null이면 활성 상태
+   */
+  @Setter
+  private LocalDateTime deletedAt;
+
+  // ===== 비즈니스 메서드 =====
+
   // 사용자 닉네임 수정
   public void updateNickname(String nickname) {
     this.nickname = nickname;
@@ -103,5 +113,21 @@ public class User extends BaseTimeEntity {
   public void gainBerry() {
     this.berryCount++;
     this.currentDrops = 0;
+  }
+
+  // === 회원탈퇴 관련 메서드 ===
+
+  /**
+   * 회원탈퇴 처리 (Soft Delete)
+   */
+  public void markAsDeleted() {
+    this.deletedAt = LocalDateTime.now();
+  }
+
+  /**
+   * 활성 사용자 여부 확인
+   */
+  public boolean isActive() {
+    return this.deletedAt == null;
   }
 }
