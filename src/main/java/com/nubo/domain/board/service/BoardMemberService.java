@@ -200,6 +200,23 @@ public class BoardMemberService {
     }
   }
 
+  /**
+   * 특정 사용자의 AI 기본보드를 복원한다.
+   */
+  @Transactional
+  public void restoreVisibleForUser(Long boardId, Long userId) {
+    int updated = boardMemberRepository.updateVisibleTrue(boardId, userId);
+    if (updated == 0) {
+      // 혹시 숨김 처리된 적이 없던 경우, 새 멤버십 생성 + visible=true로 복원
+      BoardMember newMember = BoardMember.builder()
+        .board(Board.builder().id(boardId).build())
+        .user(User.builder().id(userId).build())
+        .visible(true)
+        .build();
+      boardMemberRepository.save(newMember);
+    }
+  }
+
   // ====== private helper ======
 
   /**

@@ -105,4 +105,12 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
       WHERE bm.board.id = :boardId AND bm.user.id = :userId
     """)
   int updateVisibleFalse(@Param("boardId") Long boardId, @Param("userId") Long userId);
+
+  @Modifying
+  @Query("""
+      UPDATE BoardMember bm
+      SET bm.visible = true
+      WHERE bm.board.id = :boardId AND bm.user.id = :userId
+    """)
+  int updateVisibleTrue(@Param("boardId") Long boardId, @Param("userId") Long userId);
 }

@@ -1073,6 +1073,14 @@ public class BoardService {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
       }
 
+      // AI 기본보드 숨김 해제
+      if (board.getSource() == BoardSource.AI) {
+        boardMemberService.restoreVisibleForUser(boardId, userId);
+        restored++;
+        continue;
+      }
+
+      // USER 보드 복원
       if (board.isDeleted()) {
         board.restore();
         restored++;
