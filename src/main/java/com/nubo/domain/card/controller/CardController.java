@@ -186,7 +186,7 @@ public class CardController {
   public ResponseEntity<CardRestoreResponseDto> restoreCards(
     @RequestBody CardRestoreRequestDto req) {
     Long userId = userUtil.getAuthenticatedUserId();
-    CardRestoreResponseDto response = cardService.restoreCards(req.getCardIds(), userId);
+    CardRestoreResponseDto response = cardService.restoreCards(req, userId);
     return ResponseEntity.ok(response);
   }
 }
