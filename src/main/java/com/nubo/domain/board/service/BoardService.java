@@ -947,7 +947,9 @@ public class BoardService {
 
     // 2. 삭제 대상 보드(자식 섹션 포함) 수집
     List<Board> targets = collectSelfAndSectionDescendantsPostOrder(root);
-    List<Long> targetBoardIds = targets.stream().map(Board::getId).toList();
+    List<Long> targetBoardIds = targets.stream()
+      .map(Board::getId)
+      .toList();
 
     // 3. 대상 보드들에 연결된 카드 수집
     List<Long> allCardIds = targetBoardIds.isEmpty()
@@ -957,71 +959,95 @@ public class BoardService {
     int linksDetached = 0;
     int cardsSoftDeleted = 0;
 
-    // 4. 옵션에 따른 카드 처리 (링크 해제 → 고아 카드 soft delete)
+    // 4. 옵션에 따른 카드 처리
     try {
-      if (option == DeleteLinkedCardsOption.DETACH_ONLY) {
-        System.out.println("STEP-2 detach links start");
-        if (!targetBoardIds.isEmpty()) {
-          linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
-        }
-        System.out.println("STEP-2 detach links done, linksDetached=" + linksDetached);
-      } else {
-        System.out.println("STEP-2a detach links for DELETE_ORPHANS start");
-        if (!targetBoardIds.isEmpty()) {
-          linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
-        }
-        System.out.println("STEP-2a done, linksDetached=" + linksDetached);
+      if (!targetBoardIds.isEmpty()) {
+        // (공통) 보드/섹션 내 카드 링크 제거
+        linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
+      }
 
-        // (선택) 고아 카드만 soft delete 하고 싶으면 여기서 orphanIds만 추려서 삭제
-        System.out.println("STEP-2b soft delete cards start");
-        if (!allCardIds.isEmpty()) {
-          cardsSoftDeleted = cardRepository.softDeleteByIds(allCardIds, userId,
-            LocalDateTime.now());
-        }
-        System.out.println("STEP-2b soft delete cards done, cardsSoftDeleted=" + cardsSoftDeleted);
+      if (option == DeleteLinkedCardsOption.DELETE_ORPHANS && !allCardIds.isEmpty()) {
+        // (선택) 고아 카드도 soft delete
+        cardsSoftDeleted = cardRepository.softDeleteByIds(allCardIds, userId, LocalDateTime.now());
       }
     } catch (Exception e) {
-      e.printStackTrace(); // 정확한 예외 타입/메시지 확인
-      throw e;
+      throw new ApiException(ErrorCode.INTERNAL_SERVER_ERROR);
     }
 
+    // 5. AI 기본 보드: 숨김 처리
     if (root.getSource() == BoardSource.AI) {
-      // 5. AI 기본 보드인 경우: 숨김 처리만
+      // 5-A. 하위 섹션(및 그 내부 카드들) soft delete
+      List<Long> sectionIds = targets.stream()
+        .filter(t -> t.getBoardType() == BoardType.SECTION && !t.getId().equals(root.getId()))
+        .map(Board::getId)
+        .toList();
+
+      if (!sectionIds.isEmpty()) {
+        // 1) 섹션 soft delete
+        boardRepository.softDeleteByIds(sectionIds, userId, LocalDateTime.now());
+
+        // 2) 섹션에 포함된 카드들 soft delete
+        List<Long> sectionCardIds = boardCardService.findDistinctCardIdsByBoardIds(sectionIds);
+        if (!sectionCardIds.isEmpty()) {
+          cardsSoftDeleted += cardRepository.softDeleteByIds(sectionCardIds, userId,
+            LocalDateTime.now());
+        }
+      }
+
+      // 5-B. AI 보드 자체에 직접 연결된 카드들도 soft delete
+      List<Long> rootCardIds = boardCardService.findDistinctCardIdsByBoardIds(
+        List.of(root.getId()));
+      if (!rootCardIds.isEmpty()) {
+        cardsSoftDeleted += cardRepository.softDeleteByIds(rootCardIds, userId,
+          LocalDateTime.now());
+      }
+
+      // 5-C. 루트 보드는 숨김 처리
+      boardMemberService.hideBoardForUser(root.getId(), userId);
+
       return BoardDeleteResultDto.builder()
         .boardId(boardId)
         .status("HIDDEN")
         .option(option.name())
         .linksDetached(linksDetached)
         .cardsSoftDeleted(cardsSoftDeleted)
-        .sectionsDeleted(0)
-        .build();
-    } else {
-      // 6. 사용자 보드: 멤버 삭제 → 보드/섹션 삭제
-      try {
-        System.out.println("STEP-3 delete members start");
-        if (!targetBoardIds.isEmpty()) {
-          boardMemberService.deleteByBoardIds(targetBoardIds);
-        }
-        System.out.println("STEP-3 delete members done");
-      } catch (Exception e) {
-        e.printStackTrace();
-        throw e;
-      }
-
-      int sectionsDeleted = (int) targets.stream()
-        .filter(t -> t.getBoardType() == BoardType.SECTION).count();
-      LocalDateTime now = LocalDateTime.now();
-      int boardsSoftDeleted = boardRepository.softDeleteByIds(targetBoardIds, userId, now);
-
-      return BoardDeleteResultDto.builder()
-        .boardId(boardId)
-        .status("SOFT_DELETED")
-        .option(option.name())
-        .linksDetached(linksDetached)
-        .cardsSoftDeleted(cardsSoftDeleted)
-        .sectionsDeleted(boardsSoftDeleted - 1) // 루트 제외
+        .sectionsDeleted(sectionIds.size())
         .build();
     }
+
+    // 6. 사용자 보드: 섹션 포함 soft delete
+    try {
+      if (!targetBoardIds.isEmpty()) {
+        // 멤버십 삭제
+        boardMemberService.deleteByBoardIds(targetBoardIds);
+
+        // 하위 섹션 포함 soft delete
+        LocalDateTime now = LocalDateTime.now();
+        boardRepository.softDeleteByIds(targetBoardIds, userId, now);
+
+        int sectionsDeleted = (int) targets.stream()
+          .filter(t -> t.getBoardType() == BoardType.SECTION)
+          .count();
+
+        return BoardDeleteResultDto.builder()
+          .boardId(boardId)
+          .status("SOFT_DELETED")
+          .option(option.name())
+          .linksDetached(linksDetached)
+          .cardsSoftDeleted(cardsSoftDeleted)
+          .sectionsDeleted(sectionsDeleted)
+          .build();
+      }
+    } catch (Exception e) {
+      throw new ApiException(ErrorCode.INTERNAL_SERVER_ERROR);
+    }
+
+    // fallback (보드 없음 등)
+    return BoardDeleteResultDto.builder()
+      .boardId(boardId)
+      .status("NO_ACTION")
+      .option(option.name())
+      .build();
   }
 
   /**

@@ -96,4 +96,13 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
       bm.createdAt ASC
     """)
   List<BoardMember> findAllByBoardIdOrderByRoleAndCreatedAt(Long boardId);
+
+  // 보드 숨김 처리
+  @Modifying
+  @Query("""
+      UPDATE BoardMember bm
+      SET bm.visible = false
+      WHERE bm.board.id = :boardId AND bm.user.id = :userId
+    """)
+  int updateVisibleFalse(@Param("boardId") Long boardId, @Param("userId") Long userId);
 }

@@ -183,6 +183,23 @@ public class BoardMemberService {
     }
   }
 
+  /**
+   * 특정 사용자의 AI 기본보드를 숨김 처리한다.
+   */
+  @Transactional
+  public void hideBoardForUser(Long boardId, Long userId) {
+    int updated = boardMemberRepository.updateVisibleFalse(boardId, userId);
+    if (updated == 0) {
+      // 멤버십이 없으면 새로 생성 후 숨김 처리 (초기 관심사 미설정 유저용)
+      BoardMember newMember = BoardMember.builder()
+        .board(Board.builder().id(boardId).build())
+        .user(User.builder().id(userId).build())
+        .visible(false)
+        .build();
+      boardMemberRepository.save(newMember);
+    }
+  }
+
   // ====== private helper ======
 
   /**
