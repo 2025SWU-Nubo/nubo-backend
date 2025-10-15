@@ -250,23 +250,29 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
              )
       )
       AND (
-        b.source = 'USER'
-        OR (
-          b.source = 'AI'
-          AND (
-            EXISTS (
-              SELECT 1 FROM BoardCard bc
-              WHERE bc.board.id = b.id
-                AND bc.card.deletedAt IS NULL
-            )
-            OR EXISTS (
-              SELECT 1 FROM Board s
-              WHERE s.parentBoard.id = b.id
-               AND s.deletedAt IS NULL 
-            )
-          )
-        )
-      )
+         b.source = 'USER'
+         OR (
+           b.source = 'AI'
+           AND (
+             EXISTS (
+               SELECT 1 FROM BoardMember bm
+               WHERE bm.board.id = b.id
+                 AND bm.user.id = :userId
+                 AND bm.visible = true
+             )
+             OR EXISTS (
+               SELECT 1 FROM BoardCard bc
+               WHERE bc.board.id = b.id
+                 AND bc.card.deletedAt IS NULL
+             )
+             OR EXISTS (
+               SELECT 1 FROM Board s
+               WHERE s.parentBoard.id = b.id
+                AND s.deletedAt IS NULL\s
+             )
+           )
+         )
+       )
       AND LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
     ORDER BY
       CASE WHEN :sort = 'LATEST' THEN b.createdAt END DESC,
