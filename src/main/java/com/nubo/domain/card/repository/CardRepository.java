@@ -51,8 +51,8 @@ public interface CardRepository extends JpaRepository<Card, Long> {
   @Query("""
     SELECT DISTINCT c
     FROM Card c
-    JOIN BoardCard bc ON bc.card.id = c.id
-    JOIN Board b ON bc.board.id = b.id
+    LEFT JOIN BoardCard bc ON bc.card.id = c.id
+    LEFT JOIN Board b ON bc.board.id = b.id
     WHERE c.id = :cardId
       AND c.deletedAt IS NULL
       AND (
