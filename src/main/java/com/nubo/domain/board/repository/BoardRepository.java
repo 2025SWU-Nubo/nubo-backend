@@ -60,36 +60,35 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
 
   // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우) - paging
   @Query("""
-      SELECT DISTINCT b
-      FROM Board b
-      WHERE b.boardType = :boardType
-        AND b.deletedAt IS NULL
-        AND (b.user.id = :userId OR b.user IS NULL)
-        AND (
-          b.source = 'USER'
-          OR EXISTS (
-            SELECT 1 FROM BoardCard bc
-            WHERE bc.board.id = b.id
-              AND bc.card.deletedAt IS NULL
-          )
-          OR EXISTS (
-            SELECT 1 FROM Board s
-            WHERE s.parentBoard.id = b.id
-              AND s.deletedAt IS NULL
-          )
-          OR EXISTS (
-            SELECT 1 FROM BoardMember bm
-            WHERE bm.board.id = b.id
-              AND bm.user.id = :userId
-              AND bm.visible = true
-          )
-          OR EXISTS (
-            SELECT 1 FROM BoardMember bm2
-            WHERE bm2.board.id = b.id
-              AND bm2.user.id = :userId
-              AND (bm2.visible = true OR bm2.lastVisitedAt IS NOT NULL)
+    SELECT DISTINCT b
+    FROM Board b
+    WHERE b.boardType = :boardType
+      AND b.deletedAt IS NULL
+      AND (b.user.id = :userId OR b.user IS NULL)
+      AND (
+        b.source = 'USER'
+        OR (
+          b.source = 'AI'
+          AND (
+            EXISTS (
+              SELECT 1 FROM BoardMember bm
+              WHERE bm.board.id = b.id
+                AND bm.user.id = :userId
+                AND bm.visible = true
+            )
+            OR EXISTS (
+              SELECT 1 FROM BoardCard bc
+              WHERE bc.board.id = b.id
+                AND bc.card.deletedAt IS NULL
+            )
+            OR EXISTS (
+              SELECT 1 FROM Board s
+              WHERE s.parentBoard.id = b.id
+                AND s.deletedAt IS NULL
+            )
           )
         )
+      )
     """)
   Page<Board> findVisibleBoardsForUser(
     @Param("userId") Long userId,
