@@ -54,6 +54,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -982,12 +983,14 @@ public class BoardService {
         .map(Board::getId)
         .toList();
 
+      List<Long> sectionCardIds = new ArrayList<>();
+
       if (!sectionIds.isEmpty()) {
         // 1) 섹션 soft delete
         boardRepository.softDeleteByIds(sectionIds, userId, LocalDateTime.now());
 
         // 2) 섹션에 포함된 카드들 soft delete
-        List<Long> sectionCardIds = boardCardService.findDistinctCardIdsByBoardIds(sectionIds);
+        sectionCardIds = boardCardService.findDistinctCardIdsByBoardIds(sectionIds);
         if (!sectionCardIds.isEmpty()) {
           cardsSoftDeleted += cardRepository.softDeleteByIds(sectionCardIds, userId,
             LocalDateTime.now());
@@ -1012,6 +1015,10 @@ public class BoardService {
         .linksDetached(linksDetached)
         .cardsSoftDeleted(cardsSoftDeleted)
         .sectionsDeleted(sectionIds.size())
+        .deletedSectionIds(sectionIds)
+        .deletedCardIds(Stream.concat(sectionCardIds.stream(), rootCardIds.stream())
+          .distinct()
+          .toList())
         .build();
     }
 
@@ -1036,7 +1043,15 @@ public class BoardService {
           .linksDetached(linksDetached)
           .cardsSoftDeleted(cardsSoftDeleted)
           .sectionsDeleted(sectionsDeleted)
+          .deletedSectionIds(
+            targets.stream()
+              .filter(t -> t.getBoardType() == BoardType.SECTION)
+              .map(Board::getId)
+              .toList()
+          )
+          .deletedCardIds(allCardIds)
           .build();
+
       }
     } catch (Exception e) {
       throw new ApiException(ErrorCode.INTERNAL_SERVER_ERROR);
@@ -1058,8 +1073,17 @@ public class BoardService {
    * @return 복원된 보드 갯수 DTO
    */
   @Transactional
-  public BoardRestoreResponseDto restoreBoards(List<Long> boardIds, Long userId) {
+  public BoardRestoreResponseDto restoreBoards(
+    List<Long> boardIds,
+    List<Long> sectionIds,
+    List<Long> cardIds,
+    Long userId
+  ) {
     int restored = 0;
+
+    List<Long> restoredBoards = new ArrayList<>();
+    List<Long> restoredSections = new ArrayList<>();
+    List<Long> restoredCards = new ArrayList<>();
 
     for (Long boardId : boardIds) {
       Board board = boardRepository.findById(boardId)
@@ -1087,7 +1111,30 @@ public class BoardService {
       }
     }
 
-    return new BoardRestoreResponseDto(restored);
+    // 섹션 복원 (soft-deleted 상태)
+    if (sectionIds != null && !sectionIds.isEmpty()) {
+      int count = boardRepository.restoreByIds(sectionIds);
+      if (count > 0) {
+        restored += count;
+        restoredSections.addAll(sectionIds);
+      }
+    }
+
+    // 카드 복원 (soft-deleted 상태)
+    if (cardIds != null && !cardIds.isEmpty()) {
+      int count = cardRepository.restoreByIds(cardIds);
+      if (count > 0) {
+        restored += count;
+        restoredCards.addAll(cardIds);
+      }
+    }
+
+    return BoardRestoreResponseDto.builder()
+      .restoredCount(restored)
+      .restoredBoardIds(restoredBoards)
+      .restoredSectionIds(restoredSections)
+      .restoredCardIds(restoredCards)
+      .build();
   }
 
   /**

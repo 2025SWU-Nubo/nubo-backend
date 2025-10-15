@@ -1,6 +1,6 @@
-// src/main/java/com/nubo/domain/board/dto/BoardDeleteResultDto.java
 package com.nubo.domain.board.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -19,4 +19,6 @@ public class BoardDeleteResultDto {
   private int cardsSoftDeleted;  // soft delete된 카드 수 (DELETE_ORPHANS 옵션 시)
   private int sectionsDeleted;   // 삭제된 섹션 수 (사용자보드 트리 기준)
   private String error;          // 실패 시 에러코드 (ACCESS_DENIED, ENTITY_NOT_FOUND 등)
+  private List<Long> deletedSectionIds; // 삭제된 섹션 ID 목록
+  private List<Long> deletedCardIds;    // soft delete된 카드 ID 목록
 }

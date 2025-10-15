@@ -379,7 +379,12 @@ public class BoardController {
   public ResponseEntity<BoardRestoreResponseDto> restoreBoards(
     @RequestBody BoardRestoreRequestDto req) {
     Long userId = userUtil.getAuthenticatedUserId();
-    BoardRestoreResponseDto response = boardService.restoreBoards(req.getBoardIds(), userId);
+    BoardRestoreResponseDto response = boardService.restoreBoards(
+      req.getBoardIds(),
+      req.getSectionIds(),
+      req.getCardIds(),
+      userId
+    );
     return ResponseEntity.ok(response);
   }
 }
