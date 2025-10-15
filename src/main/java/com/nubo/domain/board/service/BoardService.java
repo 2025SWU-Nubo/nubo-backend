@@ -268,6 +268,15 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
+    if (board.getSource() == BoardSource.USER) {
+      boolean isOwner = board.getUser().getId().equals(userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(boardId, userId);
+
+      if (!isOwner && !isMember) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
+    }
+
     // 마지막 방문 시간 갱신
     boardMemberService.updateLastVisitedAt(boardId, userId);
 
@@ -1102,6 +1111,12 @@ public class BoardService {
         boardMemberService.restoreVisibleForUser(boardId, userId);
         restored++;
         continue;
+      }
+
+      // USER 보드 멤버십 재부여
+      if (board.getSource() == BoardSource.USER) {
+        User owner = board.getUser();
+        boardMemberService.createOwner(board, owner);
       }
 
       // USER 보드 복원
