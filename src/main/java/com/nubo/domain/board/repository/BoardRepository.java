@@ -192,23 +192,28 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
           )
       )
       AND (
-          b.source = 'USER'
-          OR EXISTS (
-            SELECT 1 FROM BoardCard bc
-            WHERE bc.board.id = b.id
-              AND bc.card.deletedAt IS NULL
+        b.source = 'USER'
+        OR (
+          b.source = 'AI'
+          AND (
+            EXISTS (
+              SELECT 1 FROM BoardMember bm
+              WHERE bm.board.id = b.id
+                AND bm.user.id = :userId
+                AND bm.visible = true
+            )
+            OR EXISTS (
+              SELECT 1 FROM BoardCard bc
+              WHERE bc.board.id = b.id
+                AND bc.card.deletedAt IS NULL
+            )
+            OR EXISTS (
+              SELECT 1 FROM Board sb
+              WHERE sb.parentBoard.id = b.id
+                AND sb.deletedAt IS NULL
+            )
           )
-          OR EXISTS (
-            SELECT 1 FROM Board sb
-            WHERE sb.parentBoard.id = b.id
-              AND sb.deletedAt IS NULL
-          )
-          OR EXISTS (
-            SELECT 1 FROM BoardMember bm2
-            WHERE bm2.board.id = b.id
-              AND bm2.user.id = :userId
-              AND (bm2.visible = true OR bm2.lastVisitedAt IS NOT NULL)
-          )
+        )
       )
       AND b.parentBoard IS NULL
     ORDER BY b.id
