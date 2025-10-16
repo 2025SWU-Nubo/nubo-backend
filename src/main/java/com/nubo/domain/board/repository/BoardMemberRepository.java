@@ -44,7 +44,7 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
     JOIN FETCH bm.board b
     WHERE bm.user.id = :userId
       AND bm.lastVisitedAt IS NOT NULL
-      AND b.boardType = com.nubo.domain.board.type.BoardType.SECTION
+      AND b.boardType <> com.nubo.domain.board.type.BoardType.SECTION
     ORDER BY bm.lastVisitedAt DESC
     """)
   List<BoardMember> findRecentVisitedBoards(@Param("userId") Long userId, Pageable pageable);
