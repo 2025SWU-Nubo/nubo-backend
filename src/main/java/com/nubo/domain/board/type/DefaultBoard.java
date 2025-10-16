@@ -17,7 +17,7 @@ public enum DefaultBoard {
   HOBBY("취미 & 공예"),
   MUSIC("음악"),
   ART("예술 & 디자인"),
-  ENTERTAINMENT("엔터테인먼트(코미디/TV/쇼)"),
+  ENTERTAINMENT("엔터테인먼트"),
   ETC("기타");
 
   // 건너뛰기 시 기본으로 노출할 보드 지정
