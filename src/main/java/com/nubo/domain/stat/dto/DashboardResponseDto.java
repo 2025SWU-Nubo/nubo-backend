@@ -29,4 +29,7 @@ public class DashboardResponseDto {
 
   // 누적 누베리 개수
   private int berryCount;
+
+  // 배경 url
+  private String dashboardBackground;
 }

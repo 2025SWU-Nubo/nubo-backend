@@ -7,6 +7,7 @@ import com.nubo.domain.stat.entity.DailyWaterDrop;
 import com.nubo.domain.stat.repository.DailyWaterDropRepository;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.repository.UserRepository;
+import com.nubo.global.common.StaticResource;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.DayOfWeek;
@@ -130,6 +131,7 @@ public class GrowthService {
       .stage(stage)
       .growthRate(growthRate)
       .berryCount(user.getBerryCount())
+      .dashboardBackground(StaticResource.DASHBOARD_BACKGROUND.getUrl())
       .build();
   }
 }
