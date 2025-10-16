@@ -23,36 +23,30 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     WHERE b.boardType = :boardType
       AND b.deletedAt IS NULL
       AND (b.user.id = :userId OR b.user IS NULL)
-      AND (
-        b.source = 'USER'
-        OR EXISTS (
-          SELECT 1
-          FROM BoardCard bc
-          JOIN bc.card c
-          LEFT JOIN CardUserStatus cus
-            ON cus.card = c AND cus.user.id = :userId
-          WHERE bc.board.id = b.id
-            AND c.deletedAt IS NULL
-            AND (cus IS NULL OR cus.viewedAt IS NULL)
-        )
-        OR EXISTS (
-          SELECT 1 FROM Board s
-          WHERE s.parentBoard.id = b.id
-            AND s.deletedAt IS NULL
-        )
-        OR EXISTS (
-          SELECT 1 FROM BoardMember bm
-          WHERE bm.board.id = b.id
-            AND bm.user.id = :userId
-            AND (bm.visible = true OR bm.lastVisitedAt IS NOT NULL)
-        )
+      AND EXISTS (
+        SELECT 1
+        FROM BoardCard bc
+        JOIN bc.card c
+        LEFT JOIN CardUserStatus cus
+          ON cus.card = c AND cus.user.id = :userId
+        WHERE c.deletedAt IS NULL
+          AND (
+            bc.board.id = b.id
+            OR bc.board.id IN (
+              SELECT s.id
+              FROM Board s
+              WHERE s.parentBoard.id = b.id
+                AND s.deletedAt IS NULL
+            )
+          )
+          AND (cus IS NULL OR cus.viewedAt IS NULL)
       )
     ORDER BY
       CASE WHEN :sort = 'LATEST' THEN b.createdAt END DESC,
       CASE WHEN :sort = 'OLDEST' THEN b.createdAt END ASC,
       CASE WHEN :sort = 'ALPHABET' THEN b.name END ASC
     """)
-  List<Board> findVisibleBoardsForUser(
+  List<Board> findBoardsWithUnviewedCards(
     @Param("userId") Long userId,
     @Param("boardType") BoardType boardType,
     @Param("sort") String sort
@@ -90,7 +84,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         )
       )
     """)
-  Page<Board> findVisibleBoardsForUser(
+  Page<Board> findBoardsWithUnviewedCards(
     @Param("userId") Long userId,
     @Param("boardType") BoardType boardType,
     Pageable pageable

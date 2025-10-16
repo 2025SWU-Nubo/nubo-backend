@@ -212,7 +212,7 @@ public class BoardService {
     Page<Board> boards = switch (filter) {
       case FAVORITE -> boardRepository.findFavoriteBoards(userId, pageable);
       case SHARED -> boardRepository.findSharedBoards(userId, pageable);
-      default -> boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD, pageable);
+      default -> boardRepository.findBoardsWithUnviewedCards(userId, BoardType.BOARD, pageable);
     };
 
     List<Long> boardIds = boards.stream()
@@ -339,7 +339,7 @@ public class BoardService {
    */
   @Transactional(readOnly = true)
   public List<BoardSimpleResponseDto> getBoardsForHome(Long userId, SortType sort) {
-    List<Board> boards = boardRepository.findVisibleBoardsForUser(userId, BoardType.BOARD,
+    List<Board> boards = boardRepository.findBoardsWithUnviewedCards(userId, BoardType.BOARD,
       sort.name());
     return boards.stream()
       .map(boardMapper::toSimpleResponseDto)
