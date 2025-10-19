@@ -7,8 +7,8 @@ public enum StaticResource {
 
   // Dashboard
   DASHBOARD_BACKGROUND(
-    "https://nubo-static-assets.s3.ap-northeast-2.amazonaws"
-      + ".com/dashboard/dashboard_%EB%B0%B0%ED%8F%AC%EC%9A%A9_01.glb"),
+    "https://nubo-static-assets.s3.ap-northeast-2.amazonaws.com/dashboard/dashboard_background_03"
+      + ".glb"),
   ;
 
   private final String url;
