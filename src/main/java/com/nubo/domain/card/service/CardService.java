@@ -232,7 +232,11 @@ public class CardService {
     log.info("카드 생성 완료 - 총 {}ms", System.currentTimeMillis() - startTime);
 
     // 생성 완료 알림 발송
-    fcmService.sendCardCreatedNotification(userId, savedCard.getTitle(), savedCard);
+    try {
+      fcmService.sendCardCreatedNotification(userId, savedCard.getTitle(), savedCard);
+    } catch (Exception e) {
+      log.warn("⚠️ FCM 알림 발송 실패 - cardId={}, reason={}", savedCard.getId(), e.getMessage());
+    }
 
     return cardMapper.toResponseDto(savedCard, boardIds);
   }

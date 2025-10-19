@@ -11,8 +11,6 @@ import com.nubo.domain.notification.entity.DeviceToken;
 import com.nubo.domain.notification.type.NotificationType;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
-import com.nubo.global.error.ErrorCode;
-import com.nubo.global.error.exception.ApiException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,9 +70,12 @@ public class FcmService {
 
     String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendHybridMessageToToken(token.getToken(), type, title, body, channelId,
-        null,
-        null);
+      try {
+        sendHybridMessageToToken(token.getToken(), type, title, body, channelId, null, null);
+      } catch (Exception e) {
+        log.warn("⚠️ FCM 발송 실패 (userId={}, token={}) - {}", userId, token.getToken(),
+          e.getMessage());
+      }
     }
   }
 
@@ -115,10 +116,15 @@ public class FcmService {
 
     String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendHybridMessageToToken(token.getToken(), type, title, body, channelId,
-        board.getId(),
-        null);
+      try {
+        sendHybridMessageToToken(token.getToken(), type, title, body, channelId, board.getId(),
+          null);
+      } catch (Exception e) {
+        log.warn("⚠️ FCM 발송 실패 (userId={}, token={}) - {}", userId, token.getToken(),
+          e.getMessage());
+      }
     }
+
   }
 
 
@@ -157,9 +163,13 @@ public class FcmService {
 
     String channelId = resolveChannelId(type);
     for (DeviceToken token : tokens) {
-      sendHybridMessageToToken(token.getToken(), type, title, body, channelId,
-        null,
-        card.getId());
+      try {
+        sendHybridMessageToToken(token.getToken(), type, title, body, channelId, null,
+          card.getId());
+      } catch (Exception e) {
+        log.warn("⚠️ FCM 발송 실패 (userId={}, token={}) - {}", userId, token.getToken(),
+          e.getMessage());
+      }
     }
   }
 
@@ -198,7 +208,23 @@ public class FcmService {
     try {
       FirebaseMessaging.getInstance().send(message);
     } catch (FirebaseMessagingException e) {
-      throw new ApiException(ErrorCode.PUSH_SEND_FAILED);
+      log.error("🔥 FCM ErrorCode={}, Message={}, Cause={}", e.getErrorCode(), e.getMessage(),
+        e.getCause());
+
+      if ("UNREGISTERED".equals(e.getErrorCode())
+        || "NOT_FOUND".equals(e.getErrorCode())
+        || "registration-token-not-registered".equals(e.getErrorCode())) {
+        log.warn("🧹 만료된 FCM 토큰 비활성화 처리: {}", token);
+        try {
+          deviceTokenService.deleteTokenByToken(token);
+        } catch (Exception ex) {
+          log.error("❌ FCM 토큰 삭제 중 오류 - {}", ex.getMessage());
+        }
+      }
+
+      // 예외는 전파하지 않음 (카드 생성 등 트랜잭션 영향 방지)
+    } catch (Exception e) {
+      log.error("❌ FCM 전송 중 알 수 없는 오류 - {}", e.getMessage());
     }
   }
 

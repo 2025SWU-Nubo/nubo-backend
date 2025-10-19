@@ -68,4 +68,14 @@ public class DeviceTokenService {
   public List<DeviceToken> getTokensByUserId(Long userId) {
     return deviceTokenRepository.findByUserId(userId);
   }
+
+  /**
+   * 특정 토큰을 삭제한다.
+   *
+   * @param token 삭제할 토큰
+   */
+  @Transactional
+  public void deleteTokenByToken(String token) {
+    deviceTokenRepository.deleteByToken(token);
+  }
 }
