@@ -608,27 +608,33 @@ public class CardService {
     int restoredCount = 0;
     Long boardId = req.getBoardId();
 
+    // 요청 검증
+    if (req.getCardIds() == null || req.getCardIds().isEmpty()) {
+      return new CardRestoreResponseDto(0);
+    }
+
+    // 순회 복원
     for (Long cardId : req.getCardIds()) {
       Card card = cardRepository.findByIdForUpdate(cardId)
         .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
+      // 권한 검증
       if (!card.getUser().getId().equals(userId)) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
       }
 
-      switch (req.getDeleteMode()) {
-        case SOFT_DELETE -> {
-          if (card.getDeletedAt() != null) {
-            cardRepository.restoreById(cardId);
-            restoredCount++;
-          }
-        }
-        case DETACH_ONLY -> {
-          boolean alreadyLinked = boardCardService.existsLink(req.getBoardId(), cardId);
-          if (!alreadyLinked) {
-            boardCardService.attachCard(boardService.getBoardById(req.getBoardId()), card);
-            restoredCount++;
-          }
+      // 1️⃣ 카드 자체 복원 (soft delete 해제)
+      if (card.getDeletedAt() != null) {
+        cardRepository.restoreById(cardId);
+        restoredCount++;
+      }
+
+      // 2️⃣ 매핑 복원 (보드-카드 연결 확인 후 attach)
+      if (boardId != null) {
+        boolean alreadyLinked = boardCardService.existsLink(boardId, cardId);
+        if (!alreadyLinked) {
+          Board board = boardService.getBoardById(boardId);
+          boardCardService.attachCard(board, card);
         }
       }
     }

@@ -377,14 +377,10 @@ public class BoardController {
    */
   @PatchMapping("/restore")
   public ResponseEntity<BoardRestoreResponseDto> restoreBoards(
-    @RequestBody BoardRestoreRequestDto req) {
+    @RequestBody BoardRestoreRequestDto req
+  ) {
     Long userId = userUtil.getAuthenticatedUserId();
-    BoardRestoreResponseDto response = boardService.restoreBoards(
-      req.getBoardIds(),
-      req.getSectionIds(),
-      req.getCardIds(),
-      userId
-    );
+    BoardRestoreResponseDto response = boardService.restoreBoards(req, userId);
     return ResponseEntity.ok(response);
   }
 }

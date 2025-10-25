@@ -252,14 +252,4 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   int restoreById(@Param("id") Long id);
 
-  @Modifying(clearAutomatically = true, flushAutomatically = true)
-  @Query("""
-    update Card c
-       set c.deletedAt = null,
-           c.deletedBy = null
-     where c.id in :ids
-       and c.deletedAt is not null
-    """)
-  int restoreByIds(@Param("ids") Collection<Long> ids);
-
 }

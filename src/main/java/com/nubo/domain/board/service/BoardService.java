@@ -12,6 +12,7 @@ import com.nubo.domain.board.dto.BoardInvitationRequestDto;
 import com.nubo.domain.board.dto.BoardInvitationResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
 import com.nubo.domain.board.dto.BoardPreviewResponseDto;
+import com.nubo.domain.board.dto.BoardRestoreRequestDto;
 import com.nubo.domain.board.dto.BoardRestoreResponseDto;
 import com.nubo.domain.board.dto.BoardShareResponseDto;
 import com.nubo.domain.board.dto.BoardSimpleResponseDto;
@@ -30,11 +31,14 @@ import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.board.type.InvitationStatus;
+import com.nubo.domain.card.dto.CardRestoreRequestDto;
+import com.nubo.domain.card.dto.CardRestoreResponseDto;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.entity.CardUserStatus;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.card.service.CardService;
 import com.nubo.domain.card.service.CardUserStatusService;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
@@ -45,6 +49,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,6 +61,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -79,6 +85,8 @@ public class BoardService {
   private final CardUserStatusService cardUserStatusService;
   private final BoardInvitationService boardInvitationService;
   private final BoardMemberMapper boardMemberMapper;
+
+  private final ApplicationContext applicationContext;
 
   /**
    * 주어진 사용자 소유 보드 중 이름 중복 여부를 확인한다.
@@ -986,35 +994,41 @@ public class BoardService {
 
     // 5. AI 기본 보드: 숨김 처리
     if (root.getSource() == BoardSource.AI) {
-      // 5-A. 하위 섹션(및 그 내부 카드들) soft delete
+
+      // ✅ [수정 1] detach 전에 카드 ID를 미리 확보하도록 순서 변경
       List<Long> sectionIds = targets.stream()
         .filter(t -> t.getBoardType() == BoardType.SECTION && !t.getId().equals(root.getId()))
         .map(Board::getId)
         .toList();
 
-      List<Long> sectionCardIds = new ArrayList<>();
-
-      if (!sectionIds.isEmpty()) {
-        // 1) 섹션 soft delete
-        boardRepository.softDeleteByIds(sectionIds, userId, LocalDateTime.now());
-
-        // 2) 섹션에 포함된 카드들 soft delete
-        sectionCardIds = boardCardService.findDistinctCardIdsByBoardIds(sectionIds);
-        if (!sectionCardIds.isEmpty()) {
-          cardsSoftDeleted += cardRepository.softDeleteByIds(sectionCardIds, userId,
-            LocalDateTime.now());
-        }
-      }
-
-      // 5-B. AI 보드 자체에 직접 연결된 카드들도 soft delete
+      // ✅ [추가] detach 전에 카드 ID 미리 조회
+      List<Long> sectionCardIds = boardCardService.findDistinctCardIdsByBoardIds(sectionIds);
       List<Long> rootCardIds = boardCardService.findDistinctCardIdsByBoardIds(
         List.of(root.getId()));
+
+      // ✅ [기존 detach 코드 이동] — 이제 여기서 링크 제거
+      if (!targetBoardIds.isEmpty()) {
+        linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
+      }
+
+      // 5-A. 섹션 soft delete
+      if (!sectionIds.isEmpty()) {
+        boardRepository.softDeleteByIds(sectionIds, userId, LocalDateTime.now());
+      }
+
+      // 5-B. 섹션 카드 soft delete
+      if (!sectionCardIds.isEmpty()) {
+        cardsSoftDeleted += cardRepository.softDeleteByIds(sectionCardIds, userId,
+          LocalDateTime.now());
+      }
+
+      // 5-C. 루트 보드 카드 soft delete
       if (!rootCardIds.isEmpty()) {
         cardsSoftDeleted += cardRepository.softDeleteByIds(rootCardIds, userId,
           LocalDateTime.now());
       }
 
-      // 5-C. 루트 보드는 숨김 처리
+      // 5-D. 루트 보드 숨김 처리
       boardMemberService.hideBoardForUser(root.getId(), userId);
 
       return BoardDeleteResultDto.builder()
@@ -1025,9 +1039,11 @@ public class BoardService {
         .cardsSoftDeleted(cardsSoftDeleted)
         .sectionsDeleted(sectionIds.size())
         .deletedSectionIds(sectionIds)
-        .deletedCardIds(Stream.concat(sectionCardIds.stream(), rootCardIds.stream())
-          .distinct()
-          .toList())
+        .deletedCardIds(
+          Stream.of(sectionCardIds, rootCardIds, allCardIds)
+            .flatMap(Collection::stream)
+            .distinct()
+            .toList())
         .build();
     }
 
@@ -1077,70 +1093,72 @@ public class BoardService {
   /**
    * 삭제된 보드를 복원한다.
    *
-   * @param boardIds 복원할 보드 ID 목록
-   * @param userId   현재 요청을 보낸 사용자 ID
+   * @param req    복원할 정보를 담은 DTO
+   * @param userId 현재 요청을 보낸 사용자 ID
    * @return 복원된 보드 갯수 DTO
    */
   @Transactional
-  public BoardRestoreResponseDto restoreBoards(
-    List<Long> boardIds,
-    List<Long> sectionIds,
-    List<Long> cardIds,
-    Long userId
-  ) {
+  public BoardRestoreResponseDto restoreBoards(BoardRestoreRequestDto req, Long userId) {
     int restored = 0;
 
     List<Long> restoredBoards = new ArrayList<>();
     List<Long> restoredSections = new ArrayList<>();
     List<Long> restoredCards = new ArrayList<>();
 
-    for (Long boardId : boardIds) {
-      Board board = boardRepository.findById(boardId)
-        .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+    // 보드 복원
+    if (req.getBoardIds() != null && !req.getBoardIds().isEmpty()) {
+      for (Long boardId : req.getBoardIds()) {
+        Board board = boardRepository.findById(boardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-      // 본인 보드인지, 또는 공유보드 멤버인지 체크
-      boolean isOwner = board.getUser() != null && board.getUser().getId().equals(userId);
-      boolean isMember = boardMemberService.existsByBoardAndUser(boardId, userId);
+        boolean isOwner = board.getUser() != null && board.getUser().getId().equals(userId);
+        boolean isMember = boardMemberService.existsByBoardAndUser(boardId, userId);
 
-      if (!isOwner && !isMember) {
-        throw new ApiException(ErrorCode.ACCESS_DENIED);
-      }
+        if (!isOwner && !isMember) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
+        }
 
-      // AI 기본보드 숨김 해제
-      if (board.getSource() == BoardSource.AI) {
-        boardMemberService.restoreVisibleForUser(boardId, userId);
-        restored++;
-        continue;
-      }
+        if (board.getSource() == BoardSource.AI) {
+          boardMemberService.restoreVisibleForUser(boardId, userId);
+          restored++;
+          restoredBoards.add(boardId);
+          continue;
+        }
 
-      // USER 보드 멤버십 재부여
-      if (board.getSource() == BoardSource.USER) {
-        User owner = board.getUser();
-        boardMemberService.createOwner(board, owner);
-      }
+        if (board.getSource() == BoardSource.USER) {
+          User owner = board.getUser();
+          boardMemberService.createOwner(board, owner);
+        }
 
-      // USER 보드 복원
-      if (board.isDeleted()) {
-        board.restore();
-        restored++;
+        if (board.isDeleted()) {
+          board.restore();
+          restored++;
+          restoredBoards.add(boardId);
+        }
       }
     }
 
     // 섹션 복원 (soft-deleted 상태)
-    if (sectionIds != null && !sectionIds.isEmpty()) {
-      int count = boardRepository.restoreByIds(sectionIds);
+    if (req.getSectionIds() != null && !req.getSectionIds().isEmpty()) {
+      int count = boardRepository.restoreByIds(req.getSectionIds());
       if (count > 0) {
         restored += count;
-        restoredSections.addAll(sectionIds);
+        restoredSections.addAll(req.getSectionIds());
       }
     }
 
     // 카드 복원 (soft-deleted 상태)
-    if (cardIds != null && !cardIds.isEmpty()) {
-      int count = cardRepository.restoreByIds(cardIds);
-      if (count > 0) {
-        restored += count;
-        restoredCards.addAll(cardIds);
+    if (req.getCardRestores() != null && !req.getCardRestores().isEmpty()) {
+      CardService cardService = applicationContext.getBean(CardService.class);
+
+      for (CardRestoreRequestDto cardReq : req.getCardRestores()) {
+        if (cardReq.getCardIds() == null || cardReq.getCardIds().isEmpty()) {
+          continue;
+        }
+
+        CardRestoreResponseDto result = cardService.restoreCards(cardReq, userId);
+        restored += result.getRestoredCount();
+        restoredCards.addAll(cardReq.getCardIds());
       }
     }
 
