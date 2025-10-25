@@ -140,13 +140,10 @@ public class OpenAiClient {
       [규칙]
 
       1. title
-      - 다음 조건 중 하나라도 해당하면 원본 제목은 폐기하고 description/transcript/subtitle 기반으로 12~32자의 한국어 제목을 새로 생성한다:
-        (1) 원본 제목과 description+transcript+subtitle 사이의 의미적 관련성이 매우 낮은 경우
-        (2) 원본 제목이 플레이스홀더/계정/파일명/URL/해시태그 위주인 경우 (예: "Video by …", "Original audio", "IMG_1234")
-        (3) 원본 제목이 비어 있거나, "제목 없음", "Untitled", "No title", "(제목 없음)" 등 의미 없는 문자열인 경우
-      - 새 제목은 반드시 입력 텍스트에 등장한 내용만 바탕으로 한다. (이모지/해시태그/과장/추측/광고 금지)
-      - title이 완전히 비어 있는 경우에도 “(제목 없음)” 같은 플레이스홀더를 사용하지 말고, 입력 텍스트를 바탕으로 가능한 한 간결한 제목을 만든다. \s
-      - description/transcript/subtitle이 모두 비어 있을 경우에만 title=""
+      - description, transcript, subtitle의 내용을 바탕으로 새로운 한국어 제목을 생성한다.
+      - 길이는 14자 이내로 제한한다.
+      - 제목은 핵심 주제나 내용을 간결하게 표현해야 하며, 이모지/해시태그/과장/추측/광고 표현은 금지한다.
+      - description, transcript, subtitle이 모두 비어 있을 경우에만 title=""
 
       2. summary
       - Markdown을 활용해 가독성 있게 요약한다. (h2(##), h3(###), 굵게(**), 불릿(-), 숫자목록(1. 2. …)까지만 사용한다.)
