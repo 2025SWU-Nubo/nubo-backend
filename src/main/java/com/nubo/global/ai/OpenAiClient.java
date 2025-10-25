@@ -132,7 +132,7 @@ public class OpenAiClient {
       출력 스키마:
       {
         "title": "string",
-        "summary": "string (Markdown 허용: ###, -, 1., 표 |A|B|)",
+        "summary": "string (Markdown 허용: ##, ###, **, -, 1.)",
         "tags": ["string", ...],
         "board": "string"
       }
@@ -150,6 +150,10 @@ public class OpenAiClient {
       - 길이는 유연하다. 정보가 적으면 짧게, 많으면 길게.
       - 광고, 홍보, 과장, 클릭 유도 금지. 사실 서술 위주.
       - 학습 노트 스타일의 문장을 명사형 종결 어미로 작성한다.
+      - **만약 transcript나 subtitle이 노래 가사이거나, 노래/음악 관련 단어가 주를 이룬다면:**
+        - summary는 "이 영상은 자동 요약이 어려워요. 필요한 내용을 직접 메모로 추가해 주세요." 로 고정한다.
+        - board는 title값이 있는 경우 해당 값을 참고하여 가장 적절한 항목을 선택하며, 판단하기 어려운 경우 '기타'로 분류한다.
+        - tags는 생성하지 않는다([] 반환).
 
       3. tags
       - 최소 3개, 최대 5개.
