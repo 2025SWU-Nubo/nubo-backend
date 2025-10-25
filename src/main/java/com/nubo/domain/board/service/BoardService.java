@@ -59,7 +59,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.data.domain.Page;
@@ -969,13 +968,23 @@ public class BoardService {
       .map(Board::getId)
       .toList();
 
-    // 3. 대상 보드들에 연결된 카드 수집
-    List<Long> allCardIds = targetBoardIds.isEmpty()
-      ? List.of()
-      : boardCardService.findDistinctCardIdsByBoardIds(targetBoardIds);
-
     int linksDetached = 0;
     int cardsSoftDeleted = 0;
+
+    // 3. 대상 보드들에 연결된 카드 수집
+    Map<Long, List<Long>> boardCardMap = new HashMap<>();
+    for (Long targetId : targetBoardIds) {
+      List<Long> cardIds = boardCardService.findDistinctCardIdsByBoardIds(List.of(targetId));
+      if (!cardIds.isEmpty()) {
+        boardCardMap.put(targetId, cardIds);
+      }
+    }
+
+    // 전체 카드 목록 (soft delete 처리용)
+    List<Long> allCardIds = boardCardMap.values().stream()
+      .flatMap(Collection::stream)
+      .distinct()
+      .toList();
 
     // 4. 옵션에 따른 카드 처리
     try {
@@ -995,55 +1004,48 @@ public class BoardService {
     // 5. AI 기본 보드: 숨김 처리
     if (root.getSource() == BoardSource.AI) {
 
-      // ✅ [수정 1] detach 전에 카드 ID를 미리 확보하도록 순서 변경
+      // 자식 섹션 목록
       List<Long> sectionIds = targets.stream()
         .filter(t -> t.getBoardType() == BoardType.SECTION && !t.getId().equals(root.getId()))
         .map(Board::getId)
         .toList();
 
-      // ✅ [추가] detach 전에 카드 ID 미리 조회
-      List<Long> sectionCardIds = boardCardService.findDistinctCardIdsByBoardIds(sectionIds);
-      List<Long> rootCardIds = boardCardService.findDistinctCardIdsByBoardIds(
-        List.of(root.getId()));
-
-      // ✅ [기존 detach 코드 이동] — 이제 여기서 링크 제거
+      // 링크 제거
       if (!targetBoardIds.isEmpty()) {
         linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
       }
 
-      // 5-A. 섹션 soft delete
+      // 섹션 soft delete
       if (!sectionIds.isEmpty()) {
         boardRepository.softDeleteByIds(sectionIds, userId, LocalDateTime.now());
       }
 
-      // 5-B. 섹션 카드 soft delete
-      if (!sectionCardIds.isEmpty()) {
-        cardsSoftDeleted += cardRepository.softDeleteByIds(sectionCardIds, userId,
-          LocalDateTime.now());
+      // soft delete
+      if (!allCardIds.isEmpty()) {
+        cardsSoftDeleted += cardRepository.softDeleteByIds(allCardIds, userId, LocalDateTime.now());
       }
 
-      // 5-C. 루트 보드 카드 soft delete
-      if (!rootCardIds.isEmpty()) {
-        cardsSoftDeleted += cardRepository.softDeleteByIds(rootCardIds, userId,
-          LocalDateTime.now());
-      }
-
-      // 5-D. 루트 보드 숨김 처리
+      // 루트 보드 숨김 처리
       boardMemberService.hideBoardForUser(root.getId(), userId);
 
+      // 복원용 카드 매핑값 저장
+      List<CardRestoreRequestDto> cardRestores = boardCardMap.entrySet().stream()
+        .map(e -> CardRestoreRequestDto.builder()
+          .boardId(e.getKey())
+          .cardIds(e.getValue())
+          .build()
+        )
+        .toList();
+
       return BoardDeleteResultDto.builder()
-        .boardId(boardId)
+        .boardId(root.getId())
         .status("HIDDEN")
         .option(option.name())
         .linksDetached(linksDetached)
         .cardsSoftDeleted(cardsSoftDeleted)
         .sectionsDeleted(sectionIds.size())
         .deletedSectionIds(sectionIds)
-        .deletedCardIds(
-          Stream.of(sectionCardIds, rootCardIds, allCardIds)
-            .flatMap(Collection::stream)
-            .distinct()
-            .toList())
+        .cardRestores(cardRestores)
         .build();
     }
 
@@ -1061,6 +1063,13 @@ public class BoardService {
           .filter(t -> t.getBoardType() == BoardType.SECTION)
           .count();
 
+        List<CardRestoreRequestDto> cardRestores = boardCardMap.entrySet().stream()
+          .map(e -> CardRestoreRequestDto.builder()
+            .boardId(e.getKey())
+            .cardIds(e.getValue())
+            .build())
+          .toList();
+
         return BoardDeleteResultDto.builder()
           .boardId(boardId)
           .status("SOFT_DELETED")
@@ -1074,7 +1083,7 @@ public class BoardService {
               .map(Board::getId)
               .toList()
           )
-          .deletedCardIds(allCardIds)
+          .cardRestores(cardRestores)
           .build();
 
       }
