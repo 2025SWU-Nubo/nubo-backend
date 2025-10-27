@@ -46,7 +46,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
       CASE WHEN :sort = 'OLDEST' THEN b.createdAt END ASC,
       CASE WHEN :sort = 'ALPHABET' THEN b.name END ASC
     """)
-  List<Board> findBoardsWithUnviewedCards(
+  List<Board> findAccessibleBoards(
     @Param("userId") Long userId,
     @Param("boardType") BoardType boardType,
     @Param("sort") String sort
@@ -58,7 +58,15 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     FROM Board b
     WHERE b.boardType = :boardType
       AND b.deletedAt IS NULL
-      AND (b.user.id = :userId OR b.user IS NULL)
+      AND (
+          b.user.id = :userId OR b.user IS NULL
+          OR EXISTS (
+            SELECT 1
+            FROM BoardMember bm
+            WHERE bm.board.id = b.id
+              AND bm.user.id = :userId
+          )
+      )
       AND (
         b.source = 'USER'
         OR (
@@ -76,15 +84,15 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
                 AND bc.card.deletedAt IS NULL
             )
             OR EXISTS (
-              SELECT 1 FROM Board s
-              WHERE s.parentBoard.id = b.id
-                AND s.deletedAt IS NULL
+              SELECT 1 FROM Board sb
+              WHERE sb.parentBoard.id = b.id
+                AND sb.deletedAt IS NULL
             )
           )
         )
       )
     """)
-  Page<Board> findBoardsWithUnviewedCards(
+  Page<Board> findAccessibleBoards(
     @Param("userId") Long userId,
     @Param("boardType") BoardType boardType,
     Pageable pageable
