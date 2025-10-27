@@ -213,7 +213,16 @@ public class BoardService {
   public Page<BoardSummaryResponseDto> getUserBoards(
     Long userId, int page, int size, SortType sort, FilterType filter) {
 
-    PageRequest pageable = PageRequestUtil.of(page, size, sort, Board.class);
+    PageRequest pageable;
+
+    switch (filter) {
+      case FAVORITE, SHARED -> {
+        pageable = PageRequestUtil.of(page, size, sort, Board.class, "board.");
+      }
+      default -> {
+        pageable = PageRequestUtil.of(page, size, sort, Board.class);
+      }
+    }
 
     // 1. 보드 조회 (필터별 분기)
     Page<Board> boards = switch (filter) {

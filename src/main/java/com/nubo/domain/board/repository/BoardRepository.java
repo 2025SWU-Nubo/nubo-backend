@@ -99,6 +99,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         AND bm.user.deletedAt IS NULL
         AND bm.board.boardType = 'BOARD'
         AND bm.board.deletedAt IS NULL
+      ORDER BY bm.board.name ASC
     """)
   Page<Board> findFavoriteBoards(Long userId, Pageable pageable);
 
@@ -111,6 +112,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         AND bm.board.shared = true
         AND bm.board.boardType = 'BOARD'
         AND bm.board.deletedAt IS NULL
+      ORDER BY bm.board.name ASC
     """)
   Page<Board> findSharedBoards(Long userId, Pageable pageable);
 
