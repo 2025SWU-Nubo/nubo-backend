@@ -355,7 +355,7 @@ public class BoardService {
    */
   @Transactional(readOnly = true)
   public List<BoardSimpleResponseDto> getBoardsForHome(Long userId, SortType sort) {
-    List<Board> boards = boardRepository.findAccessibleBoards(userId, BoardType.BOARD,
+    List<Board> boards = boardRepository.findBoardsWithUnviewedCards(userId, BoardType.BOARD,
       sort.name());
     return boards.stream()
       .map(boardMapper::toSimpleResponseDto)

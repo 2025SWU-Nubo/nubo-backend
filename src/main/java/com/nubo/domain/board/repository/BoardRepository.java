@@ -16,13 +16,13 @@ import org.springframework.data.repository.query.Param;
 
 public interface BoardRepository extends JpaRepository<Board, Long> {
 
-  // 특정 사용자의 1차 보드 목록 조회 (하위에 섹션이나 카드를 보유한 경우) - list
+  // 미열람 카드가 있는 보드 목록 조회 - list
   @Query("""
     SELECT DISTINCT b
     FROM Board b
     WHERE b.boardType = :boardType
       AND b.deletedAt IS NULL
-      AND (b.user.id = :userId OR b.user IS NULL)
+      AND b.user.id = :userId
       AND EXISTS (
         SELECT 1
         FROM BoardCard bc
@@ -39,14 +39,17 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
                 AND s.deletedAt IS NULL
             )
           )
-          AND (cus IS NULL OR cus.viewedAt IS NULL)
+          AND (
+            (cus IS NULL)
+            OR (cus.viewedAt IS NULL)
+          )
       )
     ORDER BY
       CASE WHEN :sort = 'LATEST' THEN b.createdAt END DESC,
       CASE WHEN :sort = 'OLDEST' THEN b.createdAt END ASC,
       CASE WHEN :sort = 'ALPHABET' THEN b.name END ASC
     """)
-  List<Board> findAccessibleBoards(
+  List<Board> findBoardsWithUnviewedCards(
     @Param("userId") Long userId,
     @Param("boardType") BoardType boardType,
     @Param("sort") String sort
