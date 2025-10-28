@@ -1162,6 +1162,14 @@ public class BoardService {
       if (count > 0) {
         restored += count;
         restoredSections.addAll(req.getSectionIds());
+
+        for (Long sectionId : restoredSections) {
+          Board section = boardRepository.findById(sectionId)
+            .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+          if (section.getSource() == BoardSource.USER) {
+            boardMemberService.restoreVisibleForUser(sectionId, userId);
+          }
+        }
       }
     }
 
