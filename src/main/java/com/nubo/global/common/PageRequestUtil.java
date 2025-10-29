@@ -18,7 +18,7 @@ public class PageRequestUtil {
     }
 
     Sort.Direction dir = switch (sort) {
-      case OLDEST -> Sort.Direction.ASC;
+      case LATEST -> Sort.Direction.ASC;
       case ALPHABET -> Sort.Direction.ASC;
       default -> Sort.Direction.DESC;
     };
