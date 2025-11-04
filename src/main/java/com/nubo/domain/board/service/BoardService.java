@@ -447,6 +447,7 @@ public class BoardService {
   public List<BoardSimpleResponseDto> getUserDefaultBoards(Long userId) {
     List<Board> boards = boardRepository.findAllDefaultBoardsByUserId(userId);
     return boards.stream()
+      .filter(board -> !"기타".equals(board.getName()))
       .map(boardMapper::toSimpleResponseDto)
       .toList();
   }
