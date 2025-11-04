@@ -48,6 +48,7 @@ public class UserService {
   @Transactional
   public UserWithStatusDto getOrCreateUser(User userCandidate) {
     boolean reactivated = false;
+    boolean isNewUser = false;
     User user;
 
     // 기존 사용자 조회
@@ -70,23 +71,20 @@ public class UserService {
     } else {
       // ✅ 신규 유저 생성
       user = userRepository.save(userCandidate);
+      isNewUser = true;
 
       // 기본 보드 생성
       List<Board> defaultBoards = boardMapper.toDefaultBoards(user);
       List<BoardMember> memberships = boardMemberMapper.toDefaultBoardMembers(defaultBoards, user);
-
       boardRepository.saveAll(defaultBoards);
       boardMemberRepository.saveAll(memberships);
 
       // 푸시알림 기본값 true 설정
       user.setRemindEnabled(true);
       user.setPushEnabled(true);
-
-      // 신규 가입자 (복구값 false)
-      reactivated = false;
     }
 
-    return new UserWithStatusDto(user, reactivated);
+    return new UserWithStatusDto(user, reactivated, isNewUser);
   }
 
   /**

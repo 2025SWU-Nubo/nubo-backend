@@ -10,4 +10,5 @@ public class UserWithStatusDto {
 
   private final User user;
   private final boolean reactivated;
+  private final boolean isNewUser;
 }
