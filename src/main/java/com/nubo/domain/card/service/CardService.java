@@ -251,6 +251,10 @@ public class CardService {
 
     for (Long boardId : targetBoardIds) {
       Board board = boardService.getBoardById(boardId);
+
+      // AI 보드 visible 처리
+      boardService.ensureVisibleForUser(boardId, userId);
+
       boardService.updateActivity(boardId);
       boardCardService.attachCard(board, savedCard);
     }

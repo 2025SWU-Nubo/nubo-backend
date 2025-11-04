@@ -74,24 +74,12 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         b.source = 'USER'
         OR (
           b.source = 'AI'
-          AND (
-            EXISTS (
+          AND EXISTS (
               SELECT 1 FROM BoardMember bm
               WHERE bm.board.id = b.id
                 AND bm.user.id = :userId
                 AND bm.visible = true
             )
-            OR EXISTS (
-              SELECT 1 FROM BoardCard bc
-              WHERE bc.board.id = b.id
-                AND bc.card.deletedAt IS NULL
-            )
-            OR EXISTS (
-              SELECT 1 FROM Board sb
-              WHERE sb.parentBoard.id = b.id
-                AND sb.deletedAt IS NULL
-            )
-          )
         )
       )
     """)
@@ -202,23 +190,11 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
         b.source = 'USER'
         OR (
           b.source = 'AI'
-          AND (
-            EXISTS (
+          AND EXISTS (
               SELECT 1 FROM BoardMember bm
               WHERE bm.board.id = b.id
                 AND bm.user.id = :userId
                 AND bm.visible = true
-            )
-            OR EXISTS (
-              SELECT 1 FROM BoardCard bc
-              WHERE bc.board.id = b.id
-                AND bc.card.deletedAt IS NULL
-            )
-            OR EXISTS (
-              SELECT 1 FROM Board sb
-              WHERE sb.parentBoard.id = b.id
-                AND sb.deletedAt IS NULL
-            )
           )
         )
       )
@@ -260,24 +236,12 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
          b.source = 'USER'
          OR (
            b.source = 'AI'
-           AND (
-             EXISTS (
+           AND EXISTS (
                SELECT 1 FROM BoardMember bm
                WHERE bm.board.id = b.id
                  AND bm.user.id = :userId
                  AND bm.visible = true
              )
-             OR EXISTS (
-               SELECT 1 FROM BoardCard bc
-               WHERE bc.board.id = b.id
-                 AND bc.card.deletedAt IS NULL
-             )
-             OR EXISTS (
-               SELECT 1 FROM Board s
-               WHERE s.parentBoard.id = b.id
-                AND s.deletedAt IS NULL\s
-             )
-           )
          )
        )
       AND LOWER(b.name) LIKE LOWER(CONCAT('%', :keyword, '%'))

@@ -15,6 +15,7 @@ import com.nubo.global.error.exception.ApiException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -214,6 +215,21 @@ public class BoardMemberService {
         .visible(true)
         .build();
       boardMemberRepository.save(newMember);
+    }
+  }
+
+  /**
+   * 특정 보드의 visible 값을 true로 설정한다.
+   */
+  @Transactional
+  public void enableVisibility(Board board, Long userId) {
+    Optional<BoardMember> optionalBm =
+      boardMemberRepository.findByBoard_IdAndUser_Id(board.getId(), userId);
+
+    BoardMember bm = optionalBm.get();
+    if (!bm.isVisible()) {
+      bm.updateVisible(true);
+      boardMemberRepository.save(bm);
     }
   }
 

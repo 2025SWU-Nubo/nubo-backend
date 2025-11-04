@@ -62,8 +62,8 @@ public class BoardMember extends BaseTimeEntity {
 
   @Column(name = "last_visited_at")
   private LocalDateTime lastVisitedAt;
-  
-  // 보드 노출 여부 (최초 1회 관심사 설정용)
+
+  // 보드 노출 여부 관리
   @Column(nullable = false)
   private boolean visible = false;
 
@@ -73,5 +73,9 @@ public class BoardMember extends BaseTimeEntity {
 
   public void updateLastVisitedAt() {
     this.lastVisitedAt = LocalDateTime.now();
+  }
+
+  public void updateVisible(boolean visible) {
+    this.visible = visible;
   }
 }

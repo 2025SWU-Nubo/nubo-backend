@@ -45,6 +45,40 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
     WHERE bm.user.id = :userId
       AND bm.lastVisitedAt IS NOT NULL
       AND b.boardType <> com.nubo.domain.board.type.BoardType.SECTION
+      AND b.deletedAt IS NULL
+      AND (
+        b.source = 'USER'
+        OR (
+          b.source = 'AI'
+          AND (
+            EXISTS (
+              SELECT 1 FROM BoardMember bm2
+              WHERE bm2.board.id = b.id
+                AND bm2.user.id = :userId
+                AND bm2.visible = true
+            )
+            OR (
+              NOT EXISTS (
+                SELECT 1 FROM BoardMember bm2
+                WHERE bm2.board.id = b.id
+                  AND bm2.user.id = :userId
+              )
+              AND (
+                EXISTS (
+                  SELECT 1 FROM BoardCard bc
+                  WHERE bc.board.id = b.id
+                    AND bc.card.deletedAt IS NULL
+                )
+                OR EXISTS (
+                  SELECT 1 FROM Board sb
+                  WHERE sb.parentBoard.id = b.id
+                    AND sb.deletedAt IS NULL
+                )
+              )
+            )
+          )
+        )
+      )
     ORDER BY bm.lastVisitedAt DESC
     """)
   List<BoardMember> findRecentVisitedBoards(@Param("userId") Long userId, Pageable pageable);
@@ -83,6 +117,8 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
     UPDATE BoardMember bm
        SET bm.visible = false
      WHERE bm.user.id = :userId
+       AND bm.board.source = 'AI'
+       AND bm.board.boardType = 'BOARD'
     """)
   int bulkResetVisible(@Param("userId") Long userId);
 

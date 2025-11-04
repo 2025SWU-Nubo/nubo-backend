@@ -78,11 +78,11 @@ public class BoardService {
 
   private final CardRepository cardRepository;
   private final CardMapper cardMapper;
+  private final CardUserStatusService cardUserStatusService;
 
   private final BoardCardService boardCardService;
 
   private final BoardMemberService boardMemberService;
-  private final CardUserStatusService cardUserStatusService;
   private final BoardInvitationService boardInvitationService;
   private final BoardMemberMapper boardMemberMapper;
 
@@ -1020,25 +1020,25 @@ public class BoardService {
         .map(Board::getId)
         .toList();
 
-      // 링크 제거
-      if (!targetBoardIds.isEmpty()) {
-        linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
-      }
-
-      // 섹션 soft delete
+      // (1) 자식 섹션 soft delete
       if (!sectionIds.isEmpty()) {
         boardRepository.softDeleteByIds(sectionIds, userId, LocalDateTime.now());
       }
 
-      // soft delete
+      // (2) 카드 soft delete
       if (!allCardIds.isEmpty()) {
         cardsSoftDeleted += cardRepository.softDeleteByIds(allCardIds, userId, LocalDateTime.now());
       }
 
-      // 루트 보드 숨김 처리
+      // 보드-카드 링크 제거
+      if (!targetBoardIds.isEmpty()) {
+        linksDetached = boardCardService.detachByBoardIds(targetBoardIds);
+      }
+
+      // (3) 루트 보드 숨김 처리
       boardMemberService.hideBoardForUser(root.getId(), userId);
 
-      // 복원용 카드 매핑값 저장
+      // (4) 복원용 카드 매핑값 저장
       List<CardRestoreRequestDto> cardRestores = boardCardMap.entrySet().stream()
         .map(e -> CardRestoreRequestDto.builder()
           .boardId(e.getKey())
@@ -1302,6 +1302,17 @@ public class BoardService {
   public Board getAiBoardByUserAndCategory(Long userId, DefaultBoard category) {
     return boardRepository.findByUserIdAndName(userId, category.getDisplayName())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+  }
+
+  // AI 보드 visible 처리
+  @Transactional
+  public void ensureVisibleForUser(Long boardId, Long userId) {
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    if (board.getSource() == BoardSource.AI) {
+      boardMemberService.enableVisibility(board, userId);
+    }
   }
 
 }
