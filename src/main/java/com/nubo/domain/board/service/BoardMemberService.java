@@ -178,10 +178,7 @@ public class BoardMemberService {
    */
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void updateLastVisitedAt(Long boardId, Long userId) {
-    int updated = boardMemberRepository.updateLastVisitedAt(boardId, userId, LocalDateTime.now());
-    if (updated == 0) {
-      throw new ApiException(ErrorCode.ACCESS_DENIED); // 멤버십 없는 경우
-    }
+    boardMemberRepository.updateLastVisitedAt(boardId, userId, LocalDateTime.now());
   }
 
   /**

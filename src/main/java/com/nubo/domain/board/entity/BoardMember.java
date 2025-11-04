@@ -71,10 +71,6 @@ public class BoardMember extends BaseTimeEntity {
     this.favorite = favorite;
   }
 
-  public void updateLastVisitedAt() {
-    this.lastVisitedAt = LocalDateTime.now();
-  }
-
   public void updateVisible(boolean visible) {
     this.visible = visible;
   }

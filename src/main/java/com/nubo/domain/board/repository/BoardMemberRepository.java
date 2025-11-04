@@ -91,7 +91,7 @@ public interface BoardMemberRepository extends JpaRepository<BoardMember, Long> 
        where bm.board.id = :boardId
          and bm.user.id = :userId
     """)
-  int updateLastVisitedAt(@Param("boardId") Long boardId,
+  void updateLastVisitedAt(@Param("boardId") Long boardId,
     @Param("userId") Long userId,
     @Param("now") LocalDateTime now);
 
