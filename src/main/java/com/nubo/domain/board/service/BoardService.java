@@ -30,6 +30,7 @@ import com.nubo.domain.board.mapper.BoardMemberMapper;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardSource;
 import com.nubo.domain.board.type.BoardType;
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.board.type.InvitationStatus;
 import com.nubo.domain.card.dto.CardRestoreRequestDto;
 import com.nubo.domain.card.dto.CardRestoreResponseDto;
@@ -1296,5 +1297,11 @@ public class BoardService {
     return candidate;
   }
 
+  // 특정 사용자의 AI 기본보드 중 주어진 카테고리(DefaultBoard)에 해당하는 보드를 조회한다.
+  @Transactional(readOnly = true)
+  public Board getAiBoardByUserAndCategory(Long userId, DefaultBoard category) {
+    return boardRepository.findByUserIdAndName(userId, category.getDisplayName())
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+  }
 
 }

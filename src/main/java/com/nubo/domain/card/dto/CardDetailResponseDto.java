@@ -24,7 +24,7 @@ public class CardDetailResponseDto {
   private String videoUrl;
   private String videoThumbnailUrl;
   private Platform videoPlatform;
-  private String boardName;
+  private String aiCategoryName;
 
   private List<HighlightRange> highlights;
 

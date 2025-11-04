@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.service.BoardCardService;
 import com.nubo.domain.board.service.BoardService;
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardCreateRequestDto;
 import com.nubo.domain.card.dto.CardCreateResponseDto;
@@ -40,6 +41,7 @@ import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -149,10 +151,16 @@ public class CardService {
       revived.setDeletedBy(null);
       cardRepository.save(revived);
 
-      List<Long> boardIds = boardCardService.findBoardIdsByCardId(revived.getId());
-      log.info("카드 복구 완료 - 원래 연결된 보드들: {}", boardIds);
+      // AI 카테고리를 기반으로 기본보드 재매핑
+      if (revived.getAiCategory() != null) {
+        Board aiBoard = boardService.getAiBoardByUserAndCategory(
+          user.getId(),
+          revived.getAiCategory()
+        );
+        boardCardService.attachCard(aiBoard, revived);
+      }
 
-      var restoreBoardIds = boardCardService.findBoardIdsByCardId(revived.getId());
+      List<Long> restoreBoardIds = boardCardService.findBoardIdsByCardId(revived.getId());
       return cardMapper.toResponseDto(revived, restoreBoardIds);
     }
 
@@ -211,6 +219,22 @@ public class CardService {
     // 7. 카드 생성/저장
     Card card = cardMapper.toEntity(user, video);
     card.updateMeta(meta.getSummary(), meta.getTags());
+
+    // AI 카테고리 저장
+    if (meta.getBoardId() != null) {
+      Board aiBoard = boardService.getBoardById(meta.getBoardId());
+
+      String boardName = aiBoard.getName();
+      DefaultBoard matched = Arrays.stream(DefaultBoard.values())
+        .filter(b -> b.getDisplayName().equals(boardName))
+        .findFirst()
+        .orElse(DefaultBoard.ETC);
+
+      card.setAiCategory(matched);
+    } else {
+      card.setAiCategory(DefaultBoard.ETC);
+    }
+
     Card savedCard = cardRepository.save(card);
 
     // 8. 보드 연결

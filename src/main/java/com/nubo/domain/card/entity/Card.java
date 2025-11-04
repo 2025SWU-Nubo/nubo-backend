@@ -1,12 +1,15 @@
 package com.nubo.domain.card.entity;
 
 import com.nubo.domain.board.entity.BoardCard;
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.global.common.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -61,6 +64,10 @@ public class Card extends BaseTimeEntity {
   // 보드와의 M:N 관계 (BoardCard로 관리)
   @OneToMany(mappedBy = "card", cascade = CascadeType.ALL, orphanRemoval = true)
   private Set<BoardCard> boardCards = new HashSet<>();
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "ai_category", length = 50)
+  private DefaultBoard aiCategory;
 
   // 소프트 삭제 정보
   private LocalDateTime deletedAt; // 삭제 시각

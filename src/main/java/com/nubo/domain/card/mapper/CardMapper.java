@@ -100,7 +100,7 @@ public class CardMapper {
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
-      .boardName(boardName)
+      .aiCategoryName(card.getAiCategory().getDisplayName())
       .highlights(highlights)
       .createdAt(card.getCreatedAt())
       .updatedAt(card.getUpdatedAt())
