@@ -3,9 +3,13 @@ package com.nubo.global.ai;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nubo.domain.board.repository.BoardRepository;
+import com.nubo.domain.board.service.BoardService;
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.CardSummaryUpdateRequestDto.HighlightRange;
+import com.nubo.global.error.ErrorCode;
+import com.nubo.global.error.exception.ApiException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +28,7 @@ import org.springframework.web.client.RestTemplate;
 public class OpenAiClient {
 
   private final RestTemplate restTemplate;
-  private final BoardRepository boardRepository;
+  private final BoardService boardService;
 
   @Value("${openai.api-key}")
   private String apiKey;
@@ -68,6 +72,12 @@ public class OpenAiClient {
 
       log.info("GPT JSON Extracted: {}", content);
 
+      // JSON 형식 유효성 검사 추가
+      if (!content.trim().startsWith("{")) {
+        log.warn("GPT 응답이 JSON 형식이 아닙니다: {}", content);
+        throw new ApiException(ErrorCode.AI_RESPONSE_INVALID);
+      }
+
       // GPT 응답 파싱
       ObjectMapper mapper = new ObjectMapper();
       JsonNode json = mapper.readTree(content);
@@ -97,9 +107,13 @@ public class OpenAiClient {
 
       final String resolvedBoardName = boardName;
 
-      Long boardId = boardRepository
-        .findByUserIdAndName(userId, resolvedBoardName)
-        .orElseThrow(() -> new RuntimeException("해당 이름의 보드를 찾을 수 없습니다: " + resolvedBoardName))
+      DefaultBoard matched = Arrays.stream(DefaultBoard.values())
+        .filter(b -> b.getDisplayName().equals(resolvedBoardName))
+        .findFirst()
+        .orElse(DefaultBoard.ETC);
+
+      Long boardId = boardService
+        .getAiBoardByUserAndCategory(userId, matched)
         .getId();
 
       return AiCardMetaDto.builder()
@@ -298,9 +312,7 @@ public class OpenAiClient {
       // 정제
       String cleaned = content.trim();
       if (cleaned.startsWith("```")) {
-        cleaned = cleaned.replaceAll("```json", "")
-          .replaceAll("```", "")
-          .trim();
+        cleaned = cleaned.replaceAll("(?i)```(json|bash)?", "").trim();
       }
 
       // JSON 파싱

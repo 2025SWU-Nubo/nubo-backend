@@ -44,6 +44,7 @@ public enum ErrorCode {
   DUPLICATE_CARD(409, "CD001", "card already exists", LogLevel.WARN),
   AI_SUMMARY_FAILED(500, "CD002", "AI summary regeneration failed", LogLevel.ERROR),
   INVALID_PROMPT(400, "CD003", "Prompt is not related to card summary", LogLevel.WARN),
+  AI_RESPONSE_INVALID(500, "CD004", "AI response is not valid JSON format", LogLevel.ERROR),
 
   // SECURITY
   INVALID_JWT_SECRET(500, "SC001", "JWT secret key must be at least 32 characters long",

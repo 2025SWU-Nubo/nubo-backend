@@ -211,9 +211,12 @@ public class CardService {
     // 6. 최종 제목
     String mdTitle = (metadata != null) ? metadata.getTitle() : null;
     String mdDesc = (metadata != null) ? metadata.getDescription() : null;
-    String finalTitle = (platform == Platform.YOUTUBE)
-      ? firstNonEmpty(mdTitle, truncate(safe(mdDesc), 120), "(제목 없음)")
-      : firstNonEmpty(meta.getTitle(), mdTitle, truncate(safe(mdDesc), 120), "(제목 없음)");
+    String finalTitle = firstNonEmpty(
+      meta.getTitle(),            // AI 생성 제목
+      mdTitle,                    // 원본 메타 제목
+      truncate(safe(mdDesc), 120),// 설명 일부
+      "(제목 없음)"               // 최종 fallback
+    );
     video.setTitle(finalTitle);
 
     // 7. 카드 생성/저장
