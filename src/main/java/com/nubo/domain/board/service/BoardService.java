@@ -11,6 +11,7 @@ import com.nubo.domain.board.dto.BoardFavoriteResponseDto;
 import com.nubo.domain.board.dto.BoardInvitationRequestDto;
 import com.nubo.domain.board.dto.BoardInvitationResponseDto;
 import com.nubo.domain.board.dto.BoardMemberListResponseDto;
+import com.nubo.domain.board.dto.BoardNameCheckResponseDto;
 import com.nubo.domain.board.dto.BoardPreviewResponseDto;
 import com.nubo.domain.board.dto.BoardRestoreRequestDto;
 import com.nubo.domain.board.dto.BoardRestoreResponseDto;
@@ -96,12 +97,25 @@ public class BoardService {
    * @return 사용 가능 여부 (true=사용 가능, false=중복)
    */
   @Transactional(readOnly = true)
-  public boolean isBoardNameAvailable(Long userId, String name) {
-    // 앞뒤 공백 제거
+  public BoardNameCheckResponseDto checkBoardName(Long userId, String name) {
+    // 0. 앞뒤 공백 제거
     String cleanName = name != null ? name.trim() : null;
-    // 내 보드 중 동일한 이름이 존재하는지 확인
-    boolean exists = boardRepository.existsByUser_IdAndNameIgnoreCase(userId, cleanName);
-    return !exists;
+
+    // 1. 이름 중복 여부
+    boolean existsVisible = boardRepository.existsByUser_IdAndNameIgnoreCase(userId, cleanName);
+    if (existsVisible) {
+      return new BoardNameCheckResponseDto(false, false); // 생성 불가, AI보드 아님
+    }
+
+    // 2. 같은 이름의 숨겨진 AI보드 존재 여부
+    boolean hiddenAiExists = boardRepository.existsHiddenAiBoardByUserAndName(userId, cleanName);
+    if (hiddenAiExists) {
+      // 생성 가능(복원), AI보드 이름과 동일함
+      return new BoardNameCheckResponseDto(true, true);
+    }
+
+    // 3. 기타 정상 생성
+    return new BoardNameCheckResponseDto(true, false);
   }
 
   /**

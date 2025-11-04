@@ -62,8 +62,8 @@ public class BoardController {
   @GetMapping("/check-name")
   public ResponseEntity<BoardNameCheckResponseDto> checkBoardName(@RequestParam String name) {
     Long userId = userUtil.getAuthenticatedUserId();
-    boolean available = boardService.isBoardNameAvailable(userId, name);
-    return ResponseEntity.ok(new BoardNameCheckResponseDto(available));
+    BoardNameCheckResponseDto response = boardService.checkBoardName(userId, name);
+    return ResponseEntity.ok(response);
   }
 
   /**

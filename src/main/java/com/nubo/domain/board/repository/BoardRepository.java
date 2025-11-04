@@ -206,6 +206,19 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
   // 동일한 이름의 보드가 존재하는지 조회한다.
   boolean existsByUser_IdAndNameIgnoreCase(Long userId, String name);
 
+  // 동일한 이름의 visible=false AI 기본보드가 존재하는지 조회한다.
+  @Query("""
+    SELECT COUNT(b) > 0
+    FROM Board b
+    JOIN BoardMember bm ON bm.board.id = b.id
+    WHERE b.source = 'AI'
+      AND LOWER(b.name) = LOWER(:name)
+      AND bm.user.id = :userId
+      AND bm.visible = false
+    """)
+  boolean existsHiddenAiBoardByUserAndName(@Param("userId") Long userId,
+    @Param("name") String name);
+
   // 사용자의 기본 보드를 모두 조회한다.
   @Query("""
     SELECT b
