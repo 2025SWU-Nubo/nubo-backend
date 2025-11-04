@@ -47,7 +47,8 @@ public class AuthService {
     return new LoginResponseDto(
       jwt,
       userMapper.toInfoDto(userStatus.getUser()),
-      userStatus.isReactivated()
+      userStatus.isReactivated(),
+      userStatus.isNewUser()
     );
   }
 

@@ -12,4 +12,5 @@ public class LoginResponseDto {
   private UserInfoDto user;
 
   private boolean reactivated;
+  private boolean isNewUser;
 }
