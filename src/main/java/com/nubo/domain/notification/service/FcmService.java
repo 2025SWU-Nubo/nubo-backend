@@ -12,6 +12,8 @@ import com.nubo.domain.notification.type.NotificationType;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -208,12 +210,29 @@ public class FcmService {
     try {
       FirebaseMessaging.getInstance().send(message);
     } catch (FirebaseMessagingException e) {
-      log.error("🔥 FCM ErrorCode={}, Message={}, Cause={}", e.getErrorCode(), e.getMessage(),
-        e.getCause());
 
-      if ("UNREGISTERED".equals(e.getErrorCode())
-        || "NOT_FOUND".equals(e.getErrorCode())
-        || "registration-token-not-registered".equals(e.getErrorCode())) {
+      final String rawCode = String.valueOf(
+        e.getErrorCode());                 // 예: "UNREGISTERED", "NOT_FOUND", ...
+      final String code = rawCode == null ? "" : rawCode.toLowerCase(Locale.ROOT);
+      final String msg = (e.getMessage() == null ? "" : e.getMessage().toLowerCase(Locale.ROOT));
+
+      log.error("🔥 FCM ErrorCode={}, Message={}, Cause={}", rawCode, e.getMessage(), e.getCause());
+
+      // 만료/비등록 토큰으로 판단할 키워드 모음 (errorCode, message 양쪽 모두에서 탐지)
+      final Set<String> invalidHints = Set.of(
+        "unregistered",                     // 표준 오류코드
+        "registration-token-not-registered",
+        "not_found",                        // status
+        "requested entity was not found",
+        "invalid-registration-token",
+        "mismatchsenderid",                 // Sender/프로젝트 불일치
+        "invalid-argument"                  // 간혹 잘못된 토큰 포맷 등으로 올 때
+      );
+
+      boolean isInvalidToken =
+        invalidHints.stream().anyMatch(k -> code.contains(k) || msg.contains(k));
+
+      if (isInvalidToken) {
         log.warn("🧹 만료된 FCM 토큰 비활성화 처리: {}", token);
         try {
           deviceTokenService.deleteTokenByToken(token);
