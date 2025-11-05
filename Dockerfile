@@ -8,7 +8,7 @@ RUN gradle dependencies --no-daemon || true
 COPY . .
 RUN gradle clean build -x test --no-daemon
 
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
