@@ -523,7 +523,10 @@ public class BoardService {
   public void updateActivity(Long boardId) {
     Board board = getBoardById(boardId);
 
-    // 현재 보드 갱신
+    // 마지막 카드 추가 시각 갱신
+    board.updateLastCardAddedAt(LocalDateTime.now());
+
+    // 현재 보드 updatedAt 갱신
     board.touch();
     boardRepository.save(board);
 

@@ -70,9 +70,18 @@ public class Board extends BaseTimeEntity {
   @OneToMany(mappedBy = "parentBoard", cascade = CascadeType.ALL, orphanRemoval = false)
   private Set<Board> sections = new HashSet<>();
 
+  // 마지막 카드가 추가된 시점
+  @Column(name = "last_card_added_at", nullable = true)
+  private LocalDateTime lastCardAddedAt;
+
   // Soft delete용 필드
   private LocalDateTime deletedAt;
   private Long deletedBy;
+
+  // 카드 추가 시 호출 (최근저장순 정렬용)
+  public void updateLastCardAddedAt(LocalDateTime time) {
+    this.lastCardAddedAt = time;
+  }
 
   // 마지막 수정시간 업데이트를 위한 dummy 변경
   public void touch() {
