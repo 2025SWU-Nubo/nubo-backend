@@ -18,9 +18,8 @@ public class PageRequestUtil {
     }
 
     Sort.Direction dir = switch (sort) {
-      case LATEST -> Sort.Direction.ASC;
-      case ALPHABET -> Sort.Direction.ASC;
-      default -> Sort.Direction.DESC;
+      case LATEST -> Sort.Direction.DESC;
+      case OLDEST, ALPHABET -> Sort.Direction.ASC;
     };
 
     return PageRequest.of(page, size, Sort.by(dir, field));
