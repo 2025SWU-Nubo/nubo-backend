@@ -3,7 +3,6 @@ package com.nubo.domain.notification.service;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
-import com.google.firebase.messaging.Notification;
 import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardInvitation;
 import com.nubo.domain.card.entity.Card;
@@ -185,14 +184,14 @@ public class FcmService {
   public void sendHybridMessageToToken(
     String token, NotificationType type, String title, String body, String channelId,
     Long boardId, Long cardId) {
-    Notification notification = Notification.builder()
-      .setTitle(title)
-      .setBody(body)
-      .build();
+//    Notification notification = Notification.builder()
+//      .setTitle(title)
+//      .setBody(body)
+//      .build();
 
     Message.Builder messageBuilder = Message.builder()
       .setToken(token)
-      .setNotification(notification)
+//      .setNotification(notification)
       .putData("title", title)
       .putData("body", body)
       .putData("type", type.name())
