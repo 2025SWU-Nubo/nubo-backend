@@ -755,31 +755,48 @@ public class BoardService {
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-//    if (targetBoard.isShared()) {
-//      throw new ApiException(ErrorCode.ACCESS_DENIED);
-//    }
-
     List<Long> createdBoardIds = new ArrayList<>();
     List<Long> createdCardIds = new ArrayList<>();
+
+    // 공유보드 복제 불가
+    if (sourceBoardId != null) {
+      Board sourceBoard = boardRepository.findById(sourceBoardId)
+        .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+      if (sourceBoard.isShared()) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
+    }
 
     // 2. 보드 복제
     if (dto.getBoardIds() != null) {
       for (Long boardId : dto.getBoardIds()) {
         Board source = boardRepository.findById(boardId)
           .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
-        if (source.getSource() == BoardSource.AI) {
-          continue;
+
+        // AI, 공유보드 복제 불가
+        if (source.getSource() == BoardSource.AI || source.isShared()) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
         }
 
         String newName = resolveDuplicateBoardName(source.getName(), targetBoard, userId);
         User user = userService.getUserById(userId);
+
         Board copied = boardMapper.toCopiedBoard(source, newName, user, targetBoard);
         boardRepository.save(copied);
         boardMemberService.createOwner(copied, user);
         createdBoardIds.add(copied.getId());
 
+        // 하위 카드 복제
         List<BoardCard> boardCards = boardCardService.getByBoardId(source.getId());
         for (BoardCard bc : boardCards) {
+          Card srcCard = bc.getCard();
+
+          // 내 카드만 복제 가능
+          if (!srcCard.getUser().getId().equals(userId)) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED);
+          }
+
           Long newCardId = copyOrLinkCard(bc.getCard(), copied, userId);
           if (newCardId != null) {
             createdCardIds.add(newCardId);
@@ -793,6 +810,12 @@ public class BoardService {
       for (Long cardId : dto.getCardIds()) {
         Card card = cardRepository.findById(cardId)
           .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+        // 내 카드만 복제 가능
+        if (!card.getUser().getId().equals(userId)) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
+        }
+
         Long newCardId = copyOrLinkCard(card, targetBoard, userId);
         if (newCardId != null) {
           createdCardIds.add(newCardId);
@@ -835,10 +858,6 @@ public class BoardService {
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-//    if (targetBoard.isShared()) {
-//      throw new ApiException(ErrorCode.ACCESS_DENIED);
-//    }
-
     List<Long> movedBoardIds = new ArrayList<>();
     List<Long> movedCardIds = new ArrayList<>();
 
@@ -850,7 +869,7 @@ public class BoardService {
 
         // AI 보드, 공유 보드는 이동 불가
         if (source.getSource() == BoardSource.AI || source.isShared()) {
-          continue;
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
         }
 
         // 같은 대상이면 무시
@@ -876,13 +895,25 @@ public class BoardService {
 
     // 3. 카드 이동
     if (dto.getCardIds() != null) {
+
+      Board sourceBoard = null;
+      if (sourceBoardId != null) {
+        sourceBoard = boardRepository.findById(sourceBoardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+      }
+
       for (Long cardId : dto.getCardIds()) {
         Card card = cardRepository.findById(cardId)
           .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-        // source → target 이동
-        boolean alreadyLinked = boardCardService.exists(targetBoard.getId(), cardId);
-        if (alreadyLinked) {
+        // 공유보드라면 → 내 카드만 이동 가능
+        if (sourceBoard != null && sourceBoard.isShared()
+          && !card.getUser().getId().equals(userId)) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // 이미 링크되어 있으면 스킵
+        if (boardCardService.exists(targetBoard.getId(), cardId)) {
           continue;
         }
 
