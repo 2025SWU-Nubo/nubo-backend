@@ -230,6 +230,16 @@ public class BoardMemberService {
     }
   }
 
+  /**
+   * 사용자가 해당 보드의 OWNER인지 여부를 확인한다.
+   */
+  @Transactional(readOnly = true)
+  public boolean isOwner(Long boardId, Long userId) {
+    return boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
+      .map(bm -> bm.getRole() == BoardMemberRole.OWNER)
+      .orElse(false);
+  }
+
   // ====== private helper ======
 
   /**

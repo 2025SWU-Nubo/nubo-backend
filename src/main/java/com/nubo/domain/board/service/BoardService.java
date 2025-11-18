@@ -360,7 +360,15 @@ public class BoardService {
       return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
     });
 
-    return boardMapper.toDetailResponseDto(board, sections, cards, favorite);
+    boolean isOwner = boardMemberService.isOwner(boardId, userId);
+
+    return boardMapper.toDetailResponseDto(
+      board,
+      sections,
+      cards,
+      favorite,
+      isOwner
+    );
   }
 
   /**

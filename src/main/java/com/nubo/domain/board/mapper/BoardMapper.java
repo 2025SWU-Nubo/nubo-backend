@@ -84,12 +84,14 @@ public class BoardMapper {
     Board board,
     List<BoardSummaryResponseDto> sections,
     Page<CardSimpleResponseDto> cards,
-    boolean favorite) {
+    boolean favorite,
+    boolean isOwner) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .isFavorite(favorite)
       .isShared(board.isShared())
+      .isOwner(isOwner)
       .sections(sections)
       .cards(cards)
       .build();
