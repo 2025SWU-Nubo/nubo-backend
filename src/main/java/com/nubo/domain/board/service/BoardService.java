@@ -51,6 +51,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -448,7 +449,17 @@ public class BoardService {
     List<Board> boards = boardRepository.findAllDefaultBoardsByUserId(userId);
     return boards.stream()
       .filter(board -> !"기타".equals(board.getName()))
-      .map(boardMapper::toSimpleResponseDto)
+      .map(board -> {
+        String originalName = board.getName();
+
+        // " & " 기준으로 줄바꿈 처리
+        String cleanedName = Arrays.stream(originalName.split("&"))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.joining("\n"));
+
+        return boardMapper.toSimpleResponseDtoWithName(board, cleanedName);
+      })
       .toList();
   }
 
@@ -736,9 +747,9 @@ public class BoardService {
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (targetBoard.isShared()) {
-      throw new ApiException(ErrorCode.ACCESS_DENIED);
-    }
+//    if (targetBoard.isShared()) {
+//      throw new ApiException(ErrorCode.ACCESS_DENIED);
+//    }
 
     List<Long> createdBoardIds = new ArrayList<>();
     List<Long> createdCardIds = new ArrayList<>();
@@ -816,9 +827,9 @@ public class BoardService {
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (targetBoard.isShared()) {
-      throw new ApiException(ErrorCode.ACCESS_DENIED);
-    }
+//    if (targetBoard.isShared()) {
+//      throw new ApiException(ErrorCode.ACCESS_DENIED);
+//    }
 
     List<Long> movedBoardIds = new ArrayList<>();
     List<Long> movedCardIds = new ArrayList<>();

@@ -135,6 +135,19 @@ public class BoardMapper {
     return new BoardSimpleResponseDto(board.getId(), board.getName());
   }
 
+  /**
+   * Board → BoardSimpleResponseDto "&" 문자열 가공
+   */
+  public BoardSimpleResponseDto toSimpleResponseDtoWithName(Board board, String name) {
+    return BoardSimpleResponseDto.builder()
+      .boardId(board.getId())
+      .boardName(name)
+      .build();
+  }
+
+  /**
+   * Board → BoardFavoriteResponseDto
+   */
   public BoardFavoriteResponseDto toFavoriteResponseDto(Board board, boolean favorite) {
     return BoardFavoriteResponseDto.builder()
       .boardId(board.getId())
