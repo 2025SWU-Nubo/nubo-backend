@@ -39,6 +39,7 @@ public class UserMapper {
       .email(user.getEmail())
       .nickname(user.getNickname())
       .profileImageUrl(user.getProfileImageUrl())
+      .interestSetupCompleted(user.isInterestSetupCompleted())
       .build();
   }
 

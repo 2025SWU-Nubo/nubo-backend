@@ -11,4 +11,5 @@ public class UserInfoDto {
   String email;
   String nickname;
   String profileImageUrl;
+  boolean interestSetupCompleted;
 }
