@@ -5,6 +5,7 @@ import com.nubo.auth.dto.GoogleTokenResponseDto;
 import com.nubo.auth.dto.GoogleUserInfoDto;
 import com.nubo.auth.dto.LoginResponseDto;
 import com.nubo.auth.dto.TokenCheckResponseDto;
+import com.nubo.domain.user.dto.UserInfoDto;
 import com.nubo.domain.user.dto.UserWithStatusDto;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.mapper.UserMapper;
@@ -62,6 +63,14 @@ public class AuthService {
     boolean isValid = jwtProvider.validateToken(accessToken);
     boolean isExpired = !isValid && jwtProvider.isTokenExpired(accessToken);
 
-    return new TokenCheckResponseDto(isValid, isExpired);
+    UserInfoDto userInfo = null;
+
+    if (isValid) {
+      Long userId = jwtProvider.extractUserId(accessToken);
+      User user = userService.getUserById(userId);
+      userInfo = userMapper.toInfoDto(user);
+    }
+
+    return new TokenCheckResponseDto(isValid, isExpired, userInfo);
   }
 }
