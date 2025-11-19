@@ -357,7 +357,8 @@ public class BoardService {
       CardUserStatus status = statusMap.get(card.getId());
       boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
       boolean viewed = status != null && status.getViewedAt() != null;
-      return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+      boolean isMine = card.getUser().getId().equals(userId);
+      return cardMapper.toSimpleResponseDto(card, isFavorite, viewed, isMine);
     });
 
     boolean isOwner = boardMemberService.isOwner(boardId, userId);

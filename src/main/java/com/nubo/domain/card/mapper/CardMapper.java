@@ -61,6 +61,17 @@ public class CardMapper {
       .build();
   }
 
+  public CardSimpleResponseDto toSimpleResponseDto(Card card,
+    boolean isFavorite, boolean viewed, boolean isMine) {
+    return CardSimpleResponseDto.builder()
+      .cardId(card.getId())
+      .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .isFavorite(isFavorite)
+      .viewed(viewed)
+      .isMine(isMine)
+      .build();
+  }
+
   // Card → CardDetailResponseDto
   public CardDetailResponseDto toDetailResponseDto(
     Card card,
