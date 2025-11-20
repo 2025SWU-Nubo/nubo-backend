@@ -28,4 +28,4 @@ RUN apt-get update && apt-get install -y ffmpeg curl \
 ENV EXT_YTDLP_PATH=/usr/local/bin/yt-dlp
 ENV EXT_FFMPEG_PATH=/usr/bin/ffmpeg
 
-ENTRYPOINT ["java", "-Dserver.address=0.0.0.0", "-Dserver.port=8080", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"] # -D 설정 제거
