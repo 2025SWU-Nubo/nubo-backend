@@ -684,7 +684,14 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (board.getSource() != BoardSource.USER || !board.getUser().getId().equals(currentUserId)) {
+    if (board.getSource() != BoardSource.USER) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    boolean isOwner = board.getUser().getId().equals(currentUserId);
+    boolean isMember = boardMemberService.existsByBoardAndUser(boardId, currentUserId);
+
+    if (!isOwner && !isMember) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
