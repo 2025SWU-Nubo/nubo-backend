@@ -64,8 +64,16 @@ public class RecommendationGenerationService {
 
     // 4) 그룹마다 카드 생성 (유튜브 검색 → AI 요약)
     for (RecommendationGroup group : keywordGroups) {
-//      generateCardsForGroup(group);
+      try {
+        generateCardsForGroup(group);
+      } catch (Exception e) {
+        // 하나의 그룹이 실패해도 다른 그룹 생성을 위해 로그만 찍고 계속 진행
+        log.error("[추천생성] 그룹 카드 생성 중 실패 (건너뜀) - groupId={}, keyword={}",
+          group.getId(), group.getKeyword(), e);
+      }
     }
+
+    log.info("[추천생성] 사용자별 추천 생성 완료 - userId={}", userId);
   }
 
   // ----------------------------------------------------
