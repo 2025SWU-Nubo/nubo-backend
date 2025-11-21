@@ -1,0 +1,49 @@
+package com.nubo.domain.recommendation.entity;
+
+import com.nubo.domain.recommendation.type.RecommendationGroupType;
+import com.nubo.global.common.BaseTimeEntity;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Entity
+@Table(name = "recommendation_group")
+public class RecommendationGroup extends BaseTimeEntity {
+
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  // null이면 공통 추천, 값 있으면 개인 추천
+  private Long userId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "group_type", length = 50)
+  private RecommendationGroupType groupType; // KEYWORD / POPULAR
+
+  private String keyword; // groupType = KEYWORD일 때만 값 존재
+
+  private LocalDateTime expiresAt;
+
+  @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<RecommendationCard> cards = new ArrayList<>();
+
+}

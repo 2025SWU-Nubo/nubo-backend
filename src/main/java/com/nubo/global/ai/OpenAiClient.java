@@ -40,7 +40,7 @@ public class OpenAiClient {
    * @param userId    사용자 id
    * @return 생성된 메타데이터 dto
    */
-  public AiCardMetaDto generateCardMeta(String inputText, Long userId) {
+  public AiCardMetaDto generateCardMeta(String inputText, Long userId, boolean skipBoardFetch) {
     String prompt = buildPrompt(inputText);
 
     HttpHeaders headers = new HttpHeaders();
@@ -112,15 +112,19 @@ public class OpenAiClient {
         .findFirst()
         .orElse(DefaultBoard.ETC);
 
-      Long boardId = boardService
-        .getAiBoardByUserAndCategory(userId, matched)
-        .getId();
+      Long boardId = null;
+      if (!skipBoardFetch) {
+        boardId = boardService
+          .getAiBoardByUserAndCategory(userId, matched)
+          .getId();
+      }
 
       return AiCardMetaDto.builder()
         .title(title)
         .summary(summary)
         .tags(tags)
         .boardId(boardId)
+        .aiCategory(boardName)
         .build();
 
     } catch (Exception e) {
@@ -399,4 +403,73 @@ public class OpenAiClient {
     }
   }
 
+
+  public List<String> generateTrendingKeywords(DefaultBoard category) {
+
+    String prompt = buildKeywordPrompt(category);
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(apiKey);
+
+    Map<String, Object> requestBody = Map.of(
+      "model", "gpt-4o-mini",
+      "response_format", Map.of("type", "json_object"),
+      "messages", List.of(
+        Map.of("role", "user", "content", prompt)
+      )
+    );
+
+    HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+    ResponseEntity<Map> response = restTemplate.postForEntity(
+      "https://api.openai.com/v1/chat/completions",
+      request,
+      Map.class
+    );
+
+    Map<String, Object> choice = ((List<Map<String, Object>>) response.getBody()
+      .get("choices")).get(0);
+    Map<String, Object> message = (Map<String, Object>) choice.get("message");
+
+    String contentJson = (String) message.get("content");
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      Map<String, Object> json = mapper.readValue(contentJson, Map.class);
+
+      // "keywords": ["...", "..."]
+      List<String> keywords = (List<String>) json.get("keywords");
+      return keywords != null ? keywords : List.of();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      return List.of();
+    }
+  }
+
+  private String buildKeywordPrompt(DefaultBoard category) {
+    return """
+      당신은 유튜브 쇼츠 트렌드를 분석하는 도우미입니다.
+
+      아래 카테고리에 대해 한국에서 최근 1~2주 동안
+      실제로 자주 검색되었을 법한 '정보성·학습 목적의' 키워드 5개를 생성해 주세요.
+
+      조건:
+      - 엔터테인먼트/밈/브이로그/ASMR 제외
+      - 브랜드명/게임명/인물명/국가명 등 고유명사 제외
+      - 너무 일반적인 단어 제외
+      - 길이는 3~8자, 한국어 표현 중심
+      - 학습·실용 정보를 제공하는 단어만 선택
+
+      카테고리: %s
+
+      반드시 아래 JSON 형식으로만 답하세요.
+
+      {
+        "keywords": ["키워드"]
+      }
+
+      """.formatted(category.getDisplayName());
+  }
 }

@@ -252,4 +252,6 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   int restoreById(@Param("id") Long id);
 
+  // 추천 컨텐츠를 위한 사용자 카드 전체 조회
+  List<Card> findByUserId(Long userId);
 }

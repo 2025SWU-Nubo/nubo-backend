@@ -1,20 +1,19 @@
-package com.nubo.domain.card.dto;
+package com.nubo.domain.recommendation.dto;
 
 import java.util.List;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 @Getter
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class AiCardMetaDto {
+public class RecommendationCardResponseDto {
 
+  private Long recCardId;
+  private String videoId;
   private String title;
   private String summary;
   private List<String> tags;
-  private Long boardId;
+  private String thumbnailUrl;
+  private boolean saved;
   private String aiCategory;
 }

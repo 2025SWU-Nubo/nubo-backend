@@ -205,7 +205,7 @@ public class CardService {
 
     // 5. GPT 요약/태그
     String inputText = buildFullText(video);
-    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, false);
     log.info("AI 메타 생성 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
 
     // 6. 최종 제목
@@ -431,7 +431,7 @@ public class CardService {
    * @param video Video 엔티티
    * @return 합쳐진 텍스트 문자열
    */
-  private String buildFullText(Video video) {
+  public String buildFullText(Video video) {
     StringBuilder sb = new StringBuilder();
 
     // 1) 요약 근거
@@ -672,4 +672,11 @@ public class CardService {
 
     return new CardRestoreResponseDto(restoredCount);
   }
+
+
+  @Transactional(readOnly = true)
+  public List<Card> getAllCardsByUser(Long userId) {
+    return cardRepository.findByUserId(userId);
+  }
+
 }
