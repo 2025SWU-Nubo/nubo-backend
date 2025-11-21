@@ -148,7 +148,7 @@ public class RecommendationGenerationService {
     if (group.getGroupType() == RecommendationGroupType.KEYWORD) {
       results = youtubeSearchService.searchByKeyword(group.getKeyword());
     } else {
-      results = youtubeSearchService.searchPopularByCategory(DefaultBoard.HEALTH);
+      results = youtubeSearchService.searchPopularByCategory(DefaultBoard.HOBBY);
     }
 
     if (results.isEmpty()) {
@@ -156,21 +156,35 @@ public class RecommendationGenerationService {
       return;
     }
 
-    // 2) 추천카드 여러 개 생성
-    int limit = Math.min(results.size(), 2);
+    // 2) 목표 개수 설정 (예: 6개)
+    int targetCount = 6;
+    int successCount = 0;
 
-    for (int i = 0; i < limit; i++) {
-      YoutubeVideoResult r = results.get(i);
+    // 검색된 결과 전체를 순회
+    for (YoutubeVideoResult r : results) {
+      // 목표치를 달성했으면 중단 (불필요한 API 호출 방지)
+      if (successCount >= targetCount) {
+        break;
+      }
 
-      createRecommendedCard(
-        group.getUserId(),   // userId=null이면 공통 추천
-        r.getVideoUrl(),
-        r.getVideoId(),
-        group
-      );
+      try {
+        RecommendationCard createdCard = createRecommendedCard(
+          group.getUserId(),
+          r.getVideoUrl(),
+          r.getVideoId(),
+          group
+        );
+
+        // null이 아니면 성공으로 카운트
+        if (createdCard != null) {
+          successCount++;
+        }
+
+      } catch (Exception e) {
+        // 개별 실패는 로그만 남기고 계속 진행 (성공 카운트는 안 올라감)
+        log.error("추천 카드 생성 실패 (건너뜀) - videoId={}", r.getVideoId(), e);
+      }
     }
-
-    log.info("[추천그룹] 카드 생성 완료 - groupId={}", group.getId());
   }
 
   // ==============================================
@@ -281,9 +295,14 @@ public class RecommendationGenerationService {
 
     // 4. GPT 요약/태그
     String inputText = cardService.buildFullText(video);
-    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, true);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, true, true);
 
     log.info("[추천카드] GPT 완료 - elapsed={}ms", System.currentTimeMillis() - startTime);
+
+    if (meta == null) {
+      log.info("[추천카드] 생성 스킵 (요약 불가/품질 미달) - videoId={}", videoId);
+      return null;
+    }
 
     // 5. AI 보드 판단 → DefaultBoard 매핑만 저장 (실제 보드 연결 X)
     DefaultBoard aiCategory = DefaultBoard.ETC;

@@ -139,47 +139,40 @@ public class YoutubeSearchService {
       return List.of();
     }
 
+    String targetKeyword = keywords.get(0);
+
+    UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(SEARCH_URL)
+      .queryParam("part", "snippet")
+      .queryParam("type", "video")
+      .queryParam("videoDuration", "short") // Shorts만
+      .queryParam("order", "viewCount")     // 인기순
+      .queryParam("regionCode", "KR")
+      .queryParam("maxResults", 30)
+      .queryParam("q", targetKeyword)
+      .queryParam("key", apiKey);
+
+    ResponseEntity<Map> response =
+      restTemplate.getForEntity(uri.build().toUri(), Map.class);
+
+    List<Map<String, Object>> items =
+      (List<Map<String, Object>>) response.getBody().get("items");
     List<YoutubeVideoResult> results = new ArrayList<>();
 
-    for (String keyword : keywords) {
-
-      UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(SEARCH_URL)
-        .queryParam("part", "snippet")
-        .queryParam("type", "video")
-        .queryParam("videoDuration", "short") // Shorts만
-        .queryParam("order", "viewCount")     // 인기순
-        .queryParam("regionCode", "KR")
-        .queryParam("maxResults", 10)
-        .queryParam("q", keyword)
-        .queryParam("key", apiKey);
-
-      ResponseEntity<Map> response =
-        restTemplate.getForEntity(uri.build().toUri(), Map.class);
-
-      List<Map<String, Object>> items =
-        (List<Map<String, Object>>) response.getBody().get("items");
-
-      if (items == null) {
+    for (Map<String, Object> item : items) {
+      Map<String, Object> id = (Map<String, Object>) item.get("id");
+      if (id == null || id.get("videoId") == null) {
         continue;
       }
 
-      for (Map<String, Object> item : items) {
-        Map<String, Object> id = (Map<String, Object>) item.get("id");
-        if (id == null || id.get("videoId") == null) {
-          continue;
-        }
+      String videoId = id.get("videoId").toString();
+      String videoUrl = "https://www.youtube.com/shorts/" + videoId;
 
-        String videoId = id.get("videoId").toString();
-        String videoUrl = "https://www.youtube.com/shorts/" + videoId;
-
-        results.add(new YoutubeVideoResult(videoId, videoUrl));
-      }
+      results.add(new YoutubeVideoResult(videoId, videoUrl));
     }
 
     // 중복 제거 + 상위 5개만 리턴
     return results.stream()
       .distinct()
-      .limit(5)
       .toList();
   }
 

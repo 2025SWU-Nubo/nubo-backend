@@ -205,7 +205,7 @@ public class CardService {
 
     // 5. GPT 요약/태그
     String inputText = buildFullText(video);
-    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, false);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, false, false);
     log.info("AI 메타 생성 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
 
     // 6. 최종 제목

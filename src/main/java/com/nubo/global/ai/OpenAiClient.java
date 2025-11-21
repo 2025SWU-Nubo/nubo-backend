@@ -40,7 +40,8 @@ public class OpenAiClient {
    * @param userId    사용자 id
    * @return 생성된 메타데이터 dto
    */
-  public AiCardMetaDto generateCardMeta(String inputText, Long userId, boolean skipBoardFetch) {
+  public AiCardMetaDto generateCardMeta(String inputText, Long userId, boolean skipBoardFetch,
+    boolean isRecommendation) {
     String prompt = buildPrompt(inputText);
 
     HttpHeaders headers = new HttpHeaders();
@@ -95,7 +96,11 @@ public class OpenAiClient {
         || (tags == null || tags.isEmpty());
 
       if (insufficient) {
-        log.info("불충분 콘텐츠 감지됨 → fallback 메타 적용");
+        if (isRecommendation) {
+          log.info("추천 모드: 불충분 콘텐츠(노래/가사 등) 감지됨 -> 카드 생성 중단 (null 반환)");
+          return null;
+        }
+        log.info("사용자 생성 모드: 불충분 콘텐츠 감지됨 → fallback 메타 적용");
         summary = "이 영상은 자동 요약이 어려워요. 필요한 내용을 직접 메모로 추가해 주세요.";
 
         // 태그 생략
@@ -453,7 +458,7 @@ public class OpenAiClient {
       당신은 유튜브 쇼츠 트렌드를 분석하는 도우미입니다.
 
       아래 카테고리에 대해 한국에서 최근 1~2주 동안
-      실제로 자주 검색되었을 법한 '정보성·학습 목적의' 키워드 5개를 생성해 주세요.
+      실제로 자주 검색되었을 법한 '정보성·학습 목적의' 키워드 3개를 생성해 주세요.
 
       조건:
       - 엔터테인먼트/밈/브이로그/ASMR 제외
@@ -467,7 +472,7 @@ public class OpenAiClient {
       반드시 아래 JSON 형식으로만 답하세요.
 
       {
-        "keywords": ["키워드"]
+        "keywords": ["키워드1", "키워드2", ... ]
       }
 
       """.formatted(category.getDisplayName());
