@@ -182,4 +182,12 @@ public class NotificationService {
         notificationRepository.save(notification);
       });
   }
+
+  /**
+   * 특정 알림 삭제
+   */
+  @Transactional
+  public void deleteByInvitation(BoardInvitation invitation) {
+    notificationRepository.deleteByInvitation(invitation);
+  }
 }
