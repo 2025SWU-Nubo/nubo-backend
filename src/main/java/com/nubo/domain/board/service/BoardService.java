@@ -42,6 +42,7 @@ import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.domain.card.service.CardUserStatusService;
+import com.nubo.domain.notification.service.NotificationService;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.common.FilterType;
@@ -89,6 +90,7 @@ public class BoardService {
   private final BoardMemberMapper boardMemberMapper;
 
   private final ApplicationContext applicationContext;
+  private final NotificationService notificationService;
 
   /**
    * 주어진 사용자 소유 보드 중 이름 중복 여부를 확인한다.
@@ -665,11 +667,13 @@ public class BoardService {
     BoardInvitation invitation = boardInvitationService.findById(invitationId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (invitation.getStatus() == InvitationStatus.PENDING) {
-      boardInvitationService.delete(invitation);
-    } else {
+    if (invitation.getStatus() != InvitationStatus.PENDING) {
       throw new ApiException(ErrorCode.INVALID_STATE);
     }
+
+    notificationService.deleteByInvitation(invitation);
+    boardInvitationService.delete(invitation);
+
   }
 
   /**
