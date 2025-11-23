@@ -52,9 +52,7 @@ public class RecommendationGenerationService {
   public List<RecommendationGroup> createCategoryGroups()
     throws IOException, InterruptedException {
 
-    log.info("[추천그룹] 인기 추천 그룹 생성 시작");
-
-    // 1) 이전 인기 추천 그룹 삭제
+    // 1) 이전 카테고리 추천 그룹 삭제
     cleanupExpiredGroups(null);
 
     // 2) 전체 카테고리 목록 가져오기
