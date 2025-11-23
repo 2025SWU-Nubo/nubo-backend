@@ -1,8 +1,8 @@
-package com.nubo.domain.interest.controller;
+package com.nubo.domain.user.controller;
 
-import com.nubo.domain.interest.dto.InterestSetupRequestDto;
-import com.nubo.domain.interest.dto.InterestSetupResponseDto;
-import com.nubo.domain.interest.service.InterestService;
+import com.nubo.domain.user.dto.InterestSetupRequestDto;
+import com.nubo.domain.user.dto.InterestSetupResponseDto;
+import com.nubo.domain.user.service.InterestService;
 import com.nubo.global.auth.UserUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

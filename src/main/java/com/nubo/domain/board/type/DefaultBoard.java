@@ -40,7 +40,15 @@ public enum DefaultBoard {
       .toList();
   }
 
+  public static DefaultBoard fromDisplayName(String displayName) {
+    return Arrays.stream(DefaultBoard.values())
+      .filter(db -> db.getDisplayName().equals(displayName))
+      .findFirst()
+      .orElse(DefaultBoard.ETC);
+  }
+
   public String getDisplayName() {
     return displayName;
   }
+
 }
