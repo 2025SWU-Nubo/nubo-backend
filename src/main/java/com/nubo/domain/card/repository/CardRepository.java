@@ -254,4 +254,8 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
   // 추천 컨텐츠를 위한 사용자 카드 전체 조회
   List<Card> findByUserId(Long userId);
+
+  // 추천 컨텐츠를 위한 사용자 보유 카드 수 조회
+  @Query("SELECT COUNT(c) FROM Card c WHERE c.user.id = :userId")
+  Long countByUserId(@Param("userId") Long userId);
 }

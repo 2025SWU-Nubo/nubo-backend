@@ -44,6 +44,7 @@ public class RecommendationController {
       boardCardService.findBoardIdsByCardId(saved.getId()));
   }
 
+  // ✅ 테스트 성공 (카드 10개 이상, 그룹 2개, 그룹당 카드 6개)
   @PostMapping("/test/user/{userId}")
   public String testUserRecommendations(@PathVariable Long userId) {
     recommendationGenerationService.generateRecommendationsForUser(userId);
@@ -56,6 +57,7 @@ public class RecommendationController {
     return "OK - popular recommendations generated";
   }
 
+  // ✅ 테스트 성공 (특정 카테고리 지정, 6개)
   @PostMapping("/test/category")
   public String testCategoryRecommend() throws IOException, InterruptedException {
     recommendationGenerationService.generatePopularRecommendationGroup();

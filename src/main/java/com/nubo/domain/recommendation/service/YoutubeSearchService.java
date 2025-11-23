@@ -38,38 +38,38 @@ public class YoutubeSearchService {
   private String apiKey;
 
   public List<YoutubeVideoResult> searchByKeyword(String keyword) {
-
-    // 1) 파라미터 구성
     UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(SEARCH_URL)
       .queryParam("part", "snippet")
-      .queryParam("q", keyword)
-      .queryParam("maxResults", 5)
       .queryParam("type", "video")
+      .queryParam("videoDuration", "short") // Shorts만
+      .queryParam("order", "viewCount")     // 인기순
+      .queryParam("regionCode", "KR")
+      .queryParam("maxResults", 30)
+      .queryParam("q", keyword)
       .queryParam("key", apiKey);
 
-    // 2) 호출
-    ResponseEntity<Map> response = restTemplate.getForEntity(
-      uri.toUriString(), Map.class
-    );
+    ResponseEntity<Map> response =
+      restTemplate.getForEntity(uri.build().toUri(), Map.class);
 
-    // 3) 결과 파싱
     List<Map<String, Object>> items =
       (List<Map<String, Object>>) response.getBody().get("items");
+    List<YoutubeVideoResult> results = new ArrayList<>();
 
-    if (items == null) {
-      return List.of();
+    for (Map<String, Object> item : items) {
+      Map<String, Object> id = (Map<String, Object>) item.get("id");
+      if (id == null || id.get("videoId") == null) {
+        continue;
+      }
+
+      String videoId = id.get("videoId").toString();
+      String videoUrl = "https://www.youtube.com/shorts/" + videoId;
+
+      results.add(new YoutubeVideoResult(videoId, videoUrl));
     }
 
-    return items.stream()
-      .map(item -> {
-        Map<String, Object> id = (Map<String, Object>) item.get("id");
-        Map<String, Object> snippet = (Map<String, Object>) item.get("snippet");
-
-        String videoId = id.get("videoId").toString();
-        String videoUrl = "https://www.youtube.com/watch?v=" + videoId;
-
-        return new YoutubeVideoResult(videoId, videoUrl);
-      })
+    // 중복 제거 후 리턴
+    return results.stream()
+      .distinct()
       .toList();
   }
 
@@ -170,7 +170,7 @@ public class YoutubeSearchService {
       results.add(new YoutubeVideoResult(videoId, videoUrl));
     }
 
-    // 중복 제거 + 상위 5개만 리턴
+    // 중복 제거 후 리턴
     return results.stream()
       .distinct()
       .toList();

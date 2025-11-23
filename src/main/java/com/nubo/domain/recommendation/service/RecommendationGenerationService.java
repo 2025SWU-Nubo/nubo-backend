@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class RecommendationGenerationService {
+
+  // 키워드 기반 추천을 생성하기 위한 최소 사용자 카드 수
+  private static final int MIN_CARD_FOR_KEYWORD_REC = 10;
 
   private final RecommendationGroupRepository groupRepository;
   private final RecommendationCardRepository cardRepository;
@@ -48,18 +52,27 @@ public class RecommendationGenerationService {
   private final YoutubeSearchService youtubeSearchService;
 
   // -----------------------------
-  // 메인 진입점
+  // 유저 키워드 기반 추천
   // -----------------------------
-  @Transactional
+  @Async
   public void generateRecommendationsForUser(Long userId) {
+
+    log.info("[추천생성] 사용자별 추천 비동기 작업 시작 - userId={}", userId);
 
     // 1) 기존 만료된 그룹/카드 정리
     cleanupExpiredGroups(userId);
 
     // 2) 사용자 카드 기반 키워드 추출
+    // 사용자 카드 갯수 확인
+    Long userCardsCount = cardService.getCardCountByUser(userId);
+    if (userCardsCount < MIN_CARD_FOR_KEYWORD_REC) {
+      return;
+    }
+
+    // 키워드 추출
     List<String> topKeywords = keywordService.extractTopKeywords(userId, 5);
 
-    // 3) 키워드 기반 추천 그룹 1~2개 생성
+    // 3) 키워드 기반 추천 그룹 2개 생성
     List<RecommendationGroup> keywordGroups = createKeywordGroups(userId, topKeywords);
 
     // 4) 그룹마다 카드 생성 (유튜브 검색 → AI 요약)

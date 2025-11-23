@@ -679,4 +679,8 @@ public class CardService {
     return cardRepository.findByUserId(userId);
   }
 
+  @Transactional(readOnly = true)
+  public Long getCardCountByUser(Long userId) {
+    return cardRepository.countByUserId(userId);
+  }
 }

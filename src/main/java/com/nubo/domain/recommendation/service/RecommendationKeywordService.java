@@ -61,30 +61,41 @@ public class RecommendationKeywordService {
     Map<String, Integer> freq = new HashMap<>();
 
     for (Card card : cards) {
-
-      // 1) 제목 단어
+      // 1) 제목 단어 (가중치 3)
       if (card.getTitle() != null) {
         for (String word : splitWords(card.getTitle())) {
-          freq.merge(word, 1, Integer::sum);
+          freq.merge(word, 3, Integer::sum);
         }
       }
-
-      // 2) 요약 단어
+      // 2) 요약 단어 (가중치 1)
       if (card.getSummary() != null) {
         for (String word : splitWords(card.getSummary())) {
           freq.merge(word, 1, Integer::sum);
         }
       }
-
-      // 3) 태그 목록
+      // 3) 태그 목록 (가중치 5)
       if (card.getTags() != null) {
         for (String tag : parseTags(card.getTags())) {
-          freq.merge(tag.toLowerCase(), 1, Integer::sum);
+          // 태그도 splitWords 필터링을 거치지 않아도 되지만, 길이 제한 적용을 위해 splitWords 재사용
+          for (String word : splitWords(tag)) {
+            freq.merge(word.toLowerCase(), 5, Integer::sum);
+          }
         }
       }
     }
 
+    // 최종 불용어 필터링과 정렬, 제한
     return freq.entrySet().stream()
+      .filter(entry -> {
+        String key = entry.getKey();
+        // 한글은 3글자 이상, 영문은 4글자 이상만 허용 (너무 짧은 모호한 키워드 제거)
+        if (key.matches(".*[ㄱ-ㅎㅏ-ㅣ가-힣].*")) {
+          return key.length() >= 3;
+        } else {
+          return key.length() >= 4;
+        }
+      })
+      .filter(entry -> !KOREAN_STOPWORDS.contains(entry.getKey()))
       .sorted((a, b) -> b.getValue() - a.getValue())
       .limit(limit)
       .map(Map.Entry::getKey)
@@ -112,7 +123,6 @@ public class RecommendationKeywordService {
           .split(" ")
       )
       .map(String::trim)
-      .filter(s -> s.length() > 1) // 자모/한 글자 제거
       .map(this::removeEndingStopword) // 단어 끝에 붙은 조사 제거
       .filter(s -> !s.isBlank())
       .filter(s -> !KOREAN_STOPWORDS.contains(s)) // 단독 불용어 제거
