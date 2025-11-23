@@ -121,6 +121,15 @@ public class GrowthService {
     // 단계 계산 (0~4)
     int stage = Math.min(user.getCurrentDrops() / 5, 4);
 
+    // 다음 단계까지 남은 물방울 수
+    int nextStageRemaining;
+    if (stage >= 4) {
+      nextStageRemaining = 0;
+    } else {
+      int nextThreshold = (stage + 1) * 5;
+      nextStageRemaining = nextThreshold - user.getCurrentDrops();
+    }
+
     // 성장률 (0~100 %)
     int growthRate = Math.min((user.getCurrentDrops() * 100) / 25, 100);
 
@@ -131,6 +140,7 @@ public class GrowthService {
       .stage(stage)
       .growthRate(growthRate)
       .berryCount(user.getBerryCount())
+      .nextStageRemaining(nextStageRemaining)
       .dashboardBackground(StaticResource.DASHBOARD_BACKGROUND.getUrl())
       .build();
   }
