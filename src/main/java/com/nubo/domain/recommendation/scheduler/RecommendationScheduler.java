@@ -58,7 +58,7 @@ public class RecommendationScheduler {
       recommendationGenerationService.getAllGroupsForToday();
 
     for (RecommendationGroup g : allGroups) {
-      recommendationGenerationService.generateCardsForGroup(g); // 여기서 KEYWORD/CATEGORY 자동 분기
+      recommendationGenerationService.generateCardsForGroupAsync(g); // 여기서 KEYWORD/CATEGORY 자동 분기
     }
 
     log.info("[스케줄러] 추천 생성 완료");

@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -162,6 +163,15 @@ public class RecommendationGenerationService {
         // 개별 실패는 로그만 남기고 계속 진행 (성공 카운트는 안 올라감)
         log.error("추천 카드 생성 실패 (건너뜀) - videoId={}", r.getVideoId(), e);
       }
+    }
+  }
+
+  @Async("recommendationExecutor")
+  public void generateCardsForGroupAsync(RecommendationGroup group) {
+    try {
+      generateCardsForGroup(group);
+    } catch (Exception e) {
+      log.error("[Async] 추천 카드 생성 실패 - groupId=" + group.getId(), e);
     }
   }
 
