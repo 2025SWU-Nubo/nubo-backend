@@ -131,76 +131,96 @@ public class BoardService {
    */
   @Transactional
   public BoardCreateResponseDto createBoard(BoardCreateRequestDto dto, Long userId) {
-    // 1. 섹션일 경우 상위 보드 유효성 검사
+
+    User owner = userService.getUserById(userId);
+
     Board parentBoard = null;
+    Board savedBoard = null;
+
+    // 1. 섹션 생성
     if (dto.getBoardType() == BoardType.SECTION) {
+
       if (dto.getParentBoardId() == null) {
         throw new ApiException(ErrorCode.FIELD_REQUIRED);
       }
+
       parentBoard = boardRepository.findById(dto.getParentBoardId())
         .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-      if (parentBoard.getSource() == BoardSource.USER &&
-        !parentBoard.getUser().getId().equals(userId)) {
+      boolean isOwner = parentBoard.getUser().getId().equals(userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(parentBoard.getId(), userId);
+
+      // private board → owner만 생성 가능
+      if (!parentBoard.isShared() && !isOwner) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
       }
-      if (dto.isShared()) {
-        throw new ApiException(ErrorCode.FIELD_INVALID); // 섹션은 공유 불가
+
+      // section에서는 초대 불가
+      if (dto.getMemberEmails() != null && !dto.getMemberEmails().isEmpty()) {
+        throw new ApiException(ErrorCode.FIELD_INVALID);
       }
-    } else {
-      // 1-b. 보드인데 shared=false인데 memberEmails가 존재하면 오류
-      if (!dto.isShared()
-        && dto.getMemberEmails() != null
-        && !dto.getMemberEmails().isEmpty()) {
-        throw new ApiException(ErrorCode.FIELD_INVALID); // shared=false + memberEmails 존재
-      }
+
+      // 저장
+      Board section = boardMapper.toEntity(dto, owner, parentBoard);
+      section.setShared(false);
+      savedBoard = boardRepository.save(section);
+
+      return boardMapper.toCreateResponseDto(savedBoard);
     }
+    // 2. 보드 생성
+    else {
 
-    // 2. 보드 소유자 로드
-    User owner = userService.getUserById(userId);
+      // BOARD는 parentBoardId 사용 금지
+      if (dto.getParentBoardId() != null) {
+        throw new ApiException(ErrorCode.FIELD_INVALID);
+      }
 
-    // 3. 보드 엔티티 생성/저장
-    Board newBoard = boardMapper.toEntity(dto, owner, parentBoard);
-    String cleanName = dto.getName() != null ? dto.getName().trim() : null; // 앞뒤 공백 제거
-    newBoard.setName(cleanName);
-    Board savedBoard = boardRepository.save(newBoard);
+      // 저장
+      Board board = boardMapper.toEntity(dto, owner, null);
+      savedBoard = boardRepository.save(board);
 
-    // 4. 멤버십 생성
-    // 항상 OWNER 멤버 생성
-    if (dto.getBoardType() == BoardType.SECTION || dto.getBoardType() == BoardType.BOARD) {
+      // 멤버십 등록
       boardMemberService.createOwner(savedBoard, owner);
     }
 
-    // 공유 보드일 경우 초대 생성
-    if (dto.getBoardType() == BoardType.BOARD && dto.isShared()) {
+    // 3. 공유 보드일 경우 초대 생성
+    if (savedBoard.isShared()) {
+
       Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
         .orElse(List.of())
         .stream()
         .filter(Objects::nonNull)
         .map(String::trim)
         .map(String::toLowerCase)
-        .filter(s -> !s.isBlank())
-        .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
+        .filter(email -> !email.isBlank())
+        .filter(email -> !email.equalsIgnoreCase(owner.getEmail()))
         .collect(Collectors.toCollection(LinkedHashSet::new));
 
       if (!inviteEmails.isEmpty()) {
+
+        // 이메일 → 사용자 조회
         List<User> invitees = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
+
+        // 존재하는 이메일
         Set<String> found = invitees.stream()
           .map(u -> u.getEmail().toLowerCase())
           .collect(Collectors.toSet());
+
+        // 없는 이메일 체크
         List<String> missing = inviteEmails.stream()
           .filter(e -> !found.contains(e))
           .toList();
+
         if (!missing.isEmpty()) {
           throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
         }
 
-        // BoardInvitation 생성 (PENDING)
+        // 초대 생성
         boardInvitationService.createInvitations(savedBoard, owner, invitees);
       }
     }
 
-    // 5. 결과 반환
+    // 4. 결과 반환
     return boardMapper.toCreateResponseDto(savedBoard);
   }
 
@@ -302,9 +322,13 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (board.getSource() == BoardSource.USER) {
-      boolean isOwner = board.getUser().getId().equals(userId);
-      boolean isMember = boardMemberService.existsByBoardAndUser(boardId, userId);
+    Board target = board.getBoardType() == BoardType.SECTION
+      ? board.getParentBoard()
+      : board;
+
+    if (target.getSource() == BoardSource.USER) {
+      boolean isOwner = target.getUser().getId().equals(userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(target.getId(), userId);
 
       if (!isOwner && !isMember) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
