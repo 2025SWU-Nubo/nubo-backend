@@ -18,4 +18,6 @@ public interface RecommendationGroupRepository extends JpaRepository<Recommendat
   List<RecommendationGroup> findAllByUserIdIsNullAndExpiresAtBefore(LocalDateTime now);
 
   List<RecommendationGroup> findAllByUserIdAndExpiresAtBefore(Long userId, LocalDateTime now);
+
+  List<RecommendationGroup> findAllByExpiresAtAfter(LocalDateTime today);
 }

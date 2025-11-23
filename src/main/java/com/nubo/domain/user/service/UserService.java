@@ -259,4 +259,12 @@ public class UserService {
     Long userId = userUtil.getAuthenticatedUserId();
     deactivateUser(userId);
   }
+
+  /**
+   * 모든 활성 사용자 ID 목록 조회
+   */
+  @Transactional(readOnly = true)
+  public List<Long> getAllActiveUserIds() {
+    return userRepository.findAllActiveUserIds();
+  }
 }

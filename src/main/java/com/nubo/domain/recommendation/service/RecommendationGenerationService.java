@@ -1,6 +1,5 @@
 package com.nubo.domain.recommendation.service;
 
-import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
@@ -21,13 +20,13 @@ import com.nubo.global.ai.OpenAiClient;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,65 +35,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecommendationGenerationService {
 
-  // 키워드 기반 추천을 생성하기 위한 최소 사용자 카드 수
-  private static final int MIN_CARD_FOR_KEYWORD_REC = 10;
-
   private final RecommendationGroupRepository groupRepository;
-  private final RecommendationCardRepository cardRepository;
-  private final RecommendationKeywordService keywordService;
   private final YtDlpService ytDlpService;
   private final TranscribeService transcribeService;
   private final VideoService videoService;
   private final CardService cardService;
   private final OpenAiClient openAiClient;
   private final RecommendationCardRepository recommendationCardRepository;
-  private final BoardService boardService;
   private final YoutubeSearchService youtubeSearchService;
 
-  // -----------------------------
-  // 유저 키워드 기반 추천
-  // -----------------------------
-  @Async
-  public void generateRecommendationsForUser(Long userId) {
-
-    log.info("[추천생성] 사용자별 추천 비동기 작업 시작 - userId={}", userId);
-
-    // 1) 기존 만료된 그룹/카드 정리
-    cleanupExpiredGroups(userId);
-
-    // 2) 사용자 카드 기반 키워드 추출
-    // 사용자 카드 갯수 확인
-    Long userCardsCount = cardService.getCardCountByUser(userId);
-    if (userCardsCount < MIN_CARD_FOR_KEYWORD_REC) {
-      return;
-    }
-
-    // 키워드 추출
-    List<String> topKeywords = keywordService.extractTopKeywords(userId, 5);
-
-    // 3) 키워드 기반 추천 그룹 2개 생성
-    List<RecommendationGroup> keywordGroups = createKeywordGroups(userId, topKeywords);
-
-    // 4) 그룹마다 카드 생성 (유튜브 검색 → AI 요약)
-    for (RecommendationGroup group : keywordGroups) {
-      try {
-        generateCardsForGroup(group);
-      } catch (Exception e) {
-        // 하나의 그룹이 실패해도 다른 그룹 생성을 위해 로그만 찍고 계속 진행
-        log.error("[추천생성] 그룹 카드 생성 중 실패 (건너뜀) - groupId={}, keyword={}",
-          group.getId(), group.getKeyword(), e);
-      }
-    }
-
-    log.info("[추천생성] 사용자별 추천 생성 완료 - userId={}", userId);
-  }
-
-  // ----------------------------------------------------
-  // 공통 인기 추천 그룹 생성 (userId = null)
-  // 하루 1번 Scheduler에서 호출 예정
-  // ----------------------------------------------------
+  /*
+   * 카테고리 기반 추천 그룹 생성
+   */
   @Transactional
-  public RecommendationGroup generatePopularRecommendationGroup()
+  public List<RecommendationGroup> createCategoryGroups()
     throws IOException, InterruptedException {
 
     log.info("[추천그룹] 인기 추천 그룹 생성 시작");
@@ -102,28 +56,30 @@ public class RecommendationGenerationService {
     // 1) 이전 인기 추천 그룹 삭제
     cleanupExpiredGroups(null);
 
-    // 2) 새 그룹 생성
-    RecommendationGroup group = RecommendationGroup.builder()
-      .userId(null)  // 공통 추천
-      .groupType(RecommendationGroupType.CATEGORY)
-      .keyword(null)
-      .expiresAt(LocalDateTime.now().plusDays(1))
-      .build();
+    // 2) 전체 카테고리 목록 가져오기
+    List<DefaultBoard> categories = DefaultBoard.getAllCategories();
+    List<RecommendationGroup> groups = new ArrayList<>();
 
-    groupRepository.save(group);
+    for (DefaultBoard category : categories) {
+      RecommendationGroup group = RecommendationGroup.builder()
+        .userId(null)
+        .groupType(RecommendationGroupType.CATEGORY)
+        .keyword(null)
+        .category(category)
+        .expiresAt(LocalDateTime.now().plusDays(1))
+        .build();
 
-    // 3) 인기 영상 기반 추천카드 생성
-    generateCardsForGroup(group);
+      groupRepository.save(group);
 
-    log.info("[추천그룹] 인기 추천 그룹 생성 완료 - groupId={}", group.getId());
+      groups.add(group);
+    }
 
-    return group;
+    return groups;
   }
 
-
-  // ==============================================
-  // 키워드 기반 추천 그룹 생성
-  // ==============================================
+  /*
+   * 키워드 기반 추천 그룹 생성
+   */
   @Transactional
   public List<RecommendationGroup> createKeywordGroups(Long userId, List<String> keywords) {
 
@@ -133,8 +89,7 @@ public class RecommendationGenerationService {
       return groups;
     }
 
-    // 상위 2개만 사용
-    int count = Math.min(2, keywords.size());
+    int count = Math.min(2, keywords.size()); // 그룹 생성 갯수 (2개)
 
     for (int i = 0; i < count; i++) {
 
@@ -152,10 +107,9 @@ public class RecommendationGenerationService {
     return groups;
   }
 
-
-  // ==============================================
-  // 추천 카드 생성 (유튜브 검색 → Whisper → GPT)
-  // ==============================================
+  /*
+   * 그룹별 추천 카드 생성 (유튜브 검색 → Whisper → GPT)
+   */
   @Transactional
   public void generateCardsForGroup(RecommendationGroup group)
     throws IOException, InterruptedException {
@@ -163,13 +117,16 @@ public class RecommendationGenerationService {
     log.info("[추천그룹] 카드 생성 시작 - groupId={}, type={}, keyword={}",
       group.getId(), group.getGroupType(), group.getKeyword());
 
-    // 1) YouTube 검색
     List<YoutubeVideoResult> results;
 
+    // KEYWORD 그룹 → 키워드 검색
     if (group.getGroupType() == RecommendationGroupType.KEYWORD) {
       results = youtubeSearchService.searchByKeyword(group.getKeyword());
-    } else {
-      results = youtubeSearchService.searchPopularByCategory(DefaultBoard.HOBBY);
+    }
+    // CATEGORY 그룹 → 카테고리 기반 인기 검색 (keyword 사용)
+    else {
+      DefaultBoard category = group.getCategory();
+      results = youtubeSearchService.searchByCategory(category);
     }
 
     if (results.isEmpty()) {
@@ -178,7 +135,7 @@ public class RecommendationGenerationService {
     }
 
     // 2) 목표 개수 설정 (예: 6개)
-    int targetCount = 6;
+    int targetCount = 1;
     int successCount = 0;
 
     // 검색된 결과 전체를 순회
@@ -208,9 +165,9 @@ public class RecommendationGenerationService {
     }
   }
 
-  // ==============================================
-  // 만료 그룹 정리
-  // ==============================================
+  /*
+   * 만료 그룹 정리
+   */
   @Transactional
   public void cleanupExpiredGroups(Long userId) {
 
@@ -237,7 +194,9 @@ public class RecommendationGenerationService {
     log.info("[추천정리] 만료된 그룹 {}개 삭제 (userId={})", expiredGroups.size(), userId);
   }
 
-
+  /*
+   * 추천 카드 생성
+   */
   @Transactional
   public RecommendationCard createRecommendedCard(
     Long userId,        // null 가능 (공통 추천)
@@ -354,5 +313,11 @@ public class RecommendationGenerationService {
       group.getId(), saved.getId(), System.currentTimeMillis() - startTime);
 
     return saved;
+  }
+
+  // 오늘(AM 5:00 이후) 생성된 모든 그룹 가져오기
+  public List<RecommendationGroup> getAllGroupsForToday() {
+    LocalDateTime todayFiveAM = LocalDate.now().atTime(5, 0);
+    return groupRepository.findAllByExpiresAtAfter(todayFiveAM);
   }
 }

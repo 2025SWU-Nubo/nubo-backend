@@ -408,7 +408,9 @@ public class OpenAiClient {
     }
   }
 
-
+  /*
+   * 카테고리별 트렌드 키워드 생성
+   */
   public List<String> generateTrendingKeywords(DefaultBoard category) {
 
     String prompt = buildKeywordPrompt(category);

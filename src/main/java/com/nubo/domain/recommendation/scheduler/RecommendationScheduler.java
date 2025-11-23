@@ -1,11 +1,11 @@
 package com.nubo.domain.recommendation.scheduler;
 
+import com.nubo.domain.card.service.CardService;
 import com.nubo.domain.recommendation.entity.RecommendationGroup;
-import com.nubo.domain.recommendation.repository.RecommendationGroupRepository;
 import com.nubo.domain.recommendation.service.RecommendationGenerationService;
 import com.nubo.domain.recommendation.service.RecommendationKeywordService;
-import com.nubo.domain.user.entity.User;
-import com.nubo.domain.user.repository.UserRepository;
+import com.nubo.domain.user.service.UserService;
+import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,60 +18,49 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecommendationScheduler {
 
-  private final RecommendationGenerationService generationService;
-  private final RecommendationKeywordService keywordService;
-  private final RecommendationGroupRepository groupRepository;
-  private final UserRepository userRepository;
+  private static final int MIN_CARD_FOR_KEYWORD_REC = 10;
+
+  private final UserService userService;
+  private final CardService cardService;
+  private final RecommendationKeywordService recommendationKeywordService;
+  private final RecommendationGenerationService recommendationGenerationService;
 
   /**
-   * 매일 새벽 5시에 실행
+   * 매일 새벽 5시에 모든 활성 유저의 추천 데이터를 비동기로 생성
+   * (크론 표현식: 초 분 시 일 월 요일)
    */
-  @Scheduled(cron = "0 0 5 * * *")
+  @Scheduled(cron = "0 8 16 * * *")
   @Transactional
-  public void generateDailyRecommendations() {
+  public void generateRecommendationCardsDaily() throws IOException, InterruptedException {
 
-    log.info("[추천스케줄러] 매일 추천 생성 시작");
+    log.info("[스케줄러] 추천 생성 시작");
 
-    // 0) 전체 사용자 조회
-    List<User> users = userRepository.findAll();
-    log.info("[추천스케줄러] 대상 사용자 수 = {}", users.size());
+    // 1. 공통 카테고리 그룹 생성
+    List<RecommendationGroup> categoryGroups =
+      recommendationGenerationService.createCategoryGroups();
 
-    // 1) 개인 추천 클린업
-    for (User user : users) {
-      generationService.cleanupExpiredGroups(user.getId());
-    }
+    // 2. 유저 맞춤형 추천 그룹 생성
+    List<Long> userIds = userService.getAllActiveUserIds();
 
-    // 2) 사용자별 키워드 기반 추천 생성
-    for (User user : users) {
+    for (Long userId : userIds) {
+      Long cardCount = cardService.getCardCountByUser(userId);
 
-      Long userId = user.getId();
+      if (cardCount >= MIN_CARD_FOR_KEYWORD_REC) {
+        List<String> keywords =
+          recommendationKeywordService.extractTopKeywords(userId, 1);
 
-      try {
-        // 키워드 추출 (개인별)
-        List<String> keywords = keywordService.extractTopKeywords(userId, 2);
-
-        // 키워드 기반 그룹 2개 생성
-        List<RecommendationGroup> groups =
-          generationService.createKeywordGroups(userId, keywords);
-
-        // 그룹별 추천카드 생성
-        for (RecommendationGroup g : groups) {
-          generationService.generateCardsForGroup(g);
-        }
-
-      } catch (Exception e) {
-        log.warn("[추천스케줄러] 개인 추천 생성 실패 userId={}, reason={}",
-          userId, e.getMessage());
+        recommendationGenerationService.createKeywordGroups(userId, keywords);
       }
     }
 
-    // 3) 인기(공통) 추천 생성
-    try {
-      generationService.generatePopularRecommendationGroup();
-    } catch (Exception e) {
-      log.warn("[추천스케줄러] 인기 추천 생성 실패: {}", e.getMessage());
+    // 3. 오늘 생성된 모든 그룹에 대해 카드 생성
+    List<RecommendationGroup> allGroups =
+      recommendationGenerationService.getAllGroupsForToday();
+
+    for (RecommendationGroup g : allGroups) {
+      recommendationGenerationService.generateCardsForGroup(g); // 여기서 KEYWORD/CATEGORY 자동 분기
     }
 
-    log.info("[추천스케줄러] 추천 생성 완료");
+    log.info("[스케줄러] 추천 생성 완료");
   }
 }

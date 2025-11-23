@@ -51,4 +51,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
       AND (cus.viewedAt IS NULL)
     """)
   List<Long> findUserIdsForReminder();
+
+  // 활성 사용자 id 리스트 조회
+  @Query("SELECT u.id FROM User u WHERE u.deletedAt IS NULL")
+  List<Long> findAllActiveUserIds();
 }

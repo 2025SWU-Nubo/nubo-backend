@@ -1,5 +1,6 @@
 package com.nubo.domain.recommendation.entity;
 
+import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.recommendation.type.RecommendationGroupType;
 import com.nubo.global.common.BaseTimeEntity;
 import jakarta.persistence.CascadeType;
@@ -37,9 +38,12 @@ public class RecommendationGroup extends BaseTimeEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "group_type", length = 50)
-  private RecommendationGroupType groupType; // KEYWORD / POPULAR
+  private RecommendationGroupType groupType; // KEYWORD / CATEGORY
 
-  private String keyword; // groupType = KEYWORD일 때만 값 존재
+  private String keyword;         // groupType = KEYWORD일 때
+
+  @Enumerated(EnumType.STRING)
+  private DefaultBoard category;  // groupType = CATEGORY일 때
 
   private LocalDateTime expiresAt;
 
