@@ -336,10 +336,10 @@ public class BoardService {
     }
 
     // 마지막 방문 시간 갱신
-    boardMemberService.updateLastVisitedAt(boardId, userId);
+    boardMemberService.updateLastVisitedAt(target.getId(), userId);
 
     // 즐겨찾기 상태 조회
-    boolean favorite = boardMemberService.getFavoriteStatus(boardId, userId);
+    boolean favorite = boardMemberService.getFavoriteStatus(target.getId(), userId);
 
     // 섹션 리스트 (상단 고정 리스트를 위해 page값 고정)
     PageRequest sectionPageable = PageRequestUtil.of(0, size, sort, Board.class);
