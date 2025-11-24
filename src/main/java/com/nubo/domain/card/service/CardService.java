@@ -161,7 +161,7 @@ public class CardService {
       }
 
       List<Long> restoreBoardIds = boardCardService.findBoardIdsByCardId(revived.getId());
-      return cardMapper.toResponseDto(revived, restoreBoardIds);
+      return cardMapper.toCreateResponseDto(revived, restoreBoardIds);
     }
 
     // 3. 신규 Video 업서트
@@ -269,7 +269,7 @@ public class CardService {
       log.warn("⚠️ FCM 알림 발송 실패 - cardId={}, reason={}", savedCard.getId(), e.getMessage());
     }
 
-    return cardMapper.toResponseDto(savedCard, boardIds);
+    return cardMapper.toCreateResponseDto(savedCard, boardIds);
   }
 
   /**
