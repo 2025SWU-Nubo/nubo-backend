@@ -12,7 +12,9 @@ import com.nubo.domain.user.repository.UserInterestRepository;
 import com.nubo.domain.user.service.UserService;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,31 +22,37 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RecommendationService {
 
-  private final RecommendationGroupRepository groupRepository;
   private final UserInterestRepository userInterestRepository;
   private final UserService userService;
   private final RecommendationMapper recommendationMapper;
   private final RecommendationGenerationService recommendationGenerationService;
+  private final RecommendationGroupRepository recommendationGroupRepository;
 
   // 하루 기준 — 새벽 5시
   private LocalDateTime today5AM() {
     return LocalDate.now().atTime(5, 0);
   }
 
-  /*
-   * 추천 카드 조회
+  /**
+   * 홈 화면 추천 카드 조회
+   *
+   * 우선순위:
+   * 1) 개인 키워드 기반 추천 (KEYWORD)
+   * 2) 관심사 기반 카테고리 추천 (CATEGORY + user interests) (랜덤 N개)
+   * 3) 관심사 미설정 시 랜덤 카테고리 추천 (CATEGORY 전체에서 랜덤 N개)
    */
   public RecommendationResponseDto getRecommendations(Long userId) {
-    // 0) 유저, 오늘 생성된 그룹 조회
+    // 0) 유저, 기준 시간 계산
     User user = userService.getUserById(userId);
-    List<RecommendationGroup> todayGroups = recommendationGenerationService.getAllGroupsForToday();
+    LocalDateTime baseTime = today5AM();
 
     // 1) 개인 키워드 그룹 먼저 확인
-    List<RecommendationGroup> keywordGroups = todayGroups.stream()
-      .filter(g -> g.getUserId() != null &&
-        g.getUserId().equals(userId) &&
-        g.getGroupType() == RecommendationGroupType.KEYWORD)
-      .toList();
+    List<RecommendationGroup> keywordGroups =
+      recommendationGroupRepository.findAllByUserIdAndGroupTypeAndExpiresAtAfter(
+        userId,
+        RecommendationGroupType.KEYWORD,
+        baseTime
+      );
 
     if (!keywordGroups.isEmpty()) {
       return recommendationMapper.toRecommendationResponseDto(keywordGroups);
@@ -53,23 +61,33 @@ public class RecommendationService {
     // 2) 관심사 기반 추천
     if (user.isInterestSetupCompleted()) {
 
+      // 유저 관심사 카테고리 목록 조회
       List<DefaultBoard> interests = userInterestRepository.findAllByUserId(userId)
         .stream()
         .map(UserInterest::getCategory)
+        .filter(Objects::nonNull)
         .toList();
 
-      List<RecommendationGroup> filtered = todayGroups.stream()
-        .filter(g -> g.getGroupType() == RecommendationGroupType.CATEGORY &&
-          interests.contains(g.getCategory()))
-        .toList();
+      // 관심사가 하나도 없으면 3번 로직으로 넘어감
+      if (!interests.isEmpty()) {
+        List<RecommendationGroup> interestGroups =
+          recommendationGroupRepository.findAllByGroupTypeAndCategoryInAndExpiresAtAfter(
+            RecommendationGroupType.CATEGORY,
+            interests,
+            baseTime
+          );
 
-      return recommendationMapper.toRecommendationResponseDto(filtered);
+        // 관심사 중 랜덤 2개 선정
+        return recommendationMapper.toRecommendationResponseDto(pickRandom(interestGroups, 2));
+      }
     }
 
     // 3) 관심사 없음 → 랜덤 추천
-    List<RecommendationGroup> categoryGroups = todayGroups.stream()
-      .filter(g -> g.getGroupType() == RecommendationGroupType.CATEGORY)
-      .toList();
+    List<RecommendationGroup> categoryGroups =
+      recommendationGroupRepository.findAllByGroupTypeAndExpiresAtAfter(
+        RecommendationGroupType.CATEGORY,
+        baseTime
+      );
 
     List<RecommendationGroup> randomGroups = pickRandom(categoryGroups, 2);
 
@@ -80,13 +98,16 @@ public class RecommendationService {
    * 랜덤 그룹 선택
    */
   private List<RecommendationGroup> pickRandom(List<RecommendationGroup> list, int count) {
+    if (list.isEmpty()) {
+      return Collections.emptyList();
+    }
     if (list.size() <= count) {
       return list;
     }
 
-    return list.stream()
-      .sorted((a, b) -> Math.random() > 0.5 ? 1 : -1)
-      .limit(count)
-      .toList();
+    List<RecommendationGroup> shuffled = new java.util.ArrayList<>(list);
+    Collections.shuffle(shuffled);
+
+    return shuffled.subList(0, count);
   }
 }
