@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecommendationScheduler {
 
-  private static final int MIN_CARD_FOR_KEYWORD_REC = 10;
+  private static final int MIN_CARD_FOR_KEYWORD_REC = 10;   // 키워드 생성을 위한 최소 사용자 카드 수
 
   private final UserService userService;
   private final CardService cardService;

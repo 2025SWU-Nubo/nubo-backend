@@ -36,6 +36,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecommendationGenerationService {
 
+  // ==========================
+  // 🔒 추천카드 관련 상수 선언
+  // ==========================
+  private static final int KEYWORD_GROUP_LIMIT = 2;         // 키워드 기반 그룹 생성 수
+  private static final long GROUP_EXPIRE_DAYS = 1;          // 그룹 만료 기간 (1일)
+  private static final int RECOMMENDATION_CARD_TARGET = 1;  // 추천카드 생성 목표 개수
+
   private final RecommendationGroupRepository groupRepository;
   private final YtDlpService ytDlpService;
   private final TranscribeService transcribeService;
@@ -88,7 +95,7 @@ public class RecommendationGenerationService {
       return groups;
     }
 
-    int count = Math.min(2, keywords.size()); // 그룹 생성 갯수 (2개)
+    int count = Math.min(KEYWORD_GROUP_LIMIT, keywords.size());
 
     for (int i = 0; i < count; i++) {
 
@@ -96,7 +103,7 @@ public class RecommendationGenerationService {
         .userId(userId)
         .groupType(RecommendationGroupType.KEYWORD)
         .keyword(keywords.get(i))
-        .expiresAt(LocalDateTime.now().plusDays(1))
+        .expiresAt(LocalDateTime.now().plusDays(GROUP_EXPIRE_DAYS))
         .build();
 
       groupRepository.save(group);
@@ -133,8 +140,8 @@ public class RecommendationGenerationService {
       return;
     }
 
-    // 2) 목표 개수 설정 (예: 6개)
-    int targetCount = 1;
+    // 2) 목표 개수 설정
+    int targetCount = RECOMMENDATION_CARD_TARGET;
     int successCount = 0;
 
     // 검색된 결과 전체를 순회
@@ -207,7 +214,7 @@ public class RecommendationGenerationService {
    */
   @Transactional
   public RecommendationCard createRecommendedCard(
-    Long userId,        // null 가능 (공통 추천)
+    Long userId,
     String videoUrl,
     String videoId,
     RecommendationGroup group
