@@ -43,8 +43,7 @@ public class RecommendationMapper {
 
     return RecommendationCardResponseDto.builder()
       .cardId(card.getId())
-      .title(card.getTitle())
-      .thumbnailUrl(card.getThumbnailUrl())
+      .videoThumbnailUrl(card.getThumbnailUrl())
       .build();
   }
 }

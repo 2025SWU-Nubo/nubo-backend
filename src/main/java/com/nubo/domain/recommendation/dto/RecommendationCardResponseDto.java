@@ -8,6 +8,5 @@ import lombok.Getter;
 public class RecommendationCardResponseDto {
 
   private Long cardId;
-  private String title;
-  private String thumbnailUrl;
+  private String videoThumbnailUrl;
 }
