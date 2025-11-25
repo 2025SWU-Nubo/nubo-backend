@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -30,7 +29,6 @@ public class RecommendationScheduler {
    * (크론 표현식: 초 분 시 일 월 요일)
    */
   @Scheduled(cron = "0 0 5 * * *")
-  @Transactional
   public void generateRecommendationCardsDaily() {
 
     log.info("[스케줄러] 추천 생성 시작");
@@ -60,7 +58,7 @@ public class RecommendationScheduler {
       recommendationGenerationService.getAllGroupsForToday();
 
     for (RecommendationGroup g : allGroups) {
-      recommendationGenerationService.generateCardsForGroupAsync(g);
+      recommendationGenerationService.generateCardsForGroupAsync(g.getId());
     }
 
     log.info("[스케줄러] 추천 생성 완료");

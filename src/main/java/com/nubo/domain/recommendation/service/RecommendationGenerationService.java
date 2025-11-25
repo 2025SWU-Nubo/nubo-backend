@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -101,8 +102,14 @@ public class RecommendationGenerationService {
    * 그룹별 추천 카드 생성 (유튜브 검색 → Whisper → GPT)
    */
   @Transactional
-  public void generateCardsForGroup(RecommendationGroup group)
-    throws IOException, InterruptedException {
+  public void generateCardsForGroup(Long groupId) {
+    // 비동기 스레드에서 안전하게 Group을 다시 조회
+    Optional<RecommendationGroup> groupOpt = groupRepository.findById(groupId);
+    if (groupOpt.isEmpty()) {
+      log.warn("[추천그룹] ID를 찾을 수 없습니다. (이미 삭제되었거나 커밋되지 않음) - groupId={}", groupId);
+      return;
+    }
+    RecommendationGroup group = groupOpt.get();
 
     log.info("[추천그룹] 카드 생성 시작 - groupId={}, type={}, keyword={}",
       group.getId(), group.getGroupType(), group.getKeyword());
@@ -156,11 +163,11 @@ public class RecommendationGenerationService {
   }
 
   @Async("recommendationExecutor")
-  public void generateCardsForGroupAsync(RecommendationGroup group) {
+  public void generateCardsForGroupAsync(Long groupId) {
     try {
-      generateCardsForGroup(group);
+      generateCardsForGroup(groupId);
     } catch (Exception e) {
-      log.error("[Async] 추천 카드 생성 실패 - groupId=" + group.getId(), e);
+      log.error("[Async] 추천 카드 생성 실패 - groupId=" + groupId, e);
     }
   }
 
