@@ -80,6 +80,18 @@ public class YtDlpService {
 
     List<String> command = new ArrayList<>();
     command.add(YT_DLP_PATH);
+
+    // 💡 쿠키 경로가 설정되어 있으면 커맨드에 추가합니다.
+    if (COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+      command.add("--cookies");
+      command.add(COOKIES_PATH);
+    }
+    // 💡 IP 차단 회피를 위해 사용자 에이전트 추가
+    command.add("--user-agent");
+    command.add(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        + "Chrome/120.0.0.0 Safari/537.36");
+
     command.add("-f");
     command.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio"); // 더 빠른 포맷 우선
     command.add("--extract-audio");
@@ -430,7 +442,7 @@ public class YtDlpService {
     }
 
     // 나머지 플랫폼 (인스타/틱톡)은 기존 MP4->WAV 파이프라인 유지
-    
+
     String baseName = "media_" + System.currentTimeMillis() + "_" + UUID.randomUUID();
     File wavFile = null;
 
