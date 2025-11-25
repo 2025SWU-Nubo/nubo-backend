@@ -163,6 +163,7 @@ public class CardMapper {
       .highlightInfo(source.getHighlightInfo())
       .video(source.getVideo())
       .user(user)
+      .aiCategory(source.getAiCategory())
       .deletedAt(null)
       .deletedBy(null)
       .build();
