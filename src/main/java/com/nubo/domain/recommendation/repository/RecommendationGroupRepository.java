@@ -41,4 +41,10 @@ public interface RecommendationGroupRepository extends JpaRepository<Recommendat
    * 만료된 그룹 전체 조회
    */
   List<RecommendationGroup> findAllByExpiresAtBefore(LocalDateTime now);
+
+  /**
+   * 카드 생성이 완료되지 않은 그룹만 조회
+   */
+  List<RecommendationGroup> findAllByExpiresAtAfterAndIsCardGeneratedIsFalse(
+    LocalDateTime todayFiveAM);
 }

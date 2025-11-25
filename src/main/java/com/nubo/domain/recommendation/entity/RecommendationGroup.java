@@ -20,6 +20,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Builder
@@ -46,6 +47,9 @@ public class RecommendationGroup extends BaseTimeEntity {
   private DefaultBoard category;  // groupType = CATEGORY일 때
 
   private LocalDateTime expiresAt;
+
+  @Setter
+  private boolean isCardGenerated;  // 그룹 내 카드 생성 완료 여부
 
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<RecommendationCard> cards = new ArrayList<>();

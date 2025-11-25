@@ -18,7 +18,6 @@ public class RecommendationScheduler {
 
   private static final int MIN_CARD_FOR_KEYWORD_REC = 10;   // 키워드 생성을 위한 최소 사용자 카드 수
   private static final int KEYWORD_EXTRACTION_LIMIT = 3;    // 키워드 추출 개수
-
   private final UserService userService;
   private final CardService cardService;
   private final RecommendationKeywordService recommendationKeywordService;
@@ -55,7 +54,7 @@ public class RecommendationScheduler {
 
     // 3. 오늘 생성된 모든 그룹에 대해 카드 생성
     List<RecommendationGroup> allGroups =
-      recommendationGenerationService.getAllGroupsForToday();
+      recommendationGenerationService.getAllUnprocessedGroupsForToday();
 
     for (RecommendationGroup g : allGroups) {
       recommendationGenerationService.generateCardsForGroupAsync(g.getId());

@@ -139,6 +139,7 @@ public class RecommendationGenerationService {
     for (YoutubeVideoResult r : results) {
       // 목표치를 달성했으면 중단 (불필요한 API 호출 방지)
       if (successCount >= targetCount) {
+        group.setCardGenerated(true);
         break;
       }
 
@@ -316,5 +317,11 @@ public class RecommendationGenerationService {
   public List<RecommendationGroup> getAllGroupsForToday() {
     LocalDateTime todayFiveAM = LocalDate.now().atTime(5, 0);
     return groupRepository.findAllByExpiresAtAfter(todayFiveAM);
+  }
+
+  public List<RecommendationGroup> getAllUnprocessedGroupsForToday() {
+    LocalDateTime todayFiveAM = LocalDate.now().atTime(5, 0);
+    // isCardGenerated가 false인 그룹만 조회
+    return groupRepository.findAllByExpiresAtAfterAndIsCardGeneratedIsFalse(todayFiveAM);
   }
 }
