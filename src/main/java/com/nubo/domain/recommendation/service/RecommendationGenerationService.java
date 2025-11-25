@@ -36,11 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class RecommendationGenerationService {
 
-  // ==========================
-  // 🔒 추천카드 관련 상수 선언
-  // ==========================
   private static final int KEYWORD_GROUP_LIMIT = 2;         // 키워드 기반 그룹 생성 수
-  private static final long GROUP_EXPIRE_DAYS = 1;          // 그룹 만료 기간 (1일)
+  private static final long GROUP_EXPIRE_DAYS = 1;          // 그룹 만료 기간
   private static final int RECOMMENDATION_CARD_TARGET = 1;  // 추천카드 생성 목표 개수
 
   private final RecommendationGroupRepository groupRepository;
@@ -59,10 +56,6 @@ public class RecommendationGenerationService {
   public List<RecommendationGroup> createCategoryGroups()
     throws IOException, InterruptedException {
 
-    // 1) 이전 카테고리 추천 그룹 삭제
-    cleanupExpiredGroups(null);
-
-    // 2) 전체 카테고리 목록 가져오기
     List<DefaultBoard> categories = DefaultBoard.getAllCategories();
     List<RecommendationGroup> groups = new ArrayList<>();
 
@@ -184,29 +177,20 @@ public class RecommendationGenerationService {
    * 만료 그룹 정리
    */
   @Transactional
-  public void cleanupExpiredGroups(Long userId) {
+  public void cleanupExpiredGroups() {
 
     LocalDateTime now = LocalDateTime.now();
 
-    List<RecommendationGroup> expiredGroups;
+    List<RecommendationGroup> expired =
+      groupRepository.findAllByExpiresAtBefore(now);
 
-    if (userId == null) {
-      // 공통 추천 그룹 정리
-      expiredGroups = groupRepository.findAllByUserIdIsNullAndExpiresAtBefore(now);
-    } else {
-      // 개인 추천 그룹 정리
-      expiredGroups = groupRepository.findAllByUserIdAndExpiresAtBefore(userId, now);
-    }
-
-    if (expiredGroups.isEmpty()) {
+    if (expired.isEmpty()) {
       return;
     }
 
-    for (RecommendationGroup g : expiredGroups) {
-      groupRepository.delete(g); // cards도 함께 삭제됨
-    }
+    expired.forEach(groupRepository::delete);
 
-    log.info("[추천정리] 만료된 그룹 {}개 삭제 (userId={})", expiredGroups.size(), userId);
+    log.info("[추천정리] 만료된 그룹 {}개 삭제", expired.size());
   }
 
   /*

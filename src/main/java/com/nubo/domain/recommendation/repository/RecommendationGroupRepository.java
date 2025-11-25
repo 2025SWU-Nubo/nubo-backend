@@ -5,23 +5,11 @@ import com.nubo.domain.recommendation.entity.RecommendationGroup;
 import com.nubo.domain.recommendation.type.RecommendationGroupType;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RecommendationGroupRepository extends JpaRepository<RecommendationGroup, Long> {
 
-
-  List<RecommendationGroup> findAllValidGroupsByUserId(Long userId);
-
-  Optional<RecommendationGroup> findFirstByGroupTypeOrderByCreatedAtDesc(
-    RecommendationGroupType groupType);
-
-  List<RecommendationGroup> findAllByUserIdIsNullAndExpiresAtBefore(LocalDateTime now);
-
-  List<RecommendationGroup> findAllByUserIdAndExpiresAtBefore(Long userId, LocalDateTime now);
-
   List<RecommendationGroup> findAllByExpiresAtAfter(LocalDateTime today);
-
 
   /**
    * 특정 유저의 KEYWORD 그룹을 오늘 기준(expiresAt 이후)만 조회
@@ -48,4 +36,9 @@ public interface RecommendationGroupRepository extends JpaRepository<Recommendat
     RecommendationGroupType groupType,
     LocalDateTime expiresAt
   );
+
+  /**
+   * 만료된 그룹 전체 조회
+   */
+  List<RecommendationGroup> findAllByExpiresAtBefore(LocalDateTime now);
 }

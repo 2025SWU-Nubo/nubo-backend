@@ -29,7 +29,7 @@ public class RecommendationScheduler {
    * 매일 새벽 5시에 모든 활성 유저의 추천 데이터를 비동기로 생성
    * (크론 표현식: 초 분 시 일 월 요일)
    */
-  @Scheduled(cron = "0 8 16 * * *")
+  @Scheduled(cron = "0 0 5 * * *")
   @Transactional
   public void generateRecommendationCardsDaily() throws IOException, InterruptedException {
 
