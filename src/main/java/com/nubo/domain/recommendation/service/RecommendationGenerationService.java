@@ -226,6 +226,7 @@ public class RecommendationGenerationService {
       if (videoId == null || videoId.isBlank()) {
         throw new ApiException(ErrorCode.INVALID_VIDEO_ID);
       }
+      Thread.sleep(5000); // yt-dlp 호출 지연 5초
     }
 
     // 2. Video 조회/업서트
