@@ -3,6 +3,7 @@ package com.nubo.domain.recommendation.controller;
 import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationCardSaveRequestDto;
 import com.nubo.domain.recommendation.dto.RecommendationResponseDto;
+import com.nubo.domain.recommendation.scheduler.RecommendationScheduler;
 import com.nubo.domain.recommendation.service.RecommendationService;
 import com.nubo.global.auth.UserUtil;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class RecommendationController {
 
   private final UserUtil userUtil;
   private final RecommendationService recommendationService;
+  private final RecommendationScheduler recommendationScheduler;
 
   /**
    * 오늘의 추천 카드 조회
@@ -45,5 +47,12 @@ public class RecommendationController {
       recommendationService.saveRecommendationCard(userId, dto);
 
     return ResponseEntity.ok(response);
+  }
+
+  // 스케줄러 수동 실행
+  @PostMapping("/admin/run-recommendation-cards")
+  public String runRecommendationScheduler() {
+    recommendationScheduler.generateRecommendationCardsDaily();
+    return "Recommendation card generation started asynchronously.";
   }
 }
