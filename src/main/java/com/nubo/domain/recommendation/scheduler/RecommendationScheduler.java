@@ -5,7 +5,6 @@ import com.nubo.domain.recommendation.entity.RecommendationGroup;
 import com.nubo.domain.recommendation.service.RecommendationGenerationService;
 import com.nubo.domain.recommendation.service.RecommendationKeywordService;
 import com.nubo.domain.user.service.UserService;
-import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecommendationScheduler {
 
   private static final int MIN_CARD_FOR_KEYWORD_REC = 10;   // 키워드 생성을 위한 최소 사용자 카드 수
+  private static final int KEYWORD_EXTRACTION_LIMIT = 3;    // 키워드 추출 개수
 
   private final UserService userService;
   private final CardService cardService;
@@ -31,7 +31,7 @@ public class RecommendationScheduler {
    */
   @Scheduled(cron = "0 0 5 * * *")
   @Transactional
-  public void generateRecommendationCardsDaily() throws IOException, InterruptedException {
+  public void generateRecommendationCardsDaily() {
 
     log.info("[스케줄러] 추천 생성 시작");
 
@@ -49,7 +49,7 @@ public class RecommendationScheduler {
 
       if (cardCount >= MIN_CARD_FOR_KEYWORD_REC) {
         List<String> keywords =
-          recommendationKeywordService.extractTopKeywords(userId, 1);
+          recommendationKeywordService.extractTopKeywords(userId, KEYWORD_EXTRACTION_LIMIT);
 
         recommendationGenerationService.createKeywordGroups(userId, keywords);
       }
@@ -60,7 +60,7 @@ public class RecommendationScheduler {
       recommendationGenerationService.getAllGroupsForToday();
 
     for (RecommendationGroup g : allGroups) {
-      recommendationGenerationService.generateCardsForGroupAsync(g); // 여기서 KEYWORD/CATEGORY 자동 분기
+      recommendationGenerationService.generateCardsForGroupAsync(g);
     }
 
     log.info("[스케줄러] 추천 생성 완료");
