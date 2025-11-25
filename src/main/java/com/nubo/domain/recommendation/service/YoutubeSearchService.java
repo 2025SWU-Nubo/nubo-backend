@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -78,7 +79,7 @@ public class YoutubeSearchService {
       return List.of();
     }
 
-    String targetKeyword = keywords.get(0);
+    String targetKeyword = keywords.get(ThreadLocalRandom.current().nextInt(keywords.size()));
 
     UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(SEARCH_URL)
       .queryParam("part", "snippet")
