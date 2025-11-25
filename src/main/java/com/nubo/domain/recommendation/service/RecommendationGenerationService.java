@@ -53,8 +53,7 @@ public class RecommendationGenerationService {
    * 카테고리 기반 추천 그룹 생성
    */
   @Transactional
-  public List<RecommendationGroup> createCategoryGroups()
-    throws IOException, InterruptedException {
+  public void createCategoryGroups() {
 
     List<DefaultBoard> categories = DefaultBoard.getAllCategories();
     List<RecommendationGroup> groups = new ArrayList<>();
@@ -72,21 +71,15 @@ public class RecommendationGenerationService {
 
       groups.add(group);
     }
-
-    return groups;
   }
 
   /*
    * 키워드 기반 추천 그룹 생성
    */
   @Transactional
-  public List<RecommendationGroup> createKeywordGroups(Long userId, List<String> keywords) {
+  public void createKeywordGroups(Long userId, List<String> keywords) {
 
     List<RecommendationGroup> groups = new ArrayList<>();
-
-    if (keywords.isEmpty()) {
-      return groups;
-    }
 
     int count = Math.min(KEYWORD_GROUP_LIMIT, keywords.size());
 
@@ -102,8 +95,6 @@ public class RecommendationGenerationService {
       groupRepository.save(group);
       groups.add(group);
     }
-
-    return groups;
   }
 
   /*

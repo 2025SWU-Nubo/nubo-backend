@@ -35,9 +35,11 @@ public class RecommendationScheduler {
 
     log.info("[스케줄러] 추천 생성 시작");
 
+    // 0. 만료된 그룹 삭제
+    recommendationGenerationService.cleanupExpiredGroups();
+
     // 1. 공통 카테고리 그룹 생성
-    List<RecommendationGroup> categoryGroups =
-      recommendationGenerationService.createCategoryGroups();
+    recommendationGenerationService.createCategoryGroups();
 
     // 2. 유저 맞춤형 추천 그룹 생성
     List<Long> userIds = userService.getAllActiveUserIds();
