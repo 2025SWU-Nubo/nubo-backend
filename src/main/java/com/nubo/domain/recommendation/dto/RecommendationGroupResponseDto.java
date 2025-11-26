@@ -12,6 +12,7 @@ public class RecommendationGroupResponseDto {
 
   private Long groupId;
   private RecommendationGroupType groupType;
+  private String title;
   private String keyword;         // keyword 그룹일 때만
   private DefaultBoard category;  // category 그룹일 때만
   private List<RecommendationCardResponseDto> cards;

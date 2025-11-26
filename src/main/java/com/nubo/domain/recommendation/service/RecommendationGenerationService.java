@@ -6,6 +6,7 @@ import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.domain.card.service.TranscribeService;
 import com.nubo.domain.card.service.YtDlpService;
+import com.nubo.domain.recommendation.dto.YoutubeSearchBundle;
 import com.nubo.domain.recommendation.dto.YoutubeVideoResult;
 import com.nubo.domain.recommendation.entity.RecommendationCard;
 import com.nubo.domain.recommendation.entity.RecommendationGroup;
@@ -63,13 +64,13 @@ public class RecommendationGenerationService {
       RecommendationGroup group = RecommendationGroup.builder()
         .userId(null)
         .groupType(RecommendationGroupType.CATEGORY)
+        .searchKeyword(null) // 검색 시 지정
         .keyword(null)
         .category(category)
-        .expiresAt(LocalDateTime.now().plusDays(1))
+        .expiresAt(LocalDateTime.now().plusDays(GROUP_EXPIRE_DAYS))
         .build();
 
       groupRepository.save(group);
-
       groups.add(group);
     }
   }
@@ -89,7 +90,9 @@ public class RecommendationGenerationService {
       RecommendationGroup group = RecommendationGroup.builder()
         .userId(userId)
         .groupType(RecommendationGroupType.KEYWORD)
+        .searchKeyword(null)
         .keyword(keywords.get(i))
+        .category(null)
         .expiresAt(LocalDateTime.now().plusDays(GROUP_EXPIRE_DAYS))
         .build();
 
@@ -114,19 +117,19 @@ public class RecommendationGenerationService {
     log.info("[추천그룹] 카드 생성 시작 - groupId={}, type={}, keyword={}",
       group.getId(), group.getGroupType(), group.getKeyword());
 
-    List<YoutubeVideoResult> results;
+    YoutubeSearchBundle bundle;
 
     // KEYWORD 그룹 → 키워드 검색
     if (group.getGroupType() == RecommendationGroupType.KEYWORD) {
-      results = youtubeSearchService.searchByKeyword(group.getKeyword());
+      bundle = youtubeSearchService.searchByKeyword(group.getKeyword());
     }
     // CATEGORY 그룹 → 카테고리 기반 인기 검색 (keyword 사용)
     else {
-      DefaultBoard category = group.getCategory();
-      results = youtubeSearchService.searchByCategory(category);
+      bundle = youtubeSearchService.searchByCategory(group.getCategory());
+      group.setSearchKeyword(bundle.getSearchKeyword());  // 검색 키워드 저장
     }
 
-    if (results.isEmpty()) {
+    if (bundle.getResults().isEmpty()) {
       log.warn("[추천그룹] YouTube 검색 결과 없음 - groupId={}", group.getId());
       return;
     }
@@ -136,7 +139,7 @@ public class RecommendationGenerationService {
     int successCount = 0;
 
     // 검색된 결과 전체를 순회
-    for (YoutubeVideoResult r : results) {
+    for (YoutubeVideoResult r : bundle.getResults()) {
       // 목표치를 달성했으면 중단 (불필요한 API 호출 방지)
       if (successCount >= targetCount) {
         group.setCardGenerated(true);

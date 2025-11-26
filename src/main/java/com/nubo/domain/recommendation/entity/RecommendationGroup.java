@@ -41,10 +41,16 @@ public class RecommendationGroup extends BaseTimeEntity {
   @Column(name = "group_type", length = 50)
   private RecommendationGroupType groupType; // KEYWORD / CATEGORY
 
-  private String keyword;         // groupType = KEYWORD일 때
-
+  // groupType = CATEGORY일 때
   @Enumerated(EnumType.STRING)
-  private DefaultBoard category;  // groupType = CATEGORY일 때
+  private DefaultBoard category;
+
+  @Setter
+  @Column(name = "search_keyword")
+  private String searchKeyword; // 카테고리 기반 검색 키워드
+
+  // groupType = KEYWORD일 때
+  private String keyword;
 
   private LocalDateTime expiresAt;
 

@@ -1,11 +1,14 @@
 package com.nubo.domain.recommendation.service;
 
 import com.nubo.domain.board.type.DefaultBoard;
+import com.nubo.domain.recommendation.dto.YoutubeSearchBundle;
 import com.nubo.domain.recommendation.dto.YoutubeVideoResult;
 import com.nubo.global.ai.OpenAiClient;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +36,7 @@ public class YoutubeSearchService {
   @Value("${youtube.api-key}")
   private String apiKey;
 
-  public List<YoutubeVideoResult> searchByKeyword(String keyword) {
+  public YoutubeSearchBundle searchByKeyword(String keyword) {
     UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(SEARCH_URL)
       .queryParam("part", "snippet")
       .queryParam("type", "video")
@@ -50,6 +53,7 @@ public class YoutubeSearchService {
     List<Map<String, Object>> items =
       (List<Map<String, Object>>) response.getBody().get("items");
     List<YoutubeVideoResult> results = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
 
     for (Map<String, Object> item : items) {
       Map<String, Object> id = (Map<String, Object>) item.get("id");
@@ -58,25 +62,28 @@ public class YoutubeSearchService {
       }
 
       String videoId = id.get("videoId").toString();
-      String videoUrl = "https://www.youtube.com/shorts/" + videoId;
+      if (!seen.add(videoId)) {
+        continue;  // 중복 제거
+      }
 
+      String videoUrl = "https://www.youtube.com/shorts/" + videoId;
       results.add(new YoutubeVideoResult(videoId, videoUrl));
     }
 
-    // 중복 제거 후 리턴
-    return results.stream()
-      .distinct()
-      .toList();
+    return new YoutubeSearchBundle(keyword, results);
   }
 
-  public List<YoutubeVideoResult> searchByCategory(DefaultBoard category) {
+  public YoutubeSearchBundle searchByCategory(DefaultBoard category) {
     refreshCategoryKeywords(category);
 
     // 1) 해당 카테고리의 키워드 목록
     List<String> keywords = CATEGORY_KEYWORDS.getOrDefault(category, List.of());
 
     if (keywords.isEmpty()) {
-      return List.of();
+      return new YoutubeSearchBundle(
+        null,            // 검색 키워드 없음
+        List.of()        // 결과 없음
+      );
     }
 
     String targetKeyword = keywords.get(ThreadLocalRandom.current().nextInt(keywords.size()));
@@ -97,6 +104,7 @@ public class YoutubeSearchService {
     List<Map<String, Object>> items =
       (List<Map<String, Object>>) response.getBody().get("items");
     List<YoutubeVideoResult> results = new ArrayList<>();
+    Set<String> seen = new HashSet<>();
 
     for (Map<String, Object> item : items) {
       Map<String, Object> id = (Map<String, Object>) item.get("id");
@@ -105,15 +113,15 @@ public class YoutubeSearchService {
       }
 
       String videoId = id.get("videoId").toString();
-      String videoUrl = "https://www.youtube.com/shorts/" + videoId;
+      if (!seen.add(videoId)) {
+        continue;  // 중복 제거
+      }
 
+      String videoUrl = "https://www.youtube.com/shorts/" + videoId;
       results.add(new YoutubeVideoResult(videoId, videoUrl));
     }
 
-    // 중복 제거 후 리턴
-    return results.stream()
-      .distinct()
-      .toList();
+    return new YoutubeSearchBundle(targetKeyword, results);
   }
 
   // 카테고리별 키워드 업데이트

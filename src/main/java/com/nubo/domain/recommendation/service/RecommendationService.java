@@ -69,6 +69,7 @@ public class RecommendationService {
   public RecommendationResponseDto getRecommendations(Long userId) {
     // 0) 유저, 기준 시간 계산
     User user = userService.getUserById(userId);
+    String nickname = user.getNickname();
     LocalDateTime baseTime = today5AM();
 
     // 1) 개인 키워드 그룹 먼저 확인
@@ -80,7 +81,7 @@ public class RecommendationService {
       );
 
     if (!keywordGroups.isEmpty()) {
-      return recommendationMapper.toRecommendationResponseDto(keywordGroups);
+      return recommendationMapper.toRecommendationResponseDto(keywordGroups, nickname);
     }
 
     // 2) 관심사 기반 추천
@@ -103,7 +104,8 @@ public class RecommendationService {
           );
 
         // 관심사 중 랜덤 2개 선정
-        return recommendationMapper.toRecommendationResponseDto(pickRandom(interestGroups, 2));
+        return recommendationMapper.toRecommendationResponseDto(pickRandom(interestGroups, 2),
+          nickname);
       }
     }
 
@@ -116,7 +118,7 @@ public class RecommendationService {
 
     List<RecommendationGroup> randomGroups = pickRandom(categoryGroups, 2);
 
-    return recommendationMapper.toRecommendationResponseDto(randomGroups);
+    return recommendationMapper.toRecommendationResponseDto(randomGroups, nickname);
   }
 
   /**
@@ -135,7 +137,7 @@ public class RecommendationService {
 
     return shuffled.subList(0, count);
   }
-  
+
   /**
    * 추천카드를 정식 카드로 저장
    */
