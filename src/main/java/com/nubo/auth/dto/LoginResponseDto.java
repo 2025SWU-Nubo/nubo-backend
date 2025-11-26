@@ -13,4 +13,7 @@ public class LoginResponseDto {
 
   private boolean reactivated;
   private boolean isNewUser;
+
+  private boolean interestSetupCompleted;
+  private boolean tutorialCompleted;
 }

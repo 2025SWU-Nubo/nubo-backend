@@ -54,6 +54,9 @@ public class User extends BaseTimeEntity {
   @Column(nullable = false)
   private boolean interestSetupCompleted = false;
 
+  // 튜토리얼 시청 여부
+  private boolean tutorialCompleted = false;
+
   /**
    * 대시보드용 정보
    */
@@ -98,6 +101,11 @@ public class User extends BaseTimeEntity {
   // 관심사 설정 완료로 상태 변경
   public void markInterestSetupCompleted() {
     this.interestSetupCompleted = true;
+  }
+
+  // 튜토리얼 시청 완료로 상태 변경
+  public void markTutorialCompleted() {
+    this.tutorialCompleted = true;
   }
 
   // === 성장 관련 메서드 ===

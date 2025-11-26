@@ -232,6 +232,18 @@ public class UserService {
   }
 
   /**
+   * 사용자의 튜토리얼 시청을 완료로 변경한다.
+   *
+   * @param userId
+   */
+  @Transactional
+  public void updateOnboardingTutorialStatus(Long userId) {
+    User user = getUserById(userId);
+
+    user.markTutorialCompleted();
+  }
+
+  /**
    * 회원 탈퇴 (Soft Delete)
    *
    * @param userId 탈퇴할 사용자 ID

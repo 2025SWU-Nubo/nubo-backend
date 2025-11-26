@@ -49,7 +49,9 @@ public class AuthService {
       jwt,
       userMapper.toInfoDto(userStatus.getUser()),
       userStatus.isReactivated(),
-      userStatus.isNewUser()
+      userStatus.isNewUser(),
+      userStatus.getUser().isInterestSetupCompleted(),
+      userStatus.getUser().isTutorialCompleted()
     );
   }
 
