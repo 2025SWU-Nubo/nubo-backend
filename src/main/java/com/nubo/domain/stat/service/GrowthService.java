@@ -137,7 +137,7 @@ public class GrowthService {
       .weeklyVideoCounts(weeklyVideoCounts)
       .todayVideoCount(todayCount)
       .todayWaterDrops(todayWaterDrops)
-      .stage(stage)
+      .stage(stage + 1)
       .growthRate(growthRate)
       .berryCount(user.getBerryCount())
       .nextStageRemaining(nextStageRemaining)
