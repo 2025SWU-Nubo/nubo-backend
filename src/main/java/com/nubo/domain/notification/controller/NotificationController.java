@@ -1,6 +1,7 @@
 package com.nubo.domain.notification.controller;
 
 import com.nubo.domain.notification.dto.NotificationResponseDto;
+import com.nubo.domain.notification.dto.UnreadExistsResponseDto;
 import com.nubo.domain.notification.scheduler.ReminderScheduler;
 import com.nubo.domain.notification.service.NotificationService;
 import com.nubo.global.auth.UserUtil;
@@ -34,6 +35,18 @@ public class NotificationController {
     List<NotificationResponseDto> notifications = notificationService.getRecentNotifications(
       userId);
     return ResponseEntity.ok(notifications);
+  }
+  
+  /**
+   * 현재 로그인한 사용자의 '안 읽은 알림' 존재 여부를 반환한다.
+   *
+   * @return unread 알림 존재 여부 응답 DTO
+   */
+  @GetMapping("/unread-exists")
+  public ResponseEntity<UnreadExistsResponseDto> hasUnread() {
+    Long userId = userUtil.getAuthenticatedUserId();
+    UnreadExistsResponseDto response = notificationService.hasUnreadNotification(userId);
+    return ResponseEntity.ok(response);
   }
 
   /**

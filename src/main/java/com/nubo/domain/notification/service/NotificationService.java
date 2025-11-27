@@ -4,6 +4,7 @@ import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardInvitation;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.notification.dto.NotificationResponseDto;
+import com.nubo.domain.notification.dto.UnreadExistsResponseDto;
 import com.nubo.domain.notification.entity.Notification;
 import com.nubo.domain.notification.repository.NotificationRepository;
 import com.nubo.domain.notification.type.NotificationType;
@@ -135,6 +136,19 @@ public class NotificationService {
     return notificationRepository.findRecentByUserId(userId, since).stream()
       .map(NotificationResponseDto::toNotificationResponseDto)
       .toList();
+  }
+
+  /**
+   * 사용자의 '안 읽은 알림'이 존재하는지 여부를 확인한다.
+   *
+   * @param userId 조회할 사용자 ID
+   * @return unread 알림 존재 여부 (true/false)
+   */
+  public UnreadExistsResponseDto hasUnreadNotification(Long userId) {
+    boolean exists = notificationRepository
+      .existsByUserIdAndIsReadFalseAndVisibleTrue(userId);
+
+    return new UnreadExistsResponseDto(exists);
   }
 
   /**

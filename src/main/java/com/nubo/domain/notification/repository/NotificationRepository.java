@@ -30,4 +30,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
   @Modifying
   @Query("DELETE FROM Notification n WHERE n.invitation = :invitation")
   void deleteByInvitation(@Param("invitation") BoardInvitation invitation);
+
+  // unread 여부 체크
+  boolean existsByUserIdAndIsReadFalseAndVisibleTrue(Long userId);
 }
