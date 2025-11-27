@@ -74,7 +74,7 @@ public class YtDlpService {
    */
   public ExtractResult extractAudioAndMetadata(String url)
     throws IOException, InterruptedException {
-    String uniqueName = "shorts_" + System.currentTimeMillis();
+    String uniqueName = "shorts_" + UUID.randomUUID().toString();
     String outputBase = DOWNLOAD_DIR + "/" + uniqueName;
     String outputTemplate = outputBase + ".%(ext)s";
 
@@ -86,6 +86,11 @@ public class YtDlpService {
       command.add("--cookies");
       command.add(COOKIES_PATH);
     }
+    // 2. OAuth2 적용 (서버 IP 차단 시 가장 효과적)
+    // command.add("--username");
+    // command.add("oauth2");
+    // command.add("--password");
+    // command.add("");
     // 💡 IP 차단 회피를 위해 사용자 에이전트 추가
     command.add("--user-agent");
     command.add(
@@ -114,7 +119,7 @@ public class YtDlpService {
     int exitCode = process.waitFor();
 
     if (exitCode != 0) {
-      throw new RuntimeException("yt-dlp 통합 추출 실패");
+      throw new RuntimeException("yt-dlp 통합 추출 실패 (Exit Code: " + exitCode + ")");
     }
 
     // 생성된 파일들 확인
@@ -301,18 +306,23 @@ public class YtDlpService {
     pb.redirectErrorStream(false); // stderr는 따로 두기
     Process proc = pb.start();
 
+    // 💡 stderr 처리 및 로깅을 백그라운드 스레드에서 모두 처리
+    new Thread(() -> {
+      try (BufferedReader err = new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
+        String errLine;
+        while ((errLine = err.readLine()) != null) {
+          log.warn("yt-dlp stderr (Background): {}", errLine); // 경고 로그를 여기서 처리
+        }
+      } catch (IOException e) {
+        log.error("stderr 리더 오류", e);
+      }
+    }).start();
+
     StringBuilder out = new StringBuilder();
     try (BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
       String line;
       while ((line = br.readLine()) != null) {
         out.append(line);
-      }
-    }
-
-    try (BufferedReader err = new BufferedReader(new InputStreamReader(proc.getErrorStream()))) {
-      String errLine;
-      while ((errLine = err.readLine()) != null) {
-        log.warn("yt-dlp stderr: {}", errLine);
       }
     }
 
@@ -410,6 +420,7 @@ public class YtDlpService {
     if (exit2 != 0) {
       log.error("FFmpeg transcode failed with exit code: {}", exit2); // 기존 오류 메시지에 exit code 포함
       log.error("FFMPEG PATH: {}", FFMPEG_PATH); // FFMPEG 경로 추가 로깅
+      log.error("FFmpeg command failed: {}", ff); // 실행된 전체 명령어
       throw new IOException("ffmpeg transcode failed, exit=" + exit2);
     }
 
