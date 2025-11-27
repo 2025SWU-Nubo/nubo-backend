@@ -63,6 +63,9 @@ public enum ErrorCode {
   PUSH_SEND_FAILED(500, "N001", "Failed to send push notification", LogLevel.ERROR),
   INVALID_FCM_TOKEN(400, "N002", "Invalid or expired FCM token", LogLevel.WARN),
   NOTIFICATION_DISABLED(403, "N003", "User has disabled this notification type", LogLevel.WARN),
+
+  // RECOMMENDATION
+  ALREADY_SAVED_RECOMMENDATION(409, "RC001", "recommendation card already saved", LogLevel.WARN),
   ;
 
   private final int status;

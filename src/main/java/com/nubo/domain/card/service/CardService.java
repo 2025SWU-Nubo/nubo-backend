@@ -161,7 +161,7 @@ public class CardService {
       }
 
       List<Long> restoreBoardIds = boardCardService.findBoardIdsByCardId(revived.getId());
-      return cardMapper.toResponseDto(revived, restoreBoardIds);
+      return cardMapper.toCreateResponseDto(revived, restoreBoardIds);
     }
 
     // 3. 신규 Video 업서트
@@ -205,7 +205,7 @@ public class CardService {
 
     // 5. GPT 요약/태그
     String inputText = buildFullText(video);
-    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, false, false);
     log.info("AI 메타 생성 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
 
     // 6. 최종 제목
@@ -269,7 +269,7 @@ public class CardService {
       log.warn("⚠️ FCM 알림 발송 실패 - cardId={}, reason={}", savedCard.getId(), e.getMessage());
     }
 
-    return cardMapper.toResponseDto(savedCard, boardIds);
+    return cardMapper.toCreateResponseDto(savedCard, boardIds);
   }
 
   /**
@@ -431,7 +431,7 @@ public class CardService {
    * @param video Video 엔티티
    * @return 합쳐진 텍스트 문자열
    */
-  private String buildFullText(Video video) {
+  public String buildFullText(Video video) {
     StringBuilder sb = new StringBuilder();
 
     // 1) 요약 근거
@@ -671,5 +671,16 @@ public class CardService {
     }
 
     return new CardRestoreResponseDto(restoredCount);
+  }
+
+
+  @Transactional(readOnly = true)
+  public List<Card> getAllCardsByUser(Long userId) {
+    return cardRepository.findByUserId(userId);
+  }
+
+  @Transactional(readOnly = true)
+  public Long getCardCountByUser(Long userId) {
+    return cardRepository.countByUserId(userId);
   }
 }

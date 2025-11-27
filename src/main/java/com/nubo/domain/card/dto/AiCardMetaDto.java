@@ -16,4 +16,5 @@ public class AiCardMetaDto {
   private String summary;
   private List<String> tags;
   private Long boardId;
+  private String aiCategory;
 }

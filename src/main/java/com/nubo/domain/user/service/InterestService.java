@@ -1,11 +1,13 @@
-package com.nubo.domain.interest.service;
+package com.nubo.domain.user.service;
 
 import com.nubo.domain.board.repository.BoardMemberRepository;
 import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.DefaultBoard;
-import com.nubo.domain.interest.dto.InterestSetupRequestDto;
-import com.nubo.domain.interest.dto.InterestSetupResponseDto;
+import com.nubo.domain.user.dto.InterestSetupRequestDto;
+import com.nubo.domain.user.dto.InterestSetupResponseDto;
 import com.nubo.domain.user.entity.User;
+import com.nubo.domain.user.entity.UserInterest;
+import com.nubo.domain.user.repository.UserInterestRepository;
 import com.nubo.domain.user.repository.UserRepository;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
@@ -24,6 +26,7 @@ public class InterestService {
   private final UserRepository userRepository;
   private final BoardMemberRepository boardMemberRepository;
   private final BoardRepository boardRepository;
+  private final UserInterestRepository userInterestRepository;
 
   /**
    * 관심사 설정을 처리한다.
@@ -70,11 +73,30 @@ public class InterestService {
     // 4. 선택된 보드들 visible=true 업데이트
     boardMemberRepository.bulkSetVisibleTrue(targetBoardIds, userId);
 
-    // 5. 유저 상태 업데이트
+    // 5. 관심사 저장
+    // 기존 관심사 삭제
+    userInterestRepository.deleteByUserId(userId);
+
+    // 선택된 보드 ID에서 DefaultBoard 가져와서 관심사 저장
+    List<DefaultBoard> categories = boardRepository.findAllById(targetBoardIds).stream()
+      .map(board -> DefaultBoard.fromDisplayName(board.getName()))
+      .distinct()
+      .toList();
+
+    for (DefaultBoard category : categories) {
+      userInterestRepository.save(
+        UserInterest.builder()
+          .user(user)
+          .category(category)
+          .build()
+      );
+    }
+
+    // 6. 유저 상태 업데이트
     user.markInterestSetupCompleted();
     userRepository.save(user);
 
-    // 6. 응답 반환
+    // 7. 응답 반환
     return InterestSetupResponseDto.builder()
       .completed(true)
       .selectedCount(targetBoardIds.size())

@@ -39,7 +39,7 @@ public class CardMapper {
   // =========================
 
   // Card → CardCreateResponseDto (보드 ID 리스트 포함)
-  public CardCreateResponseDto toResponseDto(Card card, List<Long> boardIds) {
+  public CardCreateResponseDto toCreateResponseDto(Card card, List<Long> boardIds) {
     return CardCreateResponseDto.builder()
       .cardId(card.getId())
       .title(card.getTitle())

@@ -1,0 +1,8 @@
+package com.nubo.domain.recommendation.repository;
+
+import com.nubo.domain.recommendation.entity.RecommendationCard;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface RecommendationCardRepository extends JpaRepository<RecommendationCard, Long> {
+
+}

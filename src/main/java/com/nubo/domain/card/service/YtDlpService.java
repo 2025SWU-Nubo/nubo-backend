@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -79,6 +80,18 @@ public class YtDlpService {
 
     List<String> command = new ArrayList<>();
     command.add(YT_DLP_PATH);
+
+    // 💡 쿠키 경로가 설정되어 있으면 커맨드에 추가합니다.
+    if (COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+      command.add("--cookies");
+      command.add(COOKIES_PATH);
+    }
+    // 💡 IP 차단 회피를 위해 사용자 에이전트 추가
+    command.add("--user-agent");
+    command.add(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        + "Chrome/120.0.0.0 Safari/537.36");
+
     command.add("-f");
     command.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio"); // 더 빠른 포맷 우선
     command.add("--extract-audio");
@@ -353,21 +366,35 @@ public class YtDlpService {
       dl.add(COOKIES_PATH);
     }
     dl.add("-f");
-    dl.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/mp4");
+//    dl.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/mp4");
+    dl.add("bestaudio/best");
+
     dl.add("-o");
     dl.add(mp4Path);
     dl.add(url);
 
-    Process p1 = new ProcessBuilder(dl).redirectErrorStream(true).start();
-    // 로그 흡수
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(p1.getInputStream()))) {
-      while (br.readLine() != null) {
+    ProcessBuilder pb = new ProcessBuilder(dl);
+    pb.redirectErrorStream(false);
+    Process p = pb.start();
+
+    // stdout
+    try (BufferedReader out = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+      String line;
+      while ((line = out.readLine()) != null) {
+        log.info("[yt-dlp out] {}", line);
       }
     }
-    int exit1 = p1.waitFor();
-    if (exit1 != 0) {
-      throw new IOException("yt-dlp mp4 download failed, exit=" + exit1);
+
+    // stderr
+    try (BufferedReader err = new BufferedReader(new InputStreamReader(p.getErrorStream()))) {
+      String line;
+      while ((line = err.readLine()) != null) {
+        log.warn("[yt-dlp err] {}", line);
+      }
     }
+
+    // yt-dlp 프로세스 대기
+    p.waitFor();
 
     // 2) ffmpeg로 wav 변환 (16kHz, mono)
     List<String> ff = List.of(
@@ -381,6 +408,8 @@ public class YtDlpService {
     }
     int exit2 = p2.waitFor();
     if (exit2 != 0) {
+      log.error("FFmpeg transcode failed with exit code: {}", exit2); // 기존 오류 메시지에 exit code 포함
+      log.error("FFMPEG PATH: {}", FFMPEG_PATH); // FFMPEG 경로 추가 로깅
       throw new IOException("ffmpeg transcode failed, exit=" + exit2);
     }
 
@@ -402,9 +431,19 @@ public class YtDlpService {
     throws IOException, InterruptedException {
 
     long start = System.currentTimeMillis();
-    String baseName = "media_" + System.currentTimeMillis();
     byte[] audioBytes = null;
     VideoMetadataDto metadata = null;
+
+    // 유튜브는 통합 추출 메서드를 사용 (더 안정적일 가능성 높음)
+    if (platform == Platform.YOUTUBE) {
+      ExtractResult r = extractAudioAndMetadata(url);
+      log.info("YouTube extract 완료, ms={}", (System.currentTimeMillis() - start));
+      return r;
+    }
+
+    // 나머지 플랫폼 (인스타/틱톡)은 기존 MP4->WAV 파이프라인 유지
+
+    String baseName = "media_" + System.currentTimeMillis() + "_" + UUID.randomUUID();
     File wavFile = null;
 
     try {
