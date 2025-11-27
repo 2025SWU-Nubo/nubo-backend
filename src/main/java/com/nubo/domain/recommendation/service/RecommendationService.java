@@ -8,6 +8,7 @@ import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.recommendation.dto.RecommendationCardDetailResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationCardSaveRequestDto;
 import com.nubo.domain.recommendation.dto.RecommendationResponseDto;
 import com.nubo.domain.recommendation.entity.RecommendationCard;
@@ -139,6 +140,20 @@ public class RecommendationService {
   }
 
   /**
+   * 특정 ID의 추천 카드를 조회한다.
+   *
+   * @param cardId 카드 ID
+   * @return 추천카드 응답 DTO
+   * @exception ApiException 카드가 존재하지 않으면 예외 발생
+   */
+  @Transactional
+  public RecommendationCardDetailResponseDto getRecommendationCardById(Long cardId) {
+    RecommendationCard recommendationCard = recommendationCardRepository.findById(cardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+    return recommendationMapper.toDetailResponseDto(recommendationCard);
+  }
+
+  /**
    * 추천카드를 정식 카드로 저장
    */
   @Transactional
@@ -160,7 +175,7 @@ public class RecommendationService {
         dto.getRecommendationCardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    Video video = videoService.getVideoById(recCard.getVideoId())
+    Video video = videoService.getVideoById(recCard.getVideo().getId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
     // 3. 카드 생성

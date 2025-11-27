@@ -1,6 +1,7 @@
 package com.nubo.domain.recommendation.entity;
 
 import com.nubo.domain.board.type.DefaultBoard;
+import com.nubo.domain.video.entity.Video;
 import com.nubo.global.common.BaseTimeEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,7 +18,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
 @Builder
@@ -36,7 +36,10 @@ public class RecommendationCard extends BaseTimeEntity {
   @JoinColumn(name = "group_id")
   private RecommendationGroup group;
 
-  private String videoId;
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "video_id", nullable = false)
+  private Video video;
+
   private String title;
 
   @Column(columnDefinition = "TEXT")
@@ -45,12 +48,7 @@ public class RecommendationCard extends BaseTimeEntity {
   @Column(columnDefinition = "TEXT")
   private String tags; // JSON 문자열 or ',' 구분 문자열
 
-  private String thumbnailUrl;
-
   @Enumerated(EnumType.STRING)
   @Column(name = "ai_category", length = 50)
   private DefaultBoard aiCategory;
-
-  @Setter
-  private boolean isSaved; // 추천 → 정식 카드로 저장 여부
 }

@@ -300,13 +300,11 @@ public class RecommendationGenerationService {
     // 6. 추천 카드 생성(DB 저장)
     RecommendationCard card = RecommendationCard.builder()
       .group(group)
-      .videoId(videoId)
+      .video(video)
       .title(meta.getTitle())
       .summary(meta.getSummary())
       .tags(String.join(",", meta.getTags()))
-      .thumbnailUrl(video.getThumbnailUrl())
       .aiCategory(aiCategory) // 추천카드에 저장해두고 "정식 저장" 시 사용
-      .isSaved(false)   // 정식카드로 변환 전까지는 false
       .build();
 
     RecommendationCard saved = recommendationCardRepository.save(card);

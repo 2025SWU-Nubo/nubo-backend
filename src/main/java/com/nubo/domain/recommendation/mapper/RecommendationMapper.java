@@ -1,5 +1,6 @@
 package com.nubo.domain.recommendation.mapper;
 
+import com.nubo.domain.recommendation.dto.RecommendationCardDetailResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationCardResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationGroupResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationResponseDto;
@@ -7,6 +8,7 @@ import com.nubo.domain.recommendation.entity.RecommendationCard;
 import com.nubo.domain.recommendation.entity.RecommendationGroup;
 import com.nubo.domain.recommendation.type.RecommendationGroupType;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -76,7 +78,26 @@ public class RecommendationMapper {
 
     return RecommendationCardResponseDto.builder()
       .cardId(card.getId())
-      .videoThumbnailUrl(card.getThumbnailUrl())
+      .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .build();
+  }
+
+  /**
+   * 추천 카드 엔티티 -> 상세 dto
+   */
+  public RecommendationCardDetailResponseDto toDetailResponseDto(
+    RecommendationCard card) {
+    return RecommendationCardDetailResponseDto.builder()
+      .recommendationCardId(card.getId())
+      .title(card.getTitle())
+      .summary(card.getSummary())
+      .tags(splitTags(card.getTags()))
+      .videoUrl(card.getVideo().getUrl())
+      .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .videoPlatform(card.getVideo().getPlatform())
+      .aiCategoryName(card.getAiCategory().getDisplayName())
+      .createdAt(card.getCreatedAt())
+      .updatedAt(card.getUpdatedAt())
       .build();
   }
 
@@ -87,5 +108,20 @@ public class RecommendationMapper {
       nickname + "님을 위한 " + keyword + " 추천 카드",
       "오늘의 " + keyword + " 추천 카드"
     );
+  }
+
+  // =========================
+  // 유틸
+  // =========================
+
+  private List<String> splitTags(String tags) {
+    if (tags == null || tags.isBlank()) {
+      return List.of();
+    }
+    return Arrays.stream(tags.split(","))
+      .map(String::trim)
+      .filter(s -> !s.isEmpty())
+      .map(s -> "#" + s)
+      .toList();
   }
 }
