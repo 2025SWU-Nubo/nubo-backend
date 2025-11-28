@@ -42,7 +42,7 @@ public class RecommendationGenerationService {
   private static final long GROUP_EXPIRE_DAYS = 1;          // 그룹 만료 기간
   private static final int RECOMMENDATION_CARD_TARGET = 1;  // 추천카드 생성 목표 개수
 
-  private final RecommendationGroupRepository groupRepository;
+  private final RecommendationGroupRepository recommendationGroupRepository;
   private final YtDlpService ytDlpService;
   private final TranscribeService transcribeService;
   private final VideoService videoService;
@@ -70,7 +70,7 @@ public class RecommendationGenerationService {
         .expiresAt(LocalDateTime.now().plusDays(GROUP_EXPIRE_DAYS))
         .build();
 
-      groupRepository.save(group);
+      recommendationGroupRepository.save(group);
       groups.add(group);
     }
   }
@@ -96,7 +96,7 @@ public class RecommendationGenerationService {
         .expiresAt(LocalDateTime.now().plusDays(GROUP_EXPIRE_DAYS))
         .build();
 
-      groupRepository.save(group);
+      recommendationGroupRepository.save(group);
       groups.add(group);
     }
   }
@@ -107,7 +107,7 @@ public class RecommendationGenerationService {
   @Transactional
   public void generateCardsForGroup(Long groupId) {
     // 비동기 스레드에서 안전하게 Group을 다시 조회
-    Optional<RecommendationGroup> groupOpt = groupRepository.findById(groupId);
+    Optional<RecommendationGroup> groupOpt = recommendationGroupRepository.findById(groupId);
     if (groupOpt.isEmpty()) {
       log.warn("[추천그룹] ID를 찾을 수 없습니다. (이미 삭제되었거나 커밋되지 않음) - groupId={}", groupId);
       return;
@@ -127,6 +127,7 @@ public class RecommendationGenerationService {
     else {
       bundle = youtubeSearchService.searchByCategory(group.getCategory());
       group.setSearchKeyword(bundle.getSearchKeyword());  // 검색 키워드 저장
+      recommendationGroupRepository.save(group);
     }
 
     if (bundle.getResults().isEmpty()) {
@@ -184,13 +185,13 @@ public class RecommendationGenerationService {
     LocalDateTime now = LocalDateTime.now();
 
     List<RecommendationGroup> expired =
-      groupRepository.findAllByExpiresAtBefore(now);
+      recommendationGroupRepository.findAllByExpiresAtBefore(now);
 
     if (expired.isEmpty()) {
       return;
     }
 
-    expired.forEach(groupRepository::delete);
+    expired.forEach(recommendationGroupRepository::delete);
 
     log.info("[추천정리] 만료된 그룹 {}개 삭제", expired.size());
   }
@@ -318,12 +319,13 @@ public class RecommendationGenerationService {
   // 오늘(AM 5:00 이후) 생성된 모든 그룹 가져오기
   public List<RecommendationGroup> getAllGroupsForToday() {
     LocalDateTime todayFiveAM = LocalDate.now().atTime(5, 0);
-    return groupRepository.findAllByExpiresAtAfter(todayFiveAM);
+    return recommendationGroupRepository.findAllByExpiresAtAfter(todayFiveAM);
   }
 
   public List<RecommendationGroup> getAllUnprocessedGroupsForToday() {
     LocalDateTime todayFiveAM = LocalDate.now().atTime(5, 0);
     // isCardGenerated가 false인 그룹만 조회
-    return groupRepository.findAllByExpiresAtAfterAndIsCardGeneratedIsFalse(todayFiveAM);
+    return recommendationGroupRepository.findAllByExpiresAtAfterAndIsCardGeneratedIsFalse(
+      todayFiveAM);
   }
 }
