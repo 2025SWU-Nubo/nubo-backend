@@ -57,6 +57,7 @@ public class RecommendationGroup extends BaseTimeEntity {
   @Setter
   private boolean isCardGenerated;  // 그룹 내 카드 생성 완료 여부
 
+  @Setter
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<RecommendationCard> cards = new ArrayList<>();
 

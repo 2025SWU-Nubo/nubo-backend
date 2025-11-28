@@ -29,6 +29,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -72,8 +73,43 @@ public class RecommendationService {
     User user = userService.getUserById(userId);
     String nickname = user.getNickname();
     LocalDateTime baseTime = today5AM();
+    final int RANDOM_PICK_COUNT = 2; // 랜덤으로 뽑을 그룹 수 상수화
 
-    // 1) 개인 키워드 그룹 먼저 확인
+    // 이미 저장된 카드 ID 목록을 미리 조회
+    List<Long> savedCardIds = userSavedRecommendationRepository
+      .findSavedRecommendationCardIds(userId);
+
+    List<RecommendationGroup> resultGroups = new ArrayList<>();
+
+    // 1) 개인 키워드 그룹 확인 (최우선)
+    resultGroups = getKeywordRecommendations(userId, baseTime, savedCardIds);
+    if (!resultGroups.isEmpty()) {
+      return recommendationMapper.toRecommendationResponseDto(resultGroups, nickname);
+    }
+
+    // 2) 관심사 기반 추천 확인
+    if (user.isInterestSetupCompleted()) {
+      resultGroups = getInterestRecommendations(user, baseTime, savedCardIds, RANDOM_PICK_COUNT);
+      if (!resultGroups.isEmpty()) {
+        return recommendationMapper.toRecommendationResponseDto(resultGroups, nickname);
+      }
+    }
+
+    // 3) 관심사 없음 → 랜덤 카테고리 추천 (Fallback)
+    resultGroups = getRandomRecommendations(baseTime, savedCardIds, RANDOM_PICK_COUNT);
+
+    return recommendationMapper.toRecommendationResponseDto(resultGroups, nickname);
+  }
+
+
+  /**
+   * 1) 개인 키워드 기반 추천 그룹을 조회하고 저장된 카드를 필터링한다.
+   */
+  private List<RecommendationGroup> getKeywordRecommendations(
+    Long userId,
+    LocalDateTime baseTime,
+    List<Long> savedCardIds
+  ) {
     List<RecommendationGroup> keywordGroups =
       recommendationGroupRepository.findAllByUserIdAndGroupTypeAndExpiresAtAfter(
         userId,
@@ -81,45 +117,83 @@ public class RecommendationService {
         baseTime
       );
 
-    if (!keywordGroups.isEmpty()) {
-      return recommendationMapper.toRecommendationResponseDto(keywordGroups, nickname);
+    // 필터링 후, 카드가 남아 있는 그룹만 반환 (카드가 모두 저장된 그룹은 제외)
+    return filterGroups(keywordGroups, savedCardIds).stream()
+      .filter(group -> !group.getCards().isEmpty()) // 카드가 남아있는 그룹만 최종 선택
+      .toList();
+  }
+
+  /**
+   * 2) 관심사 기반 추천 그룹을 조회하고 저장된 카드를 필터링한다.
+   */
+  private List<RecommendationGroup> getInterestRecommendations(
+    User user,
+    LocalDateTime baseTime,
+    List<Long> savedCardIds,
+    int pickCount
+  ) {
+    // 유저 관심사 카테고리 목록 조회
+    List<DefaultBoard> interests = userInterestRepository.findAllByUserId(user.getId()).stream()
+      .map(UserInterest::getCategory)
+      .filter(Objects::nonNull)
+      .toList();
+
+    if (interests.isEmpty()) {
+      return List.of(); // 관심사가 없으면 빈 리스트 반환
     }
 
-    // 2) 관심사 기반 추천
-    if (user.isInterestSetupCompleted()) {
+    List<RecommendationGroup> interestGroups =
+      recommendationGroupRepository.findAllByGroupTypeAndCategoryInAndExpiresAtAfter(
+        RecommendationGroupType.CATEGORY,
+        interests,
+        baseTime
+      );
 
-      // 유저 관심사 카테고리 목록 조회
-      List<DefaultBoard> interests = userInterestRepository.findAllByUserId(userId)
-        .stream()
-        .map(UserInterest::getCategory)
-        .filter(Objects::nonNull)
-        .toList();
+    List<RecommendationGroup> randomGroups = pickRandom(interestGroups, pickCount);
 
-      // 관심사가 하나도 없으면 3번 로직으로 넘어감
-      if (!interests.isEmpty()) {
-        List<RecommendationGroup> interestGroups =
-          recommendationGroupRepository.findAllByGroupTypeAndCategoryInAndExpiresAtAfter(
-            RecommendationGroupType.CATEGORY,
-            interests,
-            baseTime
-          );
+    // 필터링 후, 카드가 남아 있는 그룹만 반환 (카드가 모두 저장된 그룹은 제외)
+    return filterGroups(randomGroups, savedCardIds).stream()
+      .filter(group -> !group.getCards().isEmpty()) // 카드가 남아있는 그룹만 최종 선택
+      .toList();
+  }
 
-        // 관심사 중 랜덤 2개 선정
-        return recommendationMapper.toRecommendationResponseDto(pickRandom(interestGroups, 2),
-          nickname);
-      }
-    }
-
-    // 3) 관심사 없음 → 랜덤 추천
+  /**
+   * 3) 랜덤 카테고리 추천 그룹을 조회하고 저장된 카드를 필터링한다. (Fallback)
+   */
+  private List<RecommendationGroup> getRandomRecommendations(
+    LocalDateTime baseTime,
+    List<Long> savedCardIds,
+    int pickCount
+  ) {
     List<RecommendationGroup> categoryGroups =
       recommendationGroupRepository.findAllByGroupTypeAndExpiresAtAfter(
         RecommendationGroupType.CATEGORY,
         baseTime
       );
 
-    List<RecommendationGroup> randomGroups = pickRandom(categoryGroups, 2);
+    List<RecommendationGroup> randomGroups = pickRandom(categoryGroups, pickCount);
 
-    return recommendationMapper.toRecommendationResponseDto(randomGroups, nickname);
+    // 필터링 후, 카드가 남아 있는 그룹만 반환 (Fallback은 카드가 없어도 반환할 수 있으나,
+    // 원본 로직을 따라 카드가 있는 그룹만 반환하는 것으로 가정)
+    return filterGroups(randomGroups, savedCardIds);
+  }
+
+  /**
+   * 헬퍼 메서드: 각 그룹 내에서 이미 저장된 카드를 제거하고, 카드 목록을 업데이트한다. (조회에서만 숨김처리)
+   */
+  private List<RecommendationGroup> filterGroups(
+    List<RecommendationGroup> groups,
+    List<Long> savedCardIds
+  ) {
+    return groups.stream()
+      .map(group -> {
+        var filtered = group.getCards().stream()
+          .filter(c -> !savedCardIds.contains(c.getId()))
+          .toList();
+        group.setCards(filtered); // 그룹 객체의 카드 목록 업데이트
+        return group;
+      })
+      .toList();
   }
 
   /**
