@@ -49,7 +49,7 @@ public class OpenAiClient {
     headers.setBearerAuth(apiKey);
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-4o",
+      "model", "gpt-5.1",
       "response_format", Map.of("type", "json_object"),
       "messages", List.of(
         Map.of("role", "system", "content",
@@ -352,7 +352,7 @@ public class OpenAiClient {
     );
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-4o",
+      "model", "gpt-5.1",
       "messages", List.of(
         Map.of("role", "system", "content",
           "You are a helpful assistant that rewrites summaries according to user instructions "
@@ -422,7 +422,7 @@ public class OpenAiClient {
     headers.setBearerAuth(apiKey);
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-4o-mini",
+      "model", "gpt-5.1-mini",
       "response_format", Map.of("type", "json_object"),
       "messages", List.of(
         Map.of("role", "user", "content", prompt)
