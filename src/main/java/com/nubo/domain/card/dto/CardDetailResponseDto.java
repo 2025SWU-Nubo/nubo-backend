@@ -20,6 +20,7 @@ public class CardDetailResponseDto {
   private String summary;
   private List<String> tags;
   private boolean isFavorite;
+  private boolean isMine;
 
   private String videoUrl;
   private String videoThumbnailUrl;

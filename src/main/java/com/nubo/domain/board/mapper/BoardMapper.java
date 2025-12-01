@@ -63,13 +63,17 @@ public class BoardMapper {
     long sectionCount,
     long cardCount,
     String thumbnailUrl,
-    boolean favorite) {
+    boolean favorite,
+    boolean isOwner,
+    boolean isMine) {
     return BoardSummaryResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .source(board.getSource())
       .isShared(board.isShared())
       .isFavorite(favorite)
+      .isOwner(isOwner)
+      .isMine(isMine)
       .updatedAt(board.getUpdatedAt())
       .sectionCount(sectionCount)
       .cardCount(cardCount)
@@ -85,13 +89,15 @@ public class BoardMapper {
     List<BoardSummaryResponseDto> sections,
     Page<CardSimpleResponseDto> cards,
     boolean favorite,
-    boolean isOwner) {
+    boolean isOwner,
+    boolean isMine) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .isFavorite(favorite)
       .isShared(board.isShared())
       .isOwner(isOwner)
+      .isMine(isMine)
       .sections(sections)
       .cards(cards)
       .build();
