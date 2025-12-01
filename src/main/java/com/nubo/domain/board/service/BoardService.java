@@ -347,7 +347,10 @@ public class BoardService {
     boolean favorite = boardMemberService.getFavoriteStatus(target.getId(), userId);
 
     // 섹션 리스트 (상단 고정 리스트를 위해 page값 고정)
-    PageRequest sectionPageable = PageRequestUtil.of(0, size, sort, Board.class);
+    PageRequest sectionPageable =
+      filter == FilterType.FAVORITE
+        ? PageRequestUtil.of(0, size, sort, Board.class, "board.")  // BoardMember 기반이므로 prefix 필요
+        : PageRequestUtil.of(0, size, sort, Board.class);            // Board 기반이므로 prefix 없어야 함
     Page<Board> sectionPage = filter == FilterType.FAVORITE
       ? boardRepository.findFavoriteSectionsByParentBoardId(boardId, userId, sectionPageable)
       : boardRepository.findByParentBoardId(boardId, sectionPageable);
