@@ -336,12 +336,16 @@ public class CardService {
     // 즐겨찾기 여부 조회
     boolean isFavorite = cardUserStatusService.getFavoriteStatus(userId, card.getId());
 
+    // 내 카드인지 여부 조회
+    boolean isMine = card.getUser() != null && card.getUser().getId().equals(userId);
+
     return cardMapper.toDetailResponseDto(
       card,
       result.getStage(),
       result.isBerryGained(),
       result.isStageUp(),
-      isFavorite
+      isFavorite,
+      isMine
     );
   }
 

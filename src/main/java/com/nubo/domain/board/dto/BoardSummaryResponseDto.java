@@ -14,6 +14,7 @@ public class BoardSummaryResponseDto {
   private BoardSource source;
   private boolean isShared;
   private boolean isFavorite;
+  private boolean isOwner;
   private LocalDateTime updatedAt;
 
   private long sectionCount;

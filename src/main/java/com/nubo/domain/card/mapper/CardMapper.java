@@ -78,7 +78,8 @@ public class CardMapper {
     int stage,
     boolean berryGained,
     boolean stageUp,
-    boolean isFavorite
+    boolean isFavorite,
+    boolean isMine
   ) {
     List<HighlightRange> highlights = List.of();
 
@@ -108,6 +109,7 @@ public class CardMapper {
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
       .isFavorite(isFavorite)
+      .isMine(isMine)
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())

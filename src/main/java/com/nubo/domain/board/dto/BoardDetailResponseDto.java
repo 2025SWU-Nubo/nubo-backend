@@ -14,6 +14,7 @@ public class BoardDetailResponseDto {
   private String name;
   private boolean isFavorite;
   private boolean isShared;
+  private boolean isMine;
   private boolean isOwner;
   private List<BoardSummaryResponseDto> sections;
   private Page<CardSimpleResponseDto> cards;
