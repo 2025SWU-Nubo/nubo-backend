@@ -422,7 +422,7 @@ public class OpenAiClient {
     headers.setBearerAuth(apiKey);
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-5.1-mini",
+      "model", "gpt-5-mini",
       "response_format", Map.of("type", "json_object"),
       "messages", List.of(
         Map.of("role", "user", "content", prompt)
