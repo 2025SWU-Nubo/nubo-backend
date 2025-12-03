@@ -17,7 +17,7 @@ public class AsyncConfig {
     executor.setMaxPoolSize(1);          // 동시에 처리 가능한 최대 동시 작업 수
     executor.setQueueCapacity(100);       // 대기열 크기
     executor.setThreadNamePrefix("rec-"); // 실행되는 스레드 이름
-    executor.setWaitForTasksToCompleteOnShutdown(true); // 애플리케이션 종료 시, 큐에 남은 작업이 다 끝날 때까지 기다려줌
+    executor.setWaitForTasksToCompleteOnShutdown(false); // 애플리케이션 종료 시, 큐에 남은 작업이 다 끝날 때까지 기다림 여부
     executor.setAwaitTerminationSeconds(60);            // 최대 60초까지만 기다려줌 (무한 대기 방지)
     executor.initialize();
     return executor;
