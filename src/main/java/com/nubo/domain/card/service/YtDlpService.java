@@ -97,8 +97,20 @@ public class YtDlpService {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
         + "Chrome/120.0.0.0 Safari/537.36");
 
+    // 1. 클라이언트 위장 (가장 중요)
+    // 서버 IP 차단을 피하기 위해 안드로이드 앱으로 위장합니다.
+    command.add("--extractor-args");
+    command.add("youtube:player_client=android");
+
+    // 2. 프래그먼트 다운로드 안정화
+    command.add("--no-part"); // .part 파일 생성 방지 (선택 사항)
+
+    // 3. IPv4 강제 (IPv6 대역이 차단된 경우 유효, 필요시 주석 해제)
+    // command.add("--force-ipv4");
+
     command.add("-f");
-    command.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio"); // 더 빠른 포맷 우선
+    command.add("bestaudio/best");
+//    command.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio"); // 더 빠른 포맷 우선
     command.add("--extract-audio");
     command.add("--audio-format");
     command.add("wav");
