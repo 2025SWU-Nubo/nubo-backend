@@ -26,8 +26,14 @@ public class JwtProvider {
   @Value("${jwt.secret}")
   private String secret;
 
-  @Value("${jwt.expiration-ms}")
-  private long expirationMs;
+//  @Value("${jwt.expiration-ms}")
+//  private long expirationMs;
+
+  @Value("${jwt.access-expiration-ms}")
+  private long accessExpirationMs;
+
+  @Value("${jwt.refresh-expiration-ms}")
+  private long refreshExpirationMs;
 
   private Key key;
 
@@ -36,28 +42,38 @@ public class JwtProvider {
   }
 
   /**
-   * JWT 서명을 위한 키를 초기화한다.
+   * Refresh Token 만료 시간(ms)을 반환한다.
+   *
+   * @return refresh token expiration milliseconds
+   */
+  public long getRefreshExpirationMs() {
+    return refreshExpirationMs;
+  }
+
+  /**
+   * JWT 서명을 위한 Key를 초기화한다.
+   * secret 길이가 32자 미만이면 HMAC-SHA256에 적합하지 않기 때문에 예외를 발생시킨다.
    */
   @PostConstruct
   public void init() {
-    if (secret == null || secret.length() < 32) {
-      throw new ApiException(ErrorCode.INVALID_JWT_TOKEN);
-    }
     this.key = Keys.hmacShaKeyFor(secret.getBytes());
   }
 
   /**
-   * 사용자 ID를 기반으로 JWT access token을 생성한다.
+   * Access/Refresh Token을 공통 로직으로 생성한다.
    *
-   * @param userId 사용자 고유 ID
-   * @return 생성된 JWT access token
+   * @param userId 사용자 ID
+   * @param exp    토큰 만료 시간(ms)
+   * @param type   토큰 타입("ACCESS" 또는 "REFRESH")
+   * @return 생성된 JWT 문자열
    */
-  public String createAccessToken(Long userId) {
+  private String createToken(Long userId, long exp, String type) {
     Date now = new Date();
-    Date expiry = new Date(now.getTime() + expirationMs);
+    Date expiry = new Date(now.getTime() + exp);
 
     return Jwts.builder()
       .setSubject(userId.toString()) // 사용자 ID를 payload에 저장
+      .claim("type", type) // ACCESS / REFRESH 구분
       .setIssuedAt(now)
       .setExpiration(expiry)
       .signWith(key, SignatureAlgorithm.HS256)
@@ -65,37 +81,27 @@ public class JwtProvider {
   }
 
   /**
-   * JWT 토큰에서 사용자 ID를 추출한다.
+   * Access Token을 생성한다.
    *
-   * @param token JWT access token
-   * @return 추출된 사용자 ID
+   * @param userId 사용자 ID
+   * @return Access Token(JWT)
    */
-  public Long extractUserId(String token) {
-    try {
-      Claims claims = parseToken(token);
-      return Long.parseLong(claims.getSubject());
-    } catch (Exception e) {
-      throw new ApiException(ErrorCode.INVALID_JWT_SECRET);
-    }
+  public String createAccessToken(Long userId) {
+    return createToken(userId, accessExpirationMs, "ACCESS");
   }
 
   /**
-   * 주어진 JWT 토큰의 유효성을 검사한다.
+   * Refresh Token을 생성한다.
    *
-   * @param token 검사할 JWT access token
-   * @return 유효하면 true, 그렇지 않으면 false
+   * @param userId 사용자 ID
+   * @return Refresh Token(JWT)
    */
-  public boolean validateToken(String token) {
-    try {
-      parseToken(token);
-      return true;
-    } catch (JwtException | IllegalArgumentException e) {
-      return false;
-    }
+  public String createRefreshToken(Long userId) {
+    return createToken(userId, refreshExpirationMs, "REFRESH");
   }
 
   /**
-   * JWT 토큰을 파싱하여 Claims를 반환한다.
+   * JWT 문자열을 Claims 형태로 파싱한다.
    *
    * @param token JWT 토큰 문자열
    * @return 토큰에 포함된 Claims (payload 정보)
@@ -109,14 +115,56 @@ public class JwtProvider {
   }
 
   /**
-   * JWT 토큰으로부터 인증 객체(Authentication)를 생성한다.
+   * Access Token의 유효성을 검사한다.
+   *
+   * @param token 검사할 JWT
+   * @return 유효하면 true, 아니면 false
+   */
+  public boolean validateAccessToken(String token) {
+    try {
+      Claims claims = parseToken(token);
+      return "ACCESS".equals(claims.get("type", String.class))
+        && claims.getExpiration().after(new Date());
+    } catch (JwtException | IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  /**
+   * Refresh Token의 유효성을 검사한다.
+   *
+   * @param token 검사할 JWT
+   * @return 유효하면 true, 아니면 false
+   */
+  public boolean validateRefreshToken(String token) {
+    try {
+      Claims claims = parseToken(token);
+      return "REFRESH".equals(claims.get("type", String.class))
+        && claims.getExpiration().after(new Date());
+    } catch (JwtException | IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  /**
+   * JWT 토큰에서 사용자 ID를 추출한다.
    *
    * @param token JWT access token
-   * @return Spring Security Authentication 객체
+   * @return 추출된 사용자 ID
+   */
+  public Long extractUserId(String token) {
+    Claims claims = parseToken(token);
+    return Long.parseLong(claims.getSubject());
+  }
+
+  /**
+   * JWT 기반으로 Authentication 객체를 생성하여 SecurityContext에서 사용할 수 있게 한다.
+   *
+   * @param token JWT
+   * @return Authentication 객체
    */
   public Authentication getAuthentication(String token) {
     Long userId = extractUserId(token); // 토큰에서 userId 추출
-
     User user = userRepository.findById(userId)
       .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED_CLIENT));
 
@@ -130,12 +178,12 @@ public class JwtProvider {
   }
 
   /**
-   * 주어진 JWT 토큰이 만료되었는지 확인한다.
+   * Access Token이 만료되었는지 확인한다.
    *
-   * @param token 검사할 JWT access token
-   * @return 만료되었으면 true, 아니면 false
+   * @param token JWT
+   * @return 만료 시 true
    */
-  public boolean isTokenExpired(String token) {
+  public boolean isAccessTokenExpired(String token) {
     try {
       Claims claims = parseToken(token);
       return claims.getExpiration().before(new Date());

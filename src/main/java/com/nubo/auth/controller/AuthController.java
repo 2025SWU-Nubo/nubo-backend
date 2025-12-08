@@ -2,6 +2,7 @@ package com.nubo.auth.controller;
 
 import com.nubo.auth.dto.AuthCodeRequestDto;
 import com.nubo.auth.dto.LoginResponseDto;
+import com.nubo.auth.dto.RefreshTokenRequestDto;
 import com.nubo.auth.dto.TokenCheckRequestDto;
 import com.nubo.auth.dto.TokenCheckResponseDto;
 import com.nubo.auth.service.AuthService;
@@ -46,5 +47,18 @@ public class AuthController {
     @RequestBody TokenCheckRequestDto request) {
     TokenCheckResponseDto result = authService.checkTokenValidity(request.getAccessToken());
     return ResponseEntity.ok(result);
+  }
+
+  /**
+   * Refresh Token을 검증하고 새로운 Access/Refresh Token을 재발급한다.
+   *
+   * @param requestDto refreshToken 정보
+   * @return 새 AccessToken + 새 RefreshToken + 사용자 정보
+   */
+  @PostMapping("/refresh")
+  public ResponseEntity<LoginResponseDto> refreshTokens(
+    @RequestBody RefreshTokenRequestDto requestDto
+  ) {
+    return ResponseEntity.ok(authService.refreshTokens(requestDto.getRefreshToken()));
   }
 }
