@@ -45,8 +45,9 @@ public class RecommendationController {
   @GetMapping("/{cardId}")
   public ResponseEntity<RecommendationCardDetailResponseDto> getRecommendationCard(
     @PathVariable Long cardId) {
+    Long userId = userUtil.getAuthenticatedUserId();
     RecommendationCardDetailResponseDto response =
-      recommendationService.getRecommendationCardById(cardId);
+      recommendationService.getRecommendationCardById(cardId, userId);
     return ResponseEntity.ok(response);
   }
 

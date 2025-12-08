@@ -680,11 +680,15 @@ public class CardService {
 
   @Transactional(readOnly = true)
   public List<Card> getAllCardsByUser(Long userId) {
-    return cardRepository.findByUserId(userId);
+    return cardRepository.findAllByUserId(userId);
   }
 
   @Transactional(readOnly = true)
   public Long getCardCountByUser(Long userId) {
     return cardRepository.countByUserId(userId);
+  }
+
+  public Card saveCard(Card card) {
+    return cardRepository.save(card);
   }
 }

@@ -26,4 +26,7 @@ public class RecommendationCardDetailResponseDto {
 
   private LocalDateTime createdAt;
   private LocalDateTime updatedAt;
+
+  private String username;
+  private Integer matchPercent;
 }

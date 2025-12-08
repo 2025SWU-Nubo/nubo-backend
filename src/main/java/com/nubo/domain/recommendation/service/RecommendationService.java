@@ -7,7 +7,7 @@ import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.CardCreateResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.card.mapper.CardMapper;
-import com.nubo.domain.card.repository.CardRepository;
+import com.nubo.domain.card.service.CardService;
 import com.nubo.domain.recommendation.dto.RecommendationCardDetailResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationCardSaveRequestDto;
 import com.nubo.domain.recommendation.dto.RecommendationResponseDto;
@@ -45,15 +45,17 @@ public class RecommendationService {
   private final RecommendationGroupRepository recommendationGroupRepository;
   private final RecommendationCardRepository recommendationCardRepository;
   private final UserInterestRepository userInterestRepository;
-  private final CardRepository cardRepository;
 
   private final UserService userService;
   private final VideoService videoService;
+  private final CardService cardService;
   private final BoardService boardService;
   private final BoardCardService boardCardService;
 
-  private final RecommendationMapper recommendationMapper;
   private final CardMapper cardMapper;
+  private final RecommendationMapper recommendationMapper;
+
+  private final MatchScoreCalculator matchScoreCalculator;
 
   // 하루 기준 — 새벽 5시
   private LocalDateTime today5AM() {
@@ -221,10 +223,27 @@ public class RecommendationService {
    * @exception ApiException 카드가 존재하지 않으면 예외 발생
    */
   @Transactional
-  public RecommendationCardDetailResponseDto getRecommendationCardById(Long cardId) {
-    RecommendationCard recommendationCard = recommendationCardRepository.findById(cardId)
+  public RecommendationCardDetailResponseDto getRecommendationCardById(Long cardId, Long userId) {
+    User user = userService.getUserById(userId);
+
+    RecommendationCard recCard = recommendationCardRepository.findById(cardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
-    return recommendationMapper.toDetailResponseDto(recommendationCard);
+
+    // 유저 카드 & 관심사 조회
+    List<Card> userCards = cardService.getAllCardsByUser(userId);
+    List<DefaultBoard> userInterests = userInterestRepository.findAllByUserId(userId)
+      .stream()
+      .map(ui -> ui.getCategory())
+      .toList();
+
+    // 매칭률 계산
+    Integer matchPercent = matchScoreCalculator.calculateMatchPercent(
+      userCards,
+      userInterests,
+      recCard
+    );
+
+    return recommendationMapper.toDetailResponseDto(recCard, user.getNickname(), matchPercent);
   }
 
   /**
@@ -262,7 +281,7 @@ public class RecommendationService {
       .aiCategory(recCard.getAiCategory())
       .build();
 
-    Card savedCard = cardRepository.save(card);
+    Card savedCard = cardService.saveCard(card);
 
     // 4. 보드 매핑
     List<Long> boardIds = (dto.getBoardIds() != null && !dto.getBoardIds().isEmpty())

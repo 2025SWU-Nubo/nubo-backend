@@ -86,7 +86,9 @@ public class RecommendationMapper {
    * 추천 카드 엔티티 -> 상세 dto
    */
   public RecommendationCardDetailResponseDto toDetailResponseDto(
-    RecommendationCard card) {
+    RecommendationCard card,
+    String username,
+    Integer matchPercent) {
     return RecommendationCardDetailResponseDto.builder()
       .recommendationCardId(card.getId())
       .title(card.getTitle())
@@ -96,6 +98,8 @@ public class RecommendationMapper {
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
       .aiCategoryName(card.getAiCategory().getDisplayName())
+      .matchPercent(matchPercent)
+      .username(username)
       .createdAt(card.getCreatedAt())
       .updatedAt(card.getUpdatedAt())
       .build();
