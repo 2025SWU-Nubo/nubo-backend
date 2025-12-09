@@ -248,13 +248,18 @@ public class RecommendationGenerationService {
         (metadata != null && metadata.getTitle() != null && !metadata.getTitle().isBlank())
           ? metadata.getTitle() : "";
 
+      String thumbnailUrl = metadata.getThumbnailUrl();
+      if (platform == Platform.INSTAGRAM) {
+        thumbnailUrl = "https://www.instagram.com/p/" + metadata.getVideoId() + "/media/?size=l";
+      }
+
       video = videoService.getOrCreateVideo(
         VideoMetadataDto.builder()
           .videoId(metadata.getVideoId())
           .videoUrl(metadata.getVideoUrl())
           .title(titleSeed)
           .description(metadata.getDescription())
-          .thumbnailUrl(metadata.getThumbnailUrl())
+          .thumbnailUrl(thumbnailUrl)
           .platform(platform)
           .build()
       );
