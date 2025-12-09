@@ -125,7 +125,7 @@ public class RecommendationMapper {
     return Arrays.stream(tags.split(","))
       .map(String::trim)
       .filter(s -> !s.isEmpty())
-      .map(s -> "#" + s)
+      .map(s -> "# " + s)
       .toList();
   }
 }
