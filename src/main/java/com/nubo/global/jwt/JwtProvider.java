@@ -26,10 +26,10 @@ public class JwtProvider {
   @Value("${jwt.secret}")
   private String secret;
 
-  @Value("${jwt.access-expiration-ms}")
+  @Value("${JWT_ACCESS_EXPIRATION_MS}")
   private long accessExpirationMs;
 
-  @Value("${jwt.refresh-expiration-ms}")
+  @Value("${JWT_REFRESH_EXPIRATION_MS}")
   private long refreshExpirationMs;
 
   private Key key;
