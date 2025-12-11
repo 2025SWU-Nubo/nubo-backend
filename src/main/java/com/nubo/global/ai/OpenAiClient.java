@@ -40,7 +40,8 @@ public class OpenAiClient {
    * @param userId    사용자 id
    * @return 생성된 메타데이터 dto
    */
-  public AiCardMetaDto generateCardMeta(String inputText, Long userId) {
+  public AiCardMetaDto generateCardMeta(String inputText, Long userId, boolean skipBoardFetch,
+    boolean isRecommendation) {
     String prompt = buildPrompt(inputText);
 
     HttpHeaders headers = new HttpHeaders();
@@ -48,7 +49,7 @@ public class OpenAiClient {
     headers.setBearerAuth(apiKey);
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-4o",
+      "model", "gpt-5.1",
       "response_format", Map.of("type", "json_object"),
       "messages", List.of(
         Map.of("role", "system", "content",
@@ -95,7 +96,11 @@ public class OpenAiClient {
         || (tags == null || tags.isEmpty());
 
       if (insufficient) {
-        log.info("불충분 콘텐츠 감지됨 → fallback 메타 적용");
+        if (isRecommendation) {
+          log.info("추천 모드: 불충분 콘텐츠(노래/가사 등) 감지됨 -> 카드 생성 중단 (null 반환)");
+          return null;
+        }
+        log.info("사용자 생성 모드: 불충분 콘텐츠 감지됨 → fallback 메타 적용");
         summary = "이 영상은 자동 요약이 어려워요. 필요한 내용을 직접 메모로 추가해 주세요.";
 
         // 태그 생략
@@ -112,15 +117,19 @@ public class OpenAiClient {
         .findFirst()
         .orElse(DefaultBoard.ETC);
 
-      Long boardId = boardService
-        .getAiBoardByUserAndCategory(userId, matched)
-        .getId();
+      Long boardId = null;
+      if (!skipBoardFetch) {
+        boardId = boardService
+          .getAiBoardByUserAndCategory(userId, matched)
+          .getId();
+      }
 
       return AiCardMetaDto.builder()
         .title(title)
         .summary(summary)
         .tags(tags)
         .boardId(boardId)
+        .aiCategory(boardName)
         .build();
 
     } catch (Exception e) {
@@ -136,8 +145,17 @@ public class OpenAiClient {
 
       [입력/근거]
       - summary, tags, board 는 오직 description, transcript, subtitle 에 등장하는 내용만을 근거로 작성한다.
+      - title과 description 내용을 우선적으로 참고하여 summary를 작성한다.
       - 원본 제목(title)은 제목 결정 시에만 참고하며, summary/tags/board에는 절대 사용하지 않는다.
-      - 새로운 개념, 맥락, 추측, 과장은 금지한다.
+      - 새로운 사실이나 근거 없는 정보 추가는 금지하지만,
+        잘못 인식된 단어나 문장의 오류는 영상의 맥락에 따라 자연스럽게 보정할 수 있다.
+
+      [언어 혼용 및 발음 오류 처리]
+      - transcript나 subtitle 내에 언어가 혼용되어 있거나 발음 인식 오류가 있는 경우,
+        의미를 왜곡하지 않는 선에서 영상의 주제나 의도를 파악하기 위한 **자연스러운 수준의 유추**는 허용한다.
+        (예: 영어 단어 발음 설명 영상에서 단어가 잘못 인식된 경우, 해당 단어를 복원하거나 올바른 형태로 표현 가능)
+      - 단, 의미를 왜곡하거나 불확실한 정보를 추가하는 추측은 여전히 금지한다.
+      - 발음, 번역, 언어 혼용을 정정할 때는 영상의 **교육 목적이나 맥락**을 우선 고려한다.
 
       [출력 형식]
       순수 JSON만 출력한다. (코드펜스, 추가 텍스트 금지)
@@ -151,30 +169,55 @@ public class OpenAiClient {
         "board": "string"
       }
 
-      [규칙]
+      [Markdown 작성 규칙]
 
-      1. title
+      1. **허용 문법**
+      - Heading: `##`, `###` (단락 맨 앞에서만 사용)
+      - Unordered list: `-` 사용한다.
+      - Ordered list: `1. 내용` 형식으로 작성하며, 번호 값 자체에는 의미를 두지 않는다. (서버에서 1부터 다시 매긴다.)
+        - 리스트 공통 규칙:
+        - **상위 항목–하위 항목–다음 상위 항목** 사이에는 어떤 경우에도 빈 줄을 넣지 않는다.
+          (즉, 리스트 항목 사이에는 절대로 빈 줄이 존재하면 안 된다.)
+        - 하위 리스트는 1단계까지만 작성하며, **2단계 이상 중첩 리스트는 생성하지 않는다.**
+        - 상위 항목 아래에 공백 2~4칸을 넣고 `-` 또는 `1.`을 붙여서 표현한다.
+      - Bold: `**굵게**` 표현 허용
+      - 문단(heading/문장) 사이에는 빈 줄 한 줄(`\\n\\n`)을 넣어 구분한다.
+        - 단, **리스트 항목(`-`, `1.`) 사이에는는 빈 줄을 넣지 않는다.**
+         
+      2. **금지 문법**
+      - *기울임체*, _밑줄_, `인라인 코드`, ```코드블록```, [링크](url), > 인용문, HTML 태그 등은 사용하지 않는다.
+      - 이미지는 생성하지 않는다.
+
+      [노트 생성 규칙]
+
+      3. **제목(title)**
       - description, transcript, subtitle의 내용을 바탕으로 새로운 한국어 제목을 생성한다.
       - 길이는 14자 이내로 제한한다.
       - 제목은 핵심 주제나 내용을 간결하게 표현해야 하며, 이모지/해시태그/과장/추측/광고 표현은 금지한다.
       - description, transcript, subtitle이 모두 비어 있을 경우에만 title=""
 
-      2. summary
-      - Markdown을 활용해 가독성 있게 요약한다. (h2(##), h3(###), 굵게(**), 불릿(-), 숫자목록(1. 2. …)까지만 사용한다.)
-      - 길이는 유연하다. 정보가 적으면 짧게, 많으면 길게.
-      - 광고, 홍보, 과장, 클릭 유도 금지. 사실 서술 위주.
-      - 학습 노트 스타일의 문장을 명사형 종결 어미로 작성한다.
+      4. **요약(summary)**
+      - 위의 Markdown 규칙을 엄격히 따른다.
+      - 학습 노트 스타일의 문장을 가능한 명사형 종결 어미 위주로 작성하되,
+        문맥상 자연스러운 문장 흐름을 위해 일부 서술형 종결도 허용한다.
+      - 불필요하게 모든 내용을 리스트로 나열하지 않는다.
+      - 내용이 순차적이거나 항목 구분이 명확할 때만 리스트(`-`, `1.`)를 사용한다.
+      - 광고, 홍보, 과장, 클릭 유도 금지. 사실 서술 위주로 작성한다.
+      - 문단 간에는 반드시 빈 줄(`\\n\\n`)을 삽입한다. 단, **리스트 항목(`-`, `1.`) 사이에는 삽입하지 않는다.**
+      - 불필요한 스타일링이나 HTML은 절대 포함하지 않는다.
       - **만약 transcript나 subtitle이 노래 가사이거나, 노래/음악 관련 단어가 주를 이룬다면:**
         - summary는 "이 영상은 자동 요약이 어려워요. 필요한 내용을 직접 메모로 추가해 주세요." 로 고정한다.
         - board는 title값이 있는 경우 해당 값을 참고하여 가장 적절한 항목을 선택하며, 판단하기 어려운 경우 '기타'로 분류한다.
         - tags는 생성하지 않는다([] 반환).
 
-      3. tags
-      - 최소 3개, 최대 5개.
-      - 1~2 단어의 핵심 키워드.
+      5. **태그(tags)**
+      - 최소 5개, 최대 7개 생성.
+      - 영상 내용이 매우 제한적인 경우에는 5개 미만도 가능.
+      - **세부적인 핵심 키워드(3~4개)**와 **포괄적·상위 개념 키워드(2~3개)**를 모두 포함할 것.
+      - 각 태그는 1~2 단어의 핵심 키워드로 구성.
       - 중복, 의미 없음, 이모지, 해시태그 금지.
 
-      4. board
+      6. **보드(board)**
       - 아래 보드 목록 중 정확히 하나 선택한다. (철자와 띄어쓰기까지 동일해야 한다.)
       - 선택된 보드 외의 값은 절대 반환하지 않는다.
 
@@ -244,37 +287,84 @@ public class OpenAiClient {
           "valid": true | false
         }
 
-        규칙:
-           1. summary
-           - Markdown을 활용한다. (h2(##), h3(###), 굵게(**), 불릿(-), 숫자목록(1. 2. …)까지만 사용한다.)
-           - 사용자의 요청이 '요약/재작성'에 해당하면, summary를 새로 작성한다.
-           - 사용자의 요청이 '하이라이팅'을 포함하면, summary는 반드시 기존 summary 내용을 최대한 유지한다.
-             - 단, '더 간결하게' '더 자세하게' 등 요약/재작성 요구와 함께 있을 경우, 요청을 따르되 기존 맥락을 보존하며 큰 변형 없이 수정한다.
-           - 어떤 경우에도 불필요하게 원문 정보를 삭제하거나 누락하지 않는다.
+        [Markdown 작성 규칙]
 
-           2. highlights
-           - 사용자의 요청에 '하이라이팅'이 포함된 경우, summary 문자열 내에서 조건에 맞는 구간의 인덱스를 highlights로 추출한다.
-           - 요청에 하이라이팅이 포함되지 않으면 highlights = []로 반환한다.
+        1. **허용 문법**
+        - Heading: `##`, `###` (단락의 맨 앞에서만 사용)
+        - Unordered list: `-` 사용한다.
+        - Ordered list: `1. 내용` 형식으로 작성하며, 번호 값 자체에는 의미를 두지 않는다. (서버에서 1부터 다시 매긴다.)
+          - 리스트 공통 규칙:
+          - **상위 항목–하위 항목–다음 상위 항목** 사이에는 어떤 경우에도 빈 줄을 넣지 않는다.
+            (즉, 리스트 항목 사이에는 절대로 빈 줄이 존재하면 안 된다.)
+          - 하위 리스트는 1단계까지만 작성하며, **2단계 이상 중첩 리스트는 생성하지 않는다.**
+          - 상위 항목 아래에 공백 2~4칸을 넣고 `-` 또는 `1.`을 붙여서 표현한다.
+        - Bold: `**굵게**` 표현 허용
+        - 문단(heading/문장) 사이에는 빈 줄 한 줄(`\\n\\n`)을 넣어 구분한다.
+          - 단, **리스트 항목(`-`, `1.`) 사이에는 빈 줄을 넣지 않는다.**
 
-           3. 연관성 검증
-           - 사용자의 요청이 카드 요약/재작성/하이라이팅과 무관하다고 판단되면,
-             summary = "", highlights = [], valid = false 로 반환한다.
-           - 정상적인 요청일 경우 valid = true 로 반환한다.
+        2. **금지 문법**
+        - *기울임체*, _밑줄_, `인라인 코드`, ```코드블록```, [링크](url), > 인용문, HTML 태그 등은 사용하지 않는다.
+        - 이미지는 생성하지 않는다.
 
-           4.입력 유효성 검증
-           - 사용자의 요청이 지나치게 짧거나 의미를 파악하기 어려운 경우(valid=false로 간주한다).
-             예: 초성 한 글자, 특수문자/이모티콘만 존재, 한 단어 이하의 불명확한 명령어 등
-           - 최소 기준:
-             - 요청 내 한글/영문/숫자 조합이 3자 미만이거나,
-             - 의미 있는 동사나 명사가 포함되지 않은 경우,
-             - 문맥상 카드 내용 수정 의도가 명확하지 않은 경우,
-               → summary = "", highlights = [], valid = false 로 반환한다.
-           - 단, 명확한 단어 기반 지시(예: "요약해", "강조해줘")는 예외로 valid=true 처리한다.
+        3. **요약(summary) 작성 원칙**
+        - 위의 Markdown 규칙을 반드시 따른다.
+        - 학습 노트 스타일의 문장을 명사형 종결 어미로 작성하되,
+          문맥상 자연스러운 문장 흐름을 위해 일부 서술형 종결도 허용한다.
+        - 내용이 순차적이거나 항목 구분이 명확할 때에는 리스트(`-`, `1.`)를 사용한다.
+        - 광고, 홍보, 과장, 클릭 유도 표현은 금지한다.
+        - **리스트 항목(`-`, `1.`) 사이에는 빈 줄을 삽입하지 않는다.**
+        - 기존 내용의 의미나 사실을 임의로 삭제하거나 왜곡하지 않는다.
 
-           5. 공통
-           - summary와 highlights는 항상 세트로 반환한다.
-           - 새로운 개념, 없는 정보, 과장된 내용은 절대 추가하지 않는다.
-           - highlights의 인덱스는 summary 문자열 기준으로 정확히 계산한다.
+        4. **요청 처리 규칙**
+        - 사용자의 요청이 '요약/재작성'이라면 summary를 새로 작성한다.
+        - 요청에 '하이라이팅'이 포함된 경우:
+          - summary는 기존 summary 내용을 최대한 유지하되, 요청에 따라 강조 구간을 지정한다.
+          - 기존 문맥을 유지한 채로 필요한 부분만 수정하거나 강조 표시한다.
+        - '더 간결하게', '더 자세하게' 등 요약 관련 지시가 포함되면 요청을 우선하되 의미를 훼손하지 않는다.
+        - 요청에 '핵심 문장', '핵심만', '키 문장' 등의 표현이 포함된 경우:
+          - 기존 summary 내용을 유지한 상태로, summary의 마지막에 '## 핵심 문장' 섹션을 추가한다.
+          - 핵심 문장은 기존 내용에서 의미상 가장 중요한 요소를 압축하여 작성하되,
+            새로운 사실이나 출처 불명 정보는 포함하지 않는다.
+          - Markdown 형식을 준수하며, 기존 문맥과 자연스럽게 이어지도록 작성한다.
+
+        5. **highlights 작성 규칙**
+        - 요청에 '하이라이팅'이 포함된 경우 summary 문자열 내에서 조건에 맞는 구간 인덱스를 추출한다.
+        - 요청에 하이라이팅이 포함되지 않으면 highlights = [] 로 반환한다.
+
+        6. **심화학습·배경 설명 요청 처리**
+        - 사용자의 요청에 '심화학습', '더 깊게 설명해줘', '배경 알려줘', '맥락 설명해줘',
+          '부가 정보', '조금 더 상세하게' 등의 표현이 포함된 경우,
+          영상의 장르에 맞는 적절한 심화 정보를 제공할 수 있다.
+        - ‘심화’의 범위는 특정 장르에 제한되지 않는다. 다음과 같이 상황에 맞는 방향으로 확장할 수 있다:
+          • 교육/지식 영상 → 개념 보충, 기본 원리, 정의, 관련 사례
+          • 라이프스타일/패션/뷰티 → 원리·트렌드·스타일링 배경·제품 카테고리 설명
+          • 요리 → 조리 원리, 대체 재료, 해당 음식의 기초적 맥락
+          • 운동/건강 → 기초 원리, 올바른 자세 설명, 일반적으로 알려진 주의사항
+          • 리뷰/추천 영상 → 제품군 특징, 선택 기준, 일반적으로 검증된 비교 요소
+          • 엔터테인먼트/브이로그 → 장소·문화적 배경, 주제 이해를 돕는 보편적 정보
+          • 취미/기술 관련 → 기본 동작의 원리, 흔한 실수, 초보자가 알아두면 좋은 사실
+        - 단, 아래 기준을 반드시 지킨다:
+          1. 장르를 불문하고 **객관적이고 검증된 정보**만 추가할 것.
+          2. 출처가 명확하거나, 일반적으로 널리 합의된 사실(사전적 정의, 기본 원리, 보편적 상식 등)에 한해서만 허용.
+          3. 특정 개인 의견, 추측성 내용, 논란이 있는 정보, 출처 불분명한 내용은 절대 포함하지 않는다.
+          4. 영상의 흐름 및 기존 요약의 맥락과 자연스럽게 이어지는 방식으로 작성할 것.
+        - 이 경우에도 Markdown 형식을 유지하며, 추가 정보는 기존 내용의 맥락과 자연스럽게 이어지도록 작성한다.
+
+        7. **요청 유효성 검증**
+        - 요청이 지나치게 짧거나 카드 내용과 무관하거나 의미 없는 경우(valid=false)
+          예: 초성/특수문자/이모티콘만 존재, 한 단어 이하의 불명확한 명령어
+        - 최소 기준:
+          - 요청 내 한글/영문/숫자 조합이 3자 미만이거나,
+          - 의미 있는 동사나 명사가 포함되지 않은 경우,
+          - 문맥상 카드 내용 수정 의도가 명확하지 않은 경우,
+            → summary = "", highlights = [], valid = false 로 반환한다.
+        - 단, "요약해", "강조해줘" 등 명확한 단어 기반 요청은 valid=true로 간주한다.
+
+        8. **공통**
+        - summary와 highlights는 항상 세트로 반환한다.
+        - 새로운 사실이나 근거 없는 정보 추가는 금지하지만,
+          잘못 인식된 단어나 문장의 오류는 영상의 맥락에 따라 자연스럽게 보정할 수 있다.
+        - highlights의 인덱스는 summary 문자열 기준으로 정확히 계산한다.
         """,
       prompt,
       cardTitle != null ? cardTitle : "",
@@ -285,7 +375,7 @@ public class OpenAiClient {
     );
 
     Map<String, Object> requestBody = Map.of(
-      "model", "gpt-4o",
+      "model", "gpt-5.1",
       "messages", List.of(
         Map.of("role", "system", "content",
           "You are a helpful assistant that rewrites summaries according to user instructions "
@@ -343,4 +433,75 @@ public class OpenAiClient {
     }
   }
 
+  /*
+   * 카테고리별 트렌드 키워드 생성
+   */
+  public List<String> generateTrendingKeywords(DefaultBoard category) {
+
+    String prompt = buildKeywordPrompt(category);
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.setBearerAuth(apiKey);
+
+    Map<String, Object> requestBody = Map.of(
+      "model", "gpt-5-mini",
+      "response_format", Map.of("type", "json_object"),
+      "messages", List.of(
+        Map.of("role", "user", "content", prompt)
+      )
+    );
+
+    HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+    ResponseEntity<Map> response = restTemplate.postForEntity(
+      "https://api.openai.com/v1/chat/completions",
+      request,
+      Map.class
+    );
+
+    Map<String, Object> choice = ((List<Map<String, Object>>) response.getBody()
+      .get("choices")).get(0);
+    Map<String, Object> message = (Map<String, Object>) choice.get("message");
+
+    String contentJson = (String) message.get("content");
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      Map<String, Object> json = mapper.readValue(contentJson, Map.class);
+
+      // "keywords": ["...", "..."]
+      List<String> keywords = (List<String>) json.get("keywords");
+      return keywords != null ? keywords : List.of();
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      return List.of();
+    }
+  }
+
+  private String buildKeywordPrompt(DefaultBoard category) {
+    return """
+      당신은 유튜브 쇼츠 트렌드를 분석하는 도우미입니다.
+
+      아래 카테고리에 대해 한국에서 최근 1~2주 동안
+      실제로 자주 검색되었을 법한 '정보성·학습 목적의' 키워드 5개를 생성해 주세요.
+
+      조건:
+      - 엔터테인먼트/밈/브이로그/ASMR 제외
+      - 브랜드명/게임명/인물명/국가명 등 고유명사 제외
+      - 너무 일반적인 단어 제외
+      - 길이는 3~8자, 한국어 표현 중심
+      - 학습·실용 정보를 제공하는 단어만 선택
+
+      카테고리: %s
+
+      반드시 아래 JSON 형식으로만 답하세요.
+
+      {
+        "keywords": ["키워드1", "키워드2", ... ]
+      }
+
+      """.formatted(category.getDisplayName());
+  }
 }

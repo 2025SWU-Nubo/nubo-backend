@@ -39,7 +39,7 @@ public class CardMapper {
   // =========================
 
   // Card → CardCreateResponseDto (보드 ID 리스트 포함)
-  public CardCreateResponseDto toResponseDto(Card card, List<Long> boardIds) {
+  public CardCreateResponseDto toCreateResponseDto(Card card, List<Long> boardIds) {
     return CardCreateResponseDto.builder()
       .cardId(card.getId())
       .title(card.getTitle())
@@ -61,13 +61,25 @@ public class CardMapper {
       .build();
   }
 
+  public CardSimpleResponseDto toSimpleResponseDto(Card card,
+    boolean isFavorite, boolean viewed, boolean isMine) {
+    return CardSimpleResponseDto.builder()
+      .cardId(card.getId())
+      .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
+      .isFavorite(isFavorite)
+      .viewed(viewed)
+      .isMine(isMine)
+      .build();
+  }
+
   // Card → CardDetailResponseDto
   public CardDetailResponseDto toDetailResponseDto(
     Card card,
     int stage,
     boolean berryGained,
     boolean stageUp,
-    boolean isFavorite
+    boolean isFavorite,
+    boolean isMine
   ) {
     List<HighlightRange> highlights = List.of();
 
@@ -97,6 +109,7 @@ public class CardMapper {
       .summary(card.getSummary())
       .tags(splitTags(card.getTags()))
       .isFavorite(isFavorite)
+      .isMine(isMine)
       .videoUrl(card.getVideo().getUrl())
       .videoThumbnailUrl(card.getVideo().getThumbnailUrl())
       .videoPlatform(card.getVideo().getPlatform())
@@ -152,6 +165,7 @@ public class CardMapper {
       .highlightInfo(source.getHighlightInfo())
       .video(source.getVideo())
       .user(user)
+      .aiCategory(source.getAiCategory())
       .deletedAt(null)
       .deletedBy(null)
       .build();
@@ -168,7 +182,7 @@ public class CardMapper {
     return Arrays.stream(tags.split(","))
       .map(String::trim)
       .filter(s -> !s.isEmpty())
-      .map(s -> "#" + s)
+      .map(s -> "# " + s)
       .toList();
   }
 }

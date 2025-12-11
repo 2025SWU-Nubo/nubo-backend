@@ -1,6 +1,8 @@
 package com.nubo.domain.notification.controller;
 
 import com.nubo.domain.notification.dto.NotificationResponseDto;
+import com.nubo.domain.notification.dto.UnreadExistsResponseDto;
+import com.nubo.domain.notification.scheduler.ReminderScheduler;
 import com.nubo.domain.notification.service.NotificationService;
 import com.nubo.global.auth.UserUtil;
 import java.util.List;
@@ -9,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,6 +22,7 @@ public class NotificationController {
 
   private final NotificationService notificationService;
   private final UserUtil userUtil;
+  private final ReminderScheduler reminderScheduler;
 
   /**
    * 최근 일주일 알림 목록 조회
@@ -31,6 +35,18 @@ public class NotificationController {
     List<NotificationResponseDto> notifications = notificationService.getRecentNotifications(
       userId);
     return ResponseEntity.ok(notifications);
+  }
+  
+  /**
+   * 현재 로그인한 사용자의 '안 읽은 알림' 존재 여부를 반환한다.
+   *
+   * @return unread 알림 존재 여부 응답 DTO
+   */
+  @GetMapping("/unread-exists")
+  public ResponseEntity<UnreadExistsResponseDto> hasUnread() {
+    Long userId = userUtil.getAuthenticatedUserId();
+    UnreadExistsResponseDto response = notificationService.hasUnreadNotification(userId);
+    return ResponseEntity.ok(response);
   }
 
   /**
@@ -55,6 +71,16 @@ public class NotificationController {
   public ResponseEntity<Void> markAllAsRead() {
     Long userId = userUtil.getAuthenticatedUserId();
     notificationService.markAllAsRead(userId);
+    return ResponseEntity.ok().build();
+  }
+
+  /**
+   * 수동으로 리마인드 알림을 발송하는 API
+   * - 테스트 / 내부용
+   */
+  @PostMapping("/manual")
+  public ResponseEntity<Void> triggerDailyRemindersManually() {
+    reminderScheduler.sendDailyReminders();
     return ResponseEntity.ok().build();
   }
 }

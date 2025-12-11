@@ -161,7 +161,7 @@ public class CardService {
       }
 
       List<Long> restoreBoardIds = boardCardService.findBoardIdsByCardId(revived.getId());
-      return cardMapper.toResponseDto(revived, restoreBoardIds);
+      return cardMapper.toCreateResponseDto(revived, restoreBoardIds);
     }
 
     // 3. 신규 Video 업서트
@@ -175,13 +175,19 @@ public class CardService {
       String titleSeed =
         (metadata != null && metadata.getTitle() != null && !metadata.getTitle().isBlank())
           ? metadata.getTitle() : "";
+
+      String thumbnailUrl = metadata.getThumbnailUrl();
+      if (platform == Platform.INSTAGRAM) {
+        thumbnailUrl = "https://www.instagram.com/p/" + metadata.getVideoId() + "/media/?size=l";
+      }
+
       video = videoService.getOrCreateVideo(
         VideoMetadataDto.builder()
           .videoId(metadata.getVideoId())
           .videoUrl(metadata.getVideoUrl())
           .title(titleSeed)
           .description(metadata.getDescription())
-          .thumbnailUrl(metadata.getThumbnailUrl())
+          .thumbnailUrl(thumbnailUrl)
           .platform(platform)
           .build()
       );
@@ -205,7 +211,7 @@ public class CardService {
 
     // 5. GPT 요약/태그
     String inputText = buildFullText(video);
-    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId);
+    AiCardMetaDto meta = openAiClient.generateCardMeta(inputText, userId, false, false);
     log.info("AI 메타 생성 완료 - 누적 {}ms", System.currentTimeMillis() - startTime);
 
     // 6. 최종 제목
@@ -269,7 +275,7 @@ public class CardService {
       log.warn("⚠️ FCM 알림 발송 실패 - cardId={}, reason={}", savedCard.getId(), e.getMessage());
     }
 
-    return cardMapper.toResponseDto(savedCard, boardIds);
+    return cardMapper.toCreateResponseDto(savedCard, boardIds);
   }
 
   /**
@@ -336,12 +342,16 @@ public class CardService {
     // 즐겨찾기 여부 조회
     boolean isFavorite = cardUserStatusService.getFavoriteStatus(userId, card.getId());
 
+    // 내 카드인지 여부 조회
+    boolean isMine = card.getUser() != null && card.getUser().getId().equals(userId);
+
     return cardMapper.toDetailResponseDto(
       card,
       result.getStage(),
       result.isBerryGained(),
       result.isStageUp(),
-      isFavorite
+      isFavorite,
+      isMine
     );
   }
 
@@ -349,18 +359,20 @@ public class CardService {
    * 지정된 보드에서 사용자가 아직 열람하지 않은 카드 썸네일 리스트를 반환한다.
    * 결과는 랜덤 순서로 제한된 개수만 반환한다.
    *
-   * @param userId  사용자 ID
-   * @param boardId 보드 ID
-   * @param limit   최대 반환 개수
+   * @param userId   사용자 ID
+   * @param boardIds 보드 ID들
+   * @param limit    최대 반환 개수
    * @return 카드 썸네일 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardSimpleResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
+  public List<CardSimpleResponseDto> getUnviewedCardThumbnails(
+    Long userId,
+    List<Long> boardIds,
     int limit) {
     Pageable pageable = PageRequest.of(0, limit);
 
     List<Card> unviewedCards =
-      cardRepository.findUnviewedCardsByBoard(userId, boardId, pageable);
+      cardRepository.findUnviewedCardsByBoardIds(userId, boardIds, pageable);
 
     List<Long> cardIds = unviewedCards.stream().map(Card::getId).toList();
     Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
@@ -431,7 +443,7 @@ public class CardService {
    * @param video Video 엔티티
    * @return 합쳐진 텍스트 문자열
    */
-  private String buildFullText(Video video) {
+  public String buildFullText(Video video) {
     StringBuilder sb = new StringBuilder();
 
     // 1) 요약 근거
@@ -671,5 +683,20 @@ public class CardService {
     }
 
     return new CardRestoreResponseDto(restoredCount);
+  }
+
+
+  @Transactional(readOnly = true)
+  public List<Card> getAllCardsByUser(Long userId) {
+    return cardRepository.findAllByUserId(userId);
+  }
+
+  @Transactional(readOnly = true)
+  public Long getCardCountByUser(Long userId) {
+    return cardRepository.countByUserId(userId);
+  }
+
+  public Card saveCard(Card card) {
+    return cardRepository.save(card);
   }
 }

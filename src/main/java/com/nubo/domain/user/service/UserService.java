@@ -232,6 +232,18 @@ public class UserService {
   }
 
   /**
+   * 사용자의 튜토리얼 시청을 완료로 변경한다.
+   *
+   * @param userId
+   */
+  @Transactional
+  public void updateOnboardingTutorialStatus(Long userId) {
+    User user = getUserById(userId);
+
+    user.markTutorialCompleted();
+  }
+
+  /**
    * 회원 탈퇴 (Soft Delete)
    *
    * @param userId 탈퇴할 사용자 ID
@@ -258,5 +270,13 @@ public class UserService {
   public void deactivateCurrentUser() {
     Long userId = userUtil.getAuthenticatedUserId();
     deactivateUser(userId);
+  }
+
+  /**
+   * 모든 활성 사용자 ID 목록 조회
+   */
+  @Transactional(readOnly = true)
+  public List<Long> getAllActiveUserIds() {
+    return userRepository.findAllActiveUserIds();
   }
 }

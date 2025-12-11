@@ -9,6 +9,11 @@ public enum SortType {
     if (this == ALPHABET) {
       return entityClass.getSimpleName().equals("Card") ? "title" : "name";
     }
+    
+    if (this == LATEST && entityClass.getSimpleName().equals("Board")) {
+      return "lastCardAddedAt";
+    }
+
     return "createdAt";
   }
 }

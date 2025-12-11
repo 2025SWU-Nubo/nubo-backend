@@ -130,25 +130,16 @@ public interface CardRepository extends JpaRepository<Card, Long> {
 
   // 미열람 카드의 썸네일 리스트 랜덤 조회
   @Query("""
-    SELECT DISTINCT c
-    FROM BoardMember bm
-    JOIN bm.board b
-    JOIN BoardCard bc ON bc.board.id = b.id OR bc.board.parentBoard.id = b.id
-    JOIN bc.card c
-    LEFT JOIN CardUserStatus cus 
-      ON cus.card = c AND cus.user.id = :userId
-    WHERE bm.user.id = :userId
-      AND b.id = :boardId
-      AND c.deletedAt IS NULL
-      AND (
-           cus IS NULL
-           OR cus.viewedAt IS NULL
-      )
-    ORDER BY function('RAND')
+    SELECT DISTINCT c FROM Card c
+    JOIN BoardCard bc ON c.id = bc.card.id
+    LEFT JOIN CardUserStatus s ON s.card.id = c.id AND s.user.id = :userId
+    WHERE bc.board.id IN :boardIds
+      AND (s.viewedAt IS NULL)
+    ORDER BY RAND()
     """)
-  List<Card> findUnviewedCardsByBoard(
+  List<Card> findUnviewedCardsByBoardIds(
     @Param("userId") Long userId,
-    @Param("boardId") Long boardId,
+    @Param("boardIds") List<Long> boardIds,
     Pageable pageable
   );
 
@@ -252,4 +243,10 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     """)
   int restoreById(@Param("id") Long id);
 
+  // 추천 컨텐츠를 위한 사용자 카드 전체 조회
+  List<Card> findAllByUserId(Long userId);
+
+  // 추천 컨텐츠를 위한 사용자 보유 카드 수 조회
+  @Query("SELECT COUNT(c) FROM Card c WHERE c.user.id = :userId")
+  Long countByUserId(@Param("userId") Long userId);
 }

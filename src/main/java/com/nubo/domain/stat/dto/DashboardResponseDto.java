@@ -30,6 +30,9 @@ public class DashboardResponseDto {
   // 누적 누베리 개수
   private int berryCount;
 
+  // 다음 단계까지 남은 카드 수
+  private int nextStageRemaining;
+
   // 배경 url
   private String dashboardBackground;
 }

@@ -74,3 +74,5 @@ downloads/
 
 # Firebase service account key
 src/main/resources/firebase/serviceAccountKey.json
+
+nubo-whisper/

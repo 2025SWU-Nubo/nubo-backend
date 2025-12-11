@@ -1,5 +1,6 @@
 package com.nubo.domain.board.type;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -33,7 +34,21 @@ public enum DefaultBoard {
     return DEFAULT_SKIP_BOARDS.stream().collect(Collectors.toList());
   }
 
+  public static List<DefaultBoard> getAllCategories() {
+    return Arrays.stream(DefaultBoard.values())
+      .filter(board -> board != DefaultBoard.ETC)
+      .toList();
+  }
+
+  public static DefaultBoard fromDisplayName(String displayName) {
+    return Arrays.stream(DefaultBoard.values())
+      .filter(db -> db.getDisplayName().equals(displayName))
+      .findFirst()
+      .orElse(DefaultBoard.ETC);
+  }
+
   public String getDisplayName() {
     return displayName;
   }
+
 }

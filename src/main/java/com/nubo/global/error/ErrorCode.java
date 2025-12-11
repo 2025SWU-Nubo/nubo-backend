@@ -51,8 +51,10 @@ public enum ErrorCode {
     LogLevel.ERROR),
   INVALID_JWT_TOKEN(401, "SC002", "Invalid or malformed JWT token", LogLevel.WARN),
   UNAUTHENTICATED(401, "SC003", "User not authenticated", LogLevel.WARN),
-  UNAUTHORIZED_CLIENT(403, "SC004", "User not authorized", LogLevel.WARN),
+  UNAUTHORIZED_CLIENT(401, "SC004", "User not authorized", LogLevel.WARN),
   ACCESS_DENIED(403, "SC005", "Access denied for this resource", LogLevel.WARN),
+  INVALID_REFRESH_TOKEN(401, "SC006", "Invalid or malformed refresh token", LogLevel.WARN),
+  EXPIRED_REFRESH_TOKEN(401, "SC007", "Refresh token has expired", LogLevel.WARN),
 
   // VIDEO
   INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN),
@@ -63,6 +65,9 @@ public enum ErrorCode {
   PUSH_SEND_FAILED(500, "N001", "Failed to send push notification", LogLevel.ERROR),
   INVALID_FCM_TOKEN(400, "N002", "Invalid or expired FCM token", LogLevel.WARN),
   NOTIFICATION_DISABLED(403, "N003", "User has disabled this notification type", LogLevel.WARN),
+
+  // RECOMMENDATION
+  ALREADY_SAVED_RECOMMENDATION(409, "RC001", "recommendation card already saved", LogLevel.WARN),
   ;
 
   private final int status;

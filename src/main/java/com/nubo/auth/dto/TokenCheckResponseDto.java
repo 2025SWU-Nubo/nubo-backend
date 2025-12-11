@@ -9,4 +9,7 @@ public class TokenCheckResponseDto {
 
   private boolean isValid;
   private boolean isExpired;
+
+  private boolean interestSetupCompleted;
+  private boolean tutorialCompleted;
 }

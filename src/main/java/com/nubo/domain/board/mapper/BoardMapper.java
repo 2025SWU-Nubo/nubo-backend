@@ -63,13 +63,17 @@ public class BoardMapper {
     long sectionCount,
     long cardCount,
     String thumbnailUrl,
-    boolean favorite) {
+    boolean favorite,
+    boolean isOwner,
+    boolean isMine) {
     return BoardSummaryResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .source(board.getSource())
       .isShared(board.isShared())
       .isFavorite(favorite)
+      .isOwner(isOwner)
+      .isMine(isMine)
       .updatedAt(board.getUpdatedAt())
       .sectionCount(sectionCount)
       .cardCount(cardCount)
@@ -84,12 +88,16 @@ public class BoardMapper {
     Board board,
     List<BoardSummaryResponseDto> sections,
     Page<CardSimpleResponseDto> cards,
-    boolean favorite) {
+    boolean favorite,
+    boolean isOwner,
+    boolean isMine) {
     return BoardDetailResponseDto.builder()
       .id(board.getId())
       .name(board.getName())
       .isFavorite(favorite)
       .isShared(board.isShared())
+      .isOwner(isOwner)
+      .isMine(isMine)
       .sections(sections)
       .cards(cards)
       .build();
@@ -135,6 +143,19 @@ public class BoardMapper {
     return new BoardSimpleResponseDto(board.getId(), board.getName());
   }
 
+  /**
+   * Board → BoardSimpleResponseDto "&" 문자열 가공
+   */
+  public BoardSimpleResponseDto toSimpleResponseDtoWithName(Board board, String name) {
+    return BoardSimpleResponseDto.builder()
+      .boardId(board.getId())
+      .boardName(name)
+      .build();
+  }
+
+  /**
+   * Board → BoardFavoriteResponseDto
+   */
   public BoardFavoriteResponseDto toFavoriteResponseDto(Board board, boolean favorite) {
     return BoardFavoriteResponseDto.builder()
       .boardId(board.getId())

@@ -7,7 +7,9 @@ import com.nubo.domain.board.entity.Board;
 import com.nubo.domain.board.entity.BoardMember;
 import com.nubo.domain.board.mapper.BoardMemberMapper;
 import com.nubo.domain.board.repository.BoardMemberRepository;
+import com.nubo.domain.board.repository.BoardRepository;
 import com.nubo.domain.board.type.BoardMemberRole;
+import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.error.ErrorCode;
@@ -30,6 +32,7 @@ public class BoardMemberService {
   private final BoardMemberRepository boardMemberRepository;
   private final BoardMemberMapper boardMemberMapper;
   private final UserService userService;
+  private final BoardRepository boardRepository;
 
   /**
    * 특정 보드의 멤버 전체 조회
@@ -230,13 +233,31 @@ public class BoardMemberService {
     }
   }
 
+  /**
+   * 사용자가 해당 보드의 OWNER인지 여부를 확인한다.
+   */
+  @Transactional(readOnly = true)
+  public boolean isOwner(Long boardId, Long userId) {
+    return boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
+      .map(bm -> bm.getRole() == BoardMemberRole.OWNER)
+      .orElse(false);
+  }
+
   // ====== private helper ======
 
   /**
    * 보드 멤버를 조회하거나 없으면 예외를 던진다.
    */
   private BoardMember getMemberOrThrow(Long boardId, Long userId) {
-    return boardMemberRepository.findByBoard_IdAndUser_Id(boardId, userId)
+    Board board = boardRepository.findById(boardId)
+      .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+    // 섹션인 경우 상위보드의 멤버십을 체크
+    Board target = board.getBoardType() == BoardType.SECTION
+      ? board.getParentBoard()
+      : board;
+
+    return boardMemberRepository.findByBoard_IdAndUser_Id(target.getId(), userId)
       .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
   }
 }

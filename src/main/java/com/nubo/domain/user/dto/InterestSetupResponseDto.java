@@ -1,4 +1,4 @@
-package com.nubo.domain.interest.dto;
+package com.nubo.domain.user.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

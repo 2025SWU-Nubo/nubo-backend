@@ -18,11 +18,20 @@ public class PageRequestUtil {
     }
 
     Sort.Direction dir = switch (sort) {
-      case LATEST -> Sort.Direction.ASC;
-      case ALPHABET -> Sort.Direction.ASC;
-      default -> Sort.Direction.DESC;
+      case LATEST -> Sort.Direction.DESC;
+      case OLDEST, ALPHABET -> Sort.Direction.ASC;
     };
 
-    return PageRequest.of(page, size, Sort.by(dir, field));
+    // 기본 정렬 조건
+    Sort.Order primary = new Sort.Order(dir, field);
+
+    // 보조 정렬 조건 (lastCardAddedAt이 null일 때 updatedAt으로 정렬)
+    if (field.endsWith("lastCardAddedAt")) {
+      String secondaryField = prefix != null ? prefix + "updatedAt" : "updatedAt";
+      Sort.Order secondary = new Sort.Order(dir, secondaryField);
+      return PageRequest.of(page, size, Sort.by(primary, secondary));
+    }
+
+    return PageRequest.of(page, size, Sort.by(primary));
   }
 }

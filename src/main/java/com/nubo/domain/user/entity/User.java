@@ -2,6 +2,7 @@ package com.nubo.domain.user.entity;
 
 import com.nubo.domain.user.type.Provider;
 import com.nubo.global.common.BaseTimeEntity;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,7 +10,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -53,6 +57,13 @@ public class User extends BaseTimeEntity {
    */
   @Column(nullable = false)
   private boolean interestSetupCompleted = false;
+
+  // 튜토리얼 시청 여부
+  private boolean tutorialCompleted = false;
+
+  // 관심사 설정 정보
+  @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<UserInterest> interests = new ArrayList<>();
 
   /**
    * 대시보드용 정보
@@ -98,6 +109,11 @@ public class User extends BaseTimeEntity {
   // 관심사 설정 완료로 상태 변경
   public void markInterestSetupCompleted() {
     this.interestSetupCompleted = true;
+  }
+
+  // 튜토리얼 시청 완료로 상태 변경
+  public void markTutorialCompleted() {
+    this.tutorialCompleted = true;
   }
 
   // === 성장 관련 메서드 ===

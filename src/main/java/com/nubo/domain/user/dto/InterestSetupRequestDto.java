@@ -1,4 +1,4 @@
-package com.nubo.domain.interest.dto;
+package com.nubo.domain.user.dto;
 
 import jakarta.validation.constraints.NotNull;
 import java.util.List;

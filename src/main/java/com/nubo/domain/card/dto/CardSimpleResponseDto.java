@@ -15,4 +15,5 @@ public class CardSimpleResponseDto {
   private String videoThumbnailUrl;
   private boolean isFavorite;
   private boolean viewed;
+  private boolean isMine;
 }

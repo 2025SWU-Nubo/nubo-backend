@@ -42,6 +42,7 @@ import com.nubo.domain.card.mapper.CardMapper;
 import com.nubo.domain.card.repository.CardRepository;
 import com.nubo.domain.card.service.CardService;
 import com.nubo.domain.card.service.CardUserStatusService;
+import com.nubo.domain.notification.service.NotificationService;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.user.service.UserService;
 import com.nubo.global.common.FilterType;
@@ -51,6 +52,7 @@ import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -88,6 +90,7 @@ public class BoardService {
   private final BoardMemberMapper boardMemberMapper;
 
   private final ApplicationContext applicationContext;
+  private final NotificationService notificationService;
 
   /**
    * 주어진 사용자 소유 보드 중 이름 중복 여부를 확인한다.
@@ -128,76 +131,96 @@ public class BoardService {
    */
   @Transactional
   public BoardCreateResponseDto createBoard(BoardCreateRequestDto dto, Long userId) {
-    // 1. 섹션일 경우 상위 보드 유효성 검사
+
+    User owner = userService.getUserById(userId);
+
     Board parentBoard = null;
+    Board savedBoard = null;
+
+    // 1. 섹션 생성
     if (dto.getBoardType() == BoardType.SECTION) {
+
       if (dto.getParentBoardId() == null) {
         throw new ApiException(ErrorCode.FIELD_REQUIRED);
       }
+
       parentBoard = boardRepository.findById(dto.getParentBoardId())
         .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-      if (parentBoard.getSource() == BoardSource.USER &&
-        !parentBoard.getUser().getId().equals(userId)) {
+      boolean isOwner = parentBoard.getUser().getId().equals(userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(parentBoard.getId(), userId);
+
+      // private board → owner만 생성 가능
+      if (!parentBoard.isShared() && !isOwner) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
       }
-      if (dto.isShared()) {
-        throw new ApiException(ErrorCode.FIELD_INVALID); // 섹션은 공유 불가
+
+      // section에서는 초대 불가
+      if (dto.getMemberEmails() != null && !dto.getMemberEmails().isEmpty()) {
+        throw new ApiException(ErrorCode.FIELD_INVALID);
       }
-    } else {
-      // 1-b. 보드인데 shared=false인데 memberEmails가 존재하면 오류
-      if (!dto.isShared()
-        && dto.getMemberEmails() != null
-        && !dto.getMemberEmails().isEmpty()) {
-        throw new ApiException(ErrorCode.FIELD_INVALID); // shared=false + memberEmails 존재
-      }
+
+      // 저장
+      Board section = boardMapper.toEntity(dto, owner, parentBoard);
+      section.setShared(false);
+      savedBoard = boardRepository.save(section);
+
+      return boardMapper.toCreateResponseDto(savedBoard);
     }
+    // 2. 보드 생성
+    else {
 
-    // 2. 보드 소유자 로드
-    User owner = userService.getUserById(userId);
+      // BOARD는 parentBoardId 사용 금지
+      if (dto.getParentBoardId() != null) {
+        throw new ApiException(ErrorCode.FIELD_INVALID);
+      }
 
-    // 3. 보드 엔티티 생성/저장
-    Board newBoard = boardMapper.toEntity(dto, owner, parentBoard);
-    String cleanName = dto.getName() != null ? dto.getName().trim() : null; // 앞뒤 공백 제거
-    newBoard.setName(cleanName);
-    Board savedBoard = boardRepository.save(newBoard);
+      // 저장
+      Board board = boardMapper.toEntity(dto, owner, null);
+      savedBoard = boardRepository.save(board);
 
-    // 4. 멤버십 생성
-    // 항상 OWNER 멤버 생성
-    if (dto.getBoardType() == BoardType.SECTION || dto.getBoardType() == BoardType.BOARD) {
+      // 멤버십 등록
       boardMemberService.createOwner(savedBoard, owner);
     }
 
-    // 공유 보드일 경우 초대 생성
-    if (dto.getBoardType() == BoardType.BOARD && dto.isShared()) {
+    // 3. 공유 보드일 경우 초대 생성
+    if (savedBoard.isShared()) {
+
       Set<String> inviteEmails = Optional.ofNullable(dto.getMemberEmails())
         .orElse(List.of())
         .stream()
         .filter(Objects::nonNull)
         .map(String::trim)
         .map(String::toLowerCase)
-        .filter(s -> !s.isBlank())
-        .filter(s -> !s.equalsIgnoreCase(owner.getEmail()))
+        .filter(email -> !email.isBlank())
+        .filter(email -> !email.equalsIgnoreCase(owner.getEmail()))
         .collect(Collectors.toCollection(LinkedHashSet::new));
 
       if (!inviteEmails.isEmpty()) {
+
+        // 이메일 → 사용자 조회
         List<User> invitees = userService.getUsersByEmails(new ArrayList<>(inviteEmails));
+
+        // 존재하는 이메일
         Set<String> found = invitees.stream()
           .map(u -> u.getEmail().toLowerCase())
           .collect(Collectors.toSet());
+
+        // 없는 이메일 체크
         List<String> missing = inviteEmails.stream()
           .filter(e -> !found.contains(e))
           .toList();
+
         if (!missing.isEmpty()) {
           throw new ApiException(ErrorCode.ENTITY_NOT_FOUND);
         }
 
-        // BoardInvitation 생성 (PENDING)
+        // 초대 생성
         boardInvitationService.createInvitations(savedBoard, owner, invitees);
       }
     }
 
-    // 5. 결과 반환
+    // 4. 결과 반환
     return boardMapper.toCreateResponseDto(savedBoard);
   }
 
@@ -269,12 +292,17 @@ public class BoardService {
       String thumbnailUrl = thumbnailMap.get(board.getId());
       boolean favorite = favoriteMap.getOrDefault(board.getId(), false);
 
+      boolean isOwner = boardMemberService.isOwner(stat.getBoardId(), userId);
+      boolean isMine = board.getUser().getId().equals(userId);
+
       return boardMapper.toSummaryResponseDto(
         board,
         stat.getSectionCount(),
         stat.getCardCount(),
         thumbnailUrl,
-        favorite
+        favorite,
+        isOwner,
+        isMine
       );
     });
   }
@@ -299,9 +327,13 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (board.getSource() == BoardSource.USER) {
-      boolean isOwner = board.getUser().getId().equals(userId);
-      boolean isMember = boardMemberService.existsByBoardAndUser(boardId, userId);
+    Board target = board.getBoardType() == BoardType.SECTION
+      ? board.getParentBoard()
+      : board;
+
+    if (target.getSource() == BoardSource.USER) {
+      boolean isOwner = target.getUser().getId().equals(userId);
+      boolean isMember = boardMemberService.existsByBoardAndUser(target.getId(), userId);
 
       if (!isOwner && !isMember) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
@@ -309,13 +341,16 @@ public class BoardService {
     }
 
     // 마지막 방문 시간 갱신
-    boardMemberService.updateLastVisitedAt(boardId, userId);
+    boardMemberService.updateLastVisitedAt(target.getId(), userId);
 
     // 즐겨찾기 상태 조회
-    boolean favorite = boardMemberService.getFavoriteStatus(boardId, userId);
+    boolean favorite = boardMemberService.getFavoriteStatus(target.getId(), userId);
 
     // 섹션 리스트 (상단 고정 리스트를 위해 page값 고정)
-    PageRequest sectionPageable = PageRequestUtil.of(0, size, sort, Board.class);
+    PageRequest sectionPageable =
+      filter == FilterType.FAVORITE
+        ? PageRequestUtil.of(0, size, sort, Board.class, "board.")  // BoardMember 기반이므로 prefix 필요
+        : PageRequestUtil.of(0, size, sort, Board.class);            // Board 기반이므로 prefix 없어야 함
     Page<Board> sectionPage = filter == FilterType.FAVORITE
       ? boardRepository.findFavoriteSectionsByParentBoardId(boardId, userId, sectionPageable)
       : boardRepository.findByParentBoardId(boardId, sectionPageable);
@@ -336,8 +371,17 @@ public class BoardService {
             : null;
         }
         boolean sectionFavorite = sectionFavoriteMap.getOrDefault(section.getId(), false);
-        return boardMapper.toSummaryResponseDto(section, 0L, cardCount, thumbnailUrl,
-          sectionFavorite);
+        boolean isOwner = boardMemberService.isOwner(section.getId(), userId);
+        boolean isMine = section.getUser().getId().equals(userId);
+
+        return boardMapper.toSummaryResponseDto(
+          section,
+          0L,
+          cardCount,
+          thumbnailUrl,
+          sectionFavorite,
+          isOwner,
+          isMine);
       })
       .toList();
 
@@ -356,10 +400,21 @@ public class BoardService {
       CardUserStatus status = statusMap.get(card.getId());
       boolean isFavorite = status != null && Boolean.TRUE.equals(status.getIsFavorite());
       boolean viewed = status != null && status.getViewedAt() != null;
-      return cardMapper.toSimpleResponseDto(card, isFavorite, viewed);
+      boolean isMine = card.getUser().getId().equals(userId);
+      return cardMapper.toSimpleResponseDto(card, isFavorite, viewed, isMine);
     });
 
-    return boardMapper.toDetailResponseDto(board, sections, cards, favorite);
+    boolean isOwner = boardMemberService.isOwner(boardId, userId);
+    boolean isMine = target.getUser() != null && target.getUser().getId().equals(userId);
+
+    return boardMapper.toDetailResponseDto(
+      board,
+      sections,
+      cards,
+      favorite,
+      isOwner,
+      isMine
+    );
   }
 
   /**
@@ -448,7 +503,17 @@ public class BoardService {
     List<Board> boards = boardRepository.findAllDefaultBoardsByUserId(userId);
     return boards.stream()
       .filter(board -> !"기타".equals(board.getName()))
-      .map(boardMapper::toSimpleResponseDto)
+      .map(board -> {
+        String originalName = board.getName();
+
+        // " & " 기준으로 줄바꿈 처리
+        String cleanedName = Arrays.stream(originalName.split("&"))
+          .map(String::trim)
+          .filter(s -> !s.isEmpty())
+          .collect(Collectors.joining("\n"));
+
+        return boardMapper.toSimpleResponseDtoWithName(board, cleanedName);
+      })
       .toList();
   }
 
@@ -498,13 +563,17 @@ public class BoardService {
         );
         String thumbnailUrl = thumbnailMap.get(board.getId());
         boolean favorite = favoriteMap.getOrDefault(board.getId(), false);
+        boolean isOwner = boardMemberService.isOwner(stat.getBoardId(), userId);
+        boolean isMine = board.getUser().getId().equals(userId);
 
         return boardMapper.toSummaryResponseDto(
           board,
           stat.getSectionCount(),
           stat.getCardCount(),
           thumbnailUrl,
-          favorite
+          favorite,
+          isOwner,
+          isMine
         );
       })
       .toList();
@@ -523,7 +592,10 @@ public class BoardService {
   public void updateActivity(Long boardId) {
     Board board = getBoardById(boardId);
 
-    // 현재 보드 갱신
+    // 마지막 카드 추가 시각 갱신
+    board.updateLastCardAddedAt(LocalDateTime.now());
+
+    // 현재 보드 updatedAt 갱신
     board.touch();
     boardRepository.save(board);
 
@@ -642,11 +714,13 @@ public class BoardService {
     BoardInvitation invitation = boardInvitationService.findById(invitationId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (invitation.getStatus() == InvitationStatus.PENDING) {
-      boardInvitationService.delete(invitation);
-    } else {
+    if (invitation.getStatus() != InvitationStatus.PENDING) {
       throw new ApiException(ErrorCode.INVALID_STATE);
     }
+
+    notificationService.deleteByInvitation(invitation);
+    boardInvitationService.delete(invitation);
+
   }
 
   /**
@@ -661,7 +735,14 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (board.getSource() != BoardSource.USER || !board.getUser().getId().equals(currentUserId)) {
+    if (board.getSource() != BoardSource.USER) {
+      throw new ApiException(ErrorCode.ACCESS_DENIED);
+    }
+
+    boolean isOwner = board.getUser().getId().equals(currentUserId);
+    boolean isMember = boardMemberService.existsByBoardAndUser(boardId, currentUserId);
+
+    if (!isOwner && !isMember) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
@@ -684,6 +765,12 @@ public class BoardService {
     Board board = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
+    // 이름 공백 제거 및 검증
+    String cleanName = newName != null ? newName.trim() : null;
+    if (cleanName == null || cleanName.isEmpty()) {
+      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    }
+
     // 기본 보드(source != USER)는 이름 변경 불가
     if (board.getSource() != BoardSource.USER) {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
@@ -694,10 +781,16 @@ public class BoardService {
       throw new ApiException(ErrorCode.ACCESS_DENIED);
     }
 
-    // 이름 공백 제거 및 검증
-    String cleanName = newName != null ? newName.trim() : null;
-    if (cleanName == null || cleanName.isEmpty()) {
-      throw new ApiException(ErrorCode.FIELD_REQUIRED);
+    // 섹션인 경우: 섹션 생성자(board.user) or 상위보드 Owner 허용
+    if (board.getBoardType() == BoardType.SECTION) {
+      boolean isSectionCreator = board.getUser().getId().equals(userId);
+      boolean isParentOwner =
+        board.getParentBoard() != null &&
+          board.getParentBoard().getUser().getId().equals(userId);
+
+      if (!isSectionCreator && !isParentOwner) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
     }
 
     board.setName(cleanName);
@@ -733,31 +826,48 @@ public class BoardService {
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (targetBoard.isShared()) {
-      throw new ApiException(ErrorCode.ACCESS_DENIED);
-    }
-
     List<Long> createdBoardIds = new ArrayList<>();
     List<Long> createdCardIds = new ArrayList<>();
+
+    // 공유보드 복제 불가
+    if (sourceBoardId != null) {
+      Board sourceBoard = boardRepository.findById(sourceBoardId)
+        .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+      if (sourceBoard.isShared()) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
+    }
 
     // 2. 보드 복제
     if (dto.getBoardIds() != null) {
       for (Long boardId : dto.getBoardIds()) {
         Board source = boardRepository.findById(boardId)
           .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
-        if (source.getSource() == BoardSource.AI) {
-          continue;
+
+        // AI, 공유보드 복제 불가
+        if (source.getSource() == BoardSource.AI || source.isShared()) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
         }
 
         String newName = resolveDuplicateBoardName(source.getName(), targetBoard, userId);
         User user = userService.getUserById(userId);
+
         Board copied = boardMapper.toCopiedBoard(source, newName, user, targetBoard);
         boardRepository.save(copied);
         boardMemberService.createOwner(copied, user);
         createdBoardIds.add(copied.getId());
 
+        // 하위 카드 복제
         List<BoardCard> boardCards = boardCardService.getByBoardId(source.getId());
         for (BoardCard bc : boardCards) {
+          Card srcCard = bc.getCard();
+
+          // 내 카드만 복제 가능
+          if (!srcCard.getUser().getId().equals(userId)) {
+            throw new ApiException(ErrorCode.ACCESS_DENIED);
+          }
+
           Long newCardId = copyOrLinkCard(bc.getCard(), copied, userId);
           if (newCardId != null) {
             createdCardIds.add(newCardId);
@@ -771,6 +881,12 @@ public class BoardService {
       for (Long cardId : dto.getCardIds()) {
         Card card = cardRepository.findById(cardId)
           .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+
+        // 내 카드만 복제 가능
+        if (!card.getUser().getId().equals(userId)) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
+        }
+
         Long newCardId = copyOrLinkCard(card, targetBoard, userId);
         if (newCardId != null) {
           createdCardIds.add(newCardId);
@@ -813,10 +929,6 @@ public class BoardService {
     Board targetBoard = boardRepository.findById(dto.getTargetBoardId())
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (targetBoard.isShared()) {
-      throw new ApiException(ErrorCode.ACCESS_DENIED);
-    }
-
     List<Long> movedBoardIds = new ArrayList<>();
     List<Long> movedCardIds = new ArrayList<>();
 
@@ -828,7 +940,7 @@ public class BoardService {
 
         // AI 보드, 공유 보드는 이동 불가
         if (source.getSource() == BoardSource.AI || source.isShared()) {
-          continue;
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
         }
 
         // 같은 대상이면 무시
@@ -854,13 +966,30 @@ public class BoardService {
 
     // 3. 카드 이동
     if (dto.getCardIds() != null) {
+
+      Board sourceBoard = null;
+      if (sourceBoardId != null) {
+        sourceBoard = boardRepository.findById(sourceBoardId)
+          .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
+      }
+
       for (Long cardId : dto.getCardIds()) {
         Card card = cardRepository.findById(cardId)
           .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-        // source → target 이동
-        boolean alreadyLinked = boardCardService.exists(targetBoard.getId(), cardId);
-        if (alreadyLinked) {
+        // 남의 카드 이동 금지
+        if (!card.getUser().getId().equals(userId)) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // 공유보드라면 → 내 카드만 이동 가능
+        if (sourceBoard != null && sourceBoard.isShared()
+          && !card.getUser().getId().equals(userId)) {
+          throw new ApiException(ErrorCode.ACCESS_DENIED);
+        }
+
+        // 이미 링크되어 있으면 스킵
+        if (boardCardService.exists(targetBoard.getId(), cardId)) {
           continue;
         }
 
@@ -979,10 +1108,25 @@ public class BoardService {
     Board root = boardRepository.findById(boardId)
       .orElseThrow(() -> new ApiException(ErrorCode.ENTITY_NOT_FOUND));
 
-    if (root.getSource() != BoardSource.AI) {
-      boolean isOwner = root.getUser() != null && Objects.equals(root.getUser().getId(), userId);
-      boolean isMember = boardMemberService.existsByBoardAndUser(root.getId(), userId);
-      if (!isOwner && !isMember) {
+    if (root.getBoardType() == BoardType.SECTION) {
+      // 섹션 삭제: 생성자 or 상위보드 Owner
+      boolean isSectionCreator = root.getUser().getId().equals(userId);
+
+      boolean isParentOwner =
+        root.getParentBoard() != null &&
+          root.getParentBoard().getUser().getId().equals(userId);
+
+      if (!isSectionCreator && !isParentOwner) {
+        throw new ApiException(ErrorCode.ACCESS_DENIED);
+      }
+
+    } else {
+      // 보드 삭제: Owner만
+      boolean isOwner =
+        root.getUser() != null &&
+          root.getUser().getId().equals(userId);
+
+      if (!isOwner) {
         throw new ApiException(ErrorCode.ACCESS_DENIED);
       }
     }

@@ -134,6 +134,10 @@ public class BoardInvitationService {
       .findByIdAndInviteeId(invitationId, userId)
       .orElseThrow(() -> new ApiException(ErrorCode.ACCESS_DENIED));
 
+    Board board = invitation.getBoard();
+    board.getName();
+    board.getId();
+
     if (invitation.getStatus() != InvitationStatus.PENDING) {
       throw new ApiException(ErrorCode.INVALID_STATE);
     }
@@ -142,7 +146,7 @@ public class BoardInvitationService {
 
     // 멤버 추가
     boardMemberRepository.save(BoardMember.builder()
-      .board(invitation.getBoard())
+      .board(board)
       .user(invitation.getInvitee())
       .role(BoardMemberRole.ADMIN) // 정책상 ADMIN
       .visible(true)
@@ -155,14 +159,14 @@ public class BoardInvitationService {
     fcmService.sendBoardAcceptNotification(
       invitation.getInviter().getId(),
       invitation.getInvitee().getNickname(),
-      invitation.getBoard()
+      board
     );
 
     // 수락한 본인에게도 알림
     fcmService.sendBoardAddedNotification(
       invitation.getInvitee().getId(),
-      invitation.getBoard().getName(),
-      invitation.getBoard()
+      board.getName(),
+      board
     );
   }
 

@@ -114,6 +114,18 @@ public class UserController {
   }
 
   /**
+   * 현재 로그인한 사용자의 튜토리얼 시청 여부를 true로 변경한다.
+   *
+   * @return 200 OK
+   */
+  @PatchMapping("/me/tutorial-completed")
+  public ResponseEntity<Void> updateOnboardingStatus() {
+    Long userId = userUtil.getAuthenticatedUserId();
+    userService.updateOnboardingTutorialStatus(userId);
+    return ResponseEntity.ok().build();
+  }
+
+  /**
    * 현재 로그인한 사용자를 탈퇴 처리한다.
    *
    * @return 204 No Content
