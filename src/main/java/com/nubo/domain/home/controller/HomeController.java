@@ -5,13 +5,14 @@ import com.nubo.domain.board.dto.BoardSimpleResponseDto;
 import com.nubo.domain.board.service.BoardService;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.card.service.CardService;
+import com.nubo.domain.home.dto.UnviewedCardsRequestDto;
 import com.nubo.global.auth.UserUtil;
 import com.nubo.global.common.SortType;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,17 +57,16 @@ public class HomeController {
   /**
    * 홈 화면용 미열람 카드 썸네일 리스트를 조회한다.
    *
-   * @param boardId 조회할 보드의 ID (PathVariable)
-   * @param limit   최대 반환 카드 수 (기본값: 10)
+   * @param requestDto 조회 요청 DTO (보드 id 리스트)
    * @return 미열람 카드 썸네일 DTO 리스트
    */
-  @GetMapping("/boards/{boardId}/unviewed-cards")
+  @GetMapping("/boards/unviewed-cards")
   public ResponseEntity<List<CardSimpleResponseDto>> getUnviewedCardThumbnails(
-    @PathVariable Long boardId,
-    @RequestParam(defaultValue = "10") int limit) {
+    @RequestBody UnviewedCardsRequestDto requestDto) {
     Long userId = userUtil.getAuthenticatedUserId();
-    List<CardSimpleResponseDto> cards = cardService.getUnviewedCardThumbnails(userId, boardId,
-      limit);
+    int limit = requestDto.getLimit() != null ? requestDto.getLimit() : 20;
+    List<CardSimpleResponseDto> cards =
+      cardService.getUnviewedCardThumbnails(userId, requestDto.getBoardIds(), limit);
     return ResponseEntity.ok(cards);
   }
 

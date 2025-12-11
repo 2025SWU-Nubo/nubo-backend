@@ -359,18 +359,20 @@ public class CardService {
    * 지정된 보드에서 사용자가 아직 열람하지 않은 카드 썸네일 리스트를 반환한다.
    * 결과는 랜덤 순서로 제한된 개수만 반환한다.
    *
-   * @param userId  사용자 ID
-   * @param boardId 보드 ID
-   * @param limit   최대 반환 개수
+   * @param userId   사용자 ID
+   * @param boardIds 보드 ID들
+   * @param limit    최대 반환 개수
    * @return 카드 썸네일 DTO 리스트
    */
   @Transactional(readOnly = true)
-  public List<CardSimpleResponseDto> getUnviewedCardThumbnails(Long userId, Long boardId,
+  public List<CardSimpleResponseDto> getUnviewedCardThumbnails(
+    Long userId,
+    List<Long> boardIds,
     int limit) {
     Pageable pageable = PageRequest.of(0, limit);
 
     List<Card> unviewedCards =
-      cardRepository.findUnviewedCardsByBoard(userId, boardId, pageable);
+      cardRepository.findUnviewedCardsByBoardIds(userId, boardIds, pageable);
 
     List<Long> cardIds = unviewedCards.stream().map(Card::getId).toList();
     Map<Long, CardUserStatus> statusMap = cardUserStatusService.getStatusMap(userId, cardIds);
