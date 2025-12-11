@@ -51,7 +51,7 @@ public enum ErrorCode {
     LogLevel.ERROR),
   INVALID_JWT_TOKEN(401, "SC002", "Invalid or malformed JWT token", LogLevel.WARN),
   UNAUTHENTICATED(401, "SC003", "User not authenticated", LogLevel.WARN),
-  UNAUTHORIZED_CLIENT(403, "SC004", "User not authorized", LogLevel.WARN),
+  UNAUTHORIZED_CLIENT(401, "SC004", "User not authorized", LogLevel.WARN),
   ACCESS_DENIED(403, "SC005", "Access denied for this resource", LogLevel.WARN),
   INVALID_REFRESH_TOKEN(401, "SC006", "Invalid or malformed refresh token", LogLevel.WARN),
   EXPIRED_REFRESH_TOKEN(401, "SC007", "Refresh token has expired", LogLevel.WARN),
