@@ -30,7 +30,7 @@ public class OpenAiClient {
   private final RestTemplate restTemplate;
   private final BoardService boardService;
 
-  @Value("${openai.api-key}")
+  @Value("${OPENAI_API_KEY}")
   private String apiKey;
 
   /**
