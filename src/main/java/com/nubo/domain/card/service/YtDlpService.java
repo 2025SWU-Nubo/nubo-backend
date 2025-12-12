@@ -51,7 +51,10 @@ public class YtDlpService {
     } catch (IOException e) {
       log.error("downloads 디렉토리 생성 실패", e);
     }
+  }
 
+  @PostConstruct
+  public void initCookiesFromSecret() {
     // 💡 디버깅 로직 추가: 환경 변수 내용이 주입되었는지 확인
     if (COOKIES_SECRET_CONTENT == null) {
       log.error("DEBUG: COOKIES_SECRET_CONTENT is NULL.");
@@ -76,7 +79,7 @@ public class YtDlpService {
       }
     }
   }
-
+  
   // 보조
   private static String text(JsonNode n, String key) {
     return (n != null && n.has(key) && !n.get(key).isNull()) ? n.get(key).asText() : null;
