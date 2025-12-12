@@ -39,6 +39,9 @@ public class YtDlpService {
   @Value("${YTDLP_COOKIES:}") // 1. Fly Secret 환경 변수를 통째로 받음
   private String COOKIES_SECRET_CONTENT;
 
+  @Value("${YTDLP_COOKIES_BASE64:}")
+  private String COOKIES_SECRET_BASE64;
+
   private String ACTUAL_COOKIES_PATH = null; // 2. 실제 사용될 임시 파일 경로
 
   /**
@@ -56,29 +59,105 @@ public class YtDlpService {
 
   @PostConstruct
   public void initCookiesFromSecret() {
-    // 💡 디버깅 로직 추가: 환경 변수 내용이 주입되었는지 확인
-    if (COOKIES_SECRET_CONTENT == null) {
-      log.error("DEBUG: COOKIES_SECRET_CONTENT is NULL.");
-    } else if (COOKIES_SECRET_CONTENT.isBlank()) {
-      log.error("DEBUG: COOKIES_SECRET_CONTENT is BLANK (length 0).");
-    } else {
-      log.info("DEBUG: COOKIES_SECRET_CONTENT loaded successfully. Length: {} bytes.",
-        COOKIES_SECRET_CONTENT.length());
+
+    String cookiesContent = null;
+    
+    if (COOKIES_SECRET_BASE64 != null && !COOKIES_SECRET_BASE64.isBlank()) {
+        try {
+            byte[] decodedBytes = java.util.Base64.getDecoder()
+                .decode(COOKIES_SECRET_BASE64.trim());
+            cookiesContent = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+            log.info("✅ Cookies decoded from Base64. Length: {} bytes", cookiesContent.length());
+        } catch (IllegalArgumentException e) {
+            log.error("❌ Failed to decode Base64 cookies", e);
+            return;
+        }
+    }
+    // Plain text fallback
+    else if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
+        cookiesContent = COOKIES_SECRET_CONTENT.trim();
+        log.info("⚠️ Using plain text cookies. Length: {} bytes", cookiesContent.length());
+    }
+    
+    if (cookiesContent == null || cookiesContent.isBlank()) {
+        log.warn("⚠️ No cookies found in environment variables");
+        return;
     }
 
-    if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
-      try {
-        // 3. 서버 실행 시 /downloads/ 폴더에 임시 파일 생성
-        File tempCookieFile = File.createTempFile("ytdlp_cookies", ".txt", new File(DOWNLOAD_DIR));
-        Files.writeString(tempCookieFile.toPath(), COOKIES_SECRET_CONTENT);
+    // 쿠키 형식 검증
+    long validLines = cookiesContent.lines()
+        .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
+        .count();
+    
+    log.info("🔍 Cookie file contains {} valid lines", validLines);
+    
+    if (validLines == 0) {
+        log.error("❌ No valid cookie lines found!");
+        return;
+    }
+    
+    // 첫 번째 쿠키 라인 검증
+    String firstCookie = cookiesContent.lines()
+        .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
+        .findFirst()
+        .orElse("");
+    
+    if (!firstCookie.isEmpty()) {
+        String[] parts = firstCookie.split("\t");
+        log.info("🔍 First cookie has {} tab-separated fields (expected: 7)", parts.length);
+        
+        if (parts.length != 7) {
+            log.error("❌ Cookie format is INVALID! Got {} fields instead of 7", parts.length);
+            log.error("First line preview: {}", 
+                firstCookie.substring(0, Math.min(150, firstCookie.length())));
+            
+            // 공백으로 구분되어 있는지 체크
+            String[] spaceParts = firstCookie.split("\\s+");
+            if (spaceParts.length > parts.length) {
+                log.error("⚠️ Cookie appears to be SPACE-separated instead of TAB-separated!");
+            }
+            return;
+        }
+        
+        log.info("✅ Cookie format is valid (7 tab-separated fields)");
+    }
 
-        // 4. yt-dlp 명령어에 전달할 실제 경로 설정
+    try {
+        File tempCookieFile = File.createTempFile("ytdlp_cookies", ".txt", 
+            new File(DOWNLOAD_DIR));
+        Files.writeString(tempCookieFile.toPath(), cookiesContent);
+        
         ACTUAL_COOKIES_PATH = tempCookieFile.getAbsolutePath();
-        log.info("Cookies file generated at: {}", ACTUAL_COOKIES_PATH);
-      } catch (IOException e) {
-        log.error("Failed to create temporary cookies file from secret", e);
-      }
+        log.info("✅ Cookies file generated at: {}", ACTUAL_COOKIES_PATH);
+        log.info("📦 File size: {} bytes", tempCookieFile.length());
+        
+    } catch (IOException e) {
+        log.error("❌ Failed to create temporary cookies file", e);
     }
+    
+    // // 💡 디버깅 로직 추가: 환경 변수 내용이 주입되었는지 확인
+    // if (COOKIES_SECRET_CONTENT == null) {
+    //   log.error("DEBUG: COOKIES_SECRET_CONTENT is NULL.");
+    // } else if (COOKIES_SECRET_CONTENT.isBlank()) {
+    //   log.error("DEBUG: COOKIES_SECRET_CONTENT is BLANK (length 0).");
+    // } else {
+    //   log.info("DEBUG: COOKIES_SECRET_CONTENT loaded successfully. Length: {} bytes.",
+    //     COOKIES_SECRET_CONTENT.length());
+    // }
+
+    // if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
+    //   try {
+    //     // 3. 서버 실행 시 /downloads/ 폴더에 임시 파일 생성
+    //     File tempCookieFile = File.createTempFile("ytdlp_cookies", ".txt", new File(DOWNLOAD_DIR));
+    //     Files.writeString(tempCookieFile.toPath(), COOKIES_SECRET_CONTENT);
+
+    //     // 4. yt-dlp 명령어에 전달할 실제 경로 설정
+    //     ACTUAL_COOKIES_PATH = tempCookieFile.getAbsolutePath();
+    //     log.info("Cookies file generated at: {}", ACTUAL_COOKIES_PATH);
+    //   } catch (IOException e) {
+    //     log.error("Failed to create temporary cookies file from secret", e);
+    //   }
+    // }
   }
   
   // 보조
