@@ -51,6 +51,17 @@ public class YtDlpService {
     } catch (IOException e) {
       log.error("downloads 디렉토리 생성 실패", e);
     }
+
+    // 💡 디버깅 로직 추가: 환경 변수 내용이 주입되었는지 확인
+    if (COOKIES_SECRET_CONTENT == null) {
+      log.error("DEBUG: COOKIES_SECRET_CONTENT is NULL.");
+    } else if (COOKIES_SECRET_CONTENT.isBlank()) {
+      log.error("DEBUG: COOKIES_SECRET_CONTENT is BLANK (length 0).");
+    } else {
+      log.info("DEBUG: COOKIES_SECRET_CONTENT loaded successfully. Length: {} bytes.",
+        COOKIES_SECRET_CONTENT.length());
+    }
+
     if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
       try {
         // 3. 서버 실행 시 /downloads/ 폴더에 임시 파일 생성
