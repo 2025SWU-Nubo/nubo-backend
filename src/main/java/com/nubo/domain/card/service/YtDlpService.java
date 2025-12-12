@@ -209,10 +209,13 @@ public class YtDlpService {
         + "Chrome/120.0.0.0 Safari/537.36");
 
     // 1. 클라이언트 위장 (가장 중요)
-    // 서버 IP 차단을 피하기 위해 안드로이드 앱으로 위장합니다.
-    command.add("--extractor-args");
-    command.add("youtube:player_client=android");
-
+    // 쿠키가 없는 경우 서버 IP 차단을 피하기 위해 안드로이드 앱으로 위장합니다.
+    if (ACTUAL_COOKIES_PATH == null || ACTUAL_COOKIES_PATH.isBlank()) {
+        log.info("No cookies available, using android client workaround");
+        command.add("--extractor-args");
+        command.add("youtube:player_client=android");
+    }
+      
     // 2. 프래그먼트 다운로드 안정화
     command.add("--no-part"); // .part 파일 생성 방지 (선택 사항)
 
