@@ -33,8 +33,12 @@ public class YtDlpService {
   private String YT_DLP_PATH;
   @Value("${ext.ffmpeg.path:ffmpeg}") // PATH에 ffmpeg 있으면 그대로 사용
   private String FFMPEG_PATH;
-  @Value("${ext.cookies.path:}") // 인스타 쿠키 필요 시 설정
-  private String COOKIES_PATH;
+  //  @Value("${ext.cookies.path:}") // 인스타 쿠키 필요 시 설정
+  //  private String COOKIES_PATH;
+  @Value("${YTDLP_COOKIES:}") // 1. Fly Secret 환경 변수를 통째로 받음
+  private String COOKIES_SECRET_CONTENT;
+
+  private String ACTUAL_COOKIES_PATH = null; // 2. 실제 사용될 임시 파일 경로
 
   /**
    * 다운로드 디렉토리를 초기화한다.
@@ -46,6 +50,19 @@ public class YtDlpService {
       Files.createDirectories(Paths.get(DOWNLOAD_DIR));
     } catch (IOException e) {
       log.error("downloads 디렉토리 생성 실패", e);
+    }
+    if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
+      try {
+        // 3. 서버 실행 시 /downloads/ 폴더에 임시 파일 생성
+        File tempCookieFile = File.createTempFile("ytdlp_cookies", ".txt", new File(DOWNLOAD_DIR));
+        Files.writeString(tempCookieFile.toPath(), COOKIES_SECRET_CONTENT);
+
+        // 4. yt-dlp 명령어에 전달할 실제 경로 설정
+        ACTUAL_COOKIES_PATH = tempCookieFile.getAbsolutePath();
+        log.info("Cookies file generated at: {}", ACTUAL_COOKIES_PATH);
+      } catch (IOException e) {
+        log.error("Failed to create temporary cookies file from secret", e);
+      }
     }
   }
 
@@ -82,9 +99,9 @@ public class YtDlpService {
     command.add(YT_DLP_PATH);
 
     // 💡 쿠키 경로가 설정되어 있으면 커맨드에 추가합니다.
-    if (COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+    if (ACTUAL_COOKIES_PATH != null && !ACTUAL_COOKIES_PATH.isBlank()) {
       command.add("--cookies");
-      command.add(COOKIES_PATH);
+      command.add(ACTUAL_COOKIES_PATH);
     }
     // 2. OAuth2 적용 (서버 IP 차단 시 가장 효과적)
     // command.add("--username");
@@ -306,9 +323,9 @@ public class YtDlpService {
 
     // 인스타/틱톡은 쿠키가 있으면 성공률이 올라감 (선택)
     if ((platform == Platform.INSTAGRAM || platform == Platform.TIKTOK)
-      && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+      && ACTUAL_COOKIES_PATH != null && !ACTUAL_COOKIES_PATH.isBlank()) {
       cmd.add("--cookies");
-      cmd.add(COOKIES_PATH);
+      cmd.add(ACTUAL_COOKIES_PATH);
     }
 
     cmd.add(url);
@@ -383,9 +400,9 @@ public class YtDlpService {
     dl.add(YT_DLP_PATH);
     // 인스타/틱톡 쿠키 필요 시
     if ((platform == Platform.INSTAGRAM || platform == Platform.TIKTOK)
-      && COOKIES_PATH != null && !COOKIES_PATH.isBlank()) {
+      && ACTUAL_COOKIES_PATH != null && !ACTUAL_COOKIES_PATH.isBlank()) {
       dl.add("--cookies");
-      dl.add(COOKIES_PATH);
+      dl.add(ACTUAL_COOKIES_PATH);
     }
     dl.add("-f");
 //    dl.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/mp4");

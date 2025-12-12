@@ -25,11 +25,11 @@ RUN apt-get update && apt-get install -y ffmpeg curl \
  && chmod a+rx /usr/local/bin/yt-dlp \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-COPY cookies/cookies.txt /app/cookies.txt
+#COPY cookies/cookies.txt /app/cookies.txt
 
 ENV EXT_YTDLP_PATH=/usr/local/bin/yt-dlp
 ENV EXT_FFMPEG_PATH=/usr/bin/ffmpeg
-ENV EXT_COOKIES_PATH=/app/cookies.txt
+#ENV EXT_COOKIES_PATH=/app/cookies.txt
 
 ENV SERVER_ADDRESS=0.0.0.0
 ENV SERVER_PORT=8080
