@@ -39,7 +39,7 @@ public class TranscribeService {
     HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
     // Whisper 서버 호출
-    String whisperUrl = "http://localhost:8001/transcribe";
+    String whisperUrl = "https://nubo-whisper.fly.dev";
     ResponseEntity<WhisperResponseDto> response = restTemplate.postForEntity(
       whisperUrl,
       requestEntity,
