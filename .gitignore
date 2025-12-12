@@ -76,3 +76,6 @@ downloads/
 src/main/resources/firebase/serviceAccountKey.json
 
 nubo-whisper/
+
+# cookies (yt-dlp)
+/cookies/cookies.txt
