@@ -1,4 +1,4 @@
-package com.nubo.domain.card.service;
+package com.nubo.domain.video.service;
 
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import lombok.RequiredArgsConstructor;
