@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.type.Platform;
+import jakarta.annotation.PostConstruct;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -15,34 +16,37 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import jakarta.annotation.PostConstruct;
 
 @Slf4j
 @Service
 public class YtDlpService {
 
-  // yt-dlp 실행 파일 경로 (로컬 환경)
-//  private static final String YT_DLP_PATH = "C:\\Users\\user\\whisper-test\\venv\\Scripts\\yt-dlp"
-//    + ".exe";
-
   // 다운로드 파일 저장 경로
   private static final String DOWNLOAD_DIR = "downloads";
+  private final AtomicBoolean cookiesInitialized = new AtomicBoolean(false);
   @Value("${ext.ytdlp.path}")
   private String YT_DLP_PATH;
+
+  //  @Value("${ext.cookies.path:}") // 인스타 쿠키 필요 시 설정
+//  private String COOKIES_PATH;
+//  @Value("${YTDLP_COOKIES:}")
+//  private String COOKIES_SECRET_CONTENT;
   @Value("${ext.ffmpeg.path:ffmpeg}") // PATH에 ffmpeg 있으면 그대로 사용
   private String FFMPEG_PATH;
-  //  @Value("${ext.cookies.path:}") // 인스타 쿠키 필요 시 설정
-  //  private String COOKIES_PATH;
-  @Value("${YTDLP_COOKIES:}") // 1. Fly Secret 환경 변수를 통째로 받음
-  private String COOKIES_SECRET_CONTENT;
-
-  @Value("${YTDLP_COOKIES_BASE64:}")
-  private String COOKIES_SECRET_BASE64;
-
-  private String ACTUAL_COOKIES_PATH = null; // 2. 실제 사용될 임시 파일 경로
+  // YouTube 쿠키
+  @Value("${YTDLP_COOKIES_YOUTUBE_BASE64:}")
+  private String COOKIES_YOUTUBE_BASE64;
+  // Instagram 쿠키
+  @Value("${YTDLP_COOKIES_INSTAGRAM_BASE64:}")
+  private String COOKIES_INSTAGRAM_BASE64;
+  // 플랫폼별 쿠키 파일 경로
+  private volatile String YOUTUBE_COOKIES_PATH = null;
+  private volatile String INSTAGRAM_COOKIES_PATH = null;
 
   /**
    * 다운로드 디렉토리를 초기화한다.
@@ -57,111 +61,7 @@ public class YtDlpService {
     }
   }
 
-  @PostConstruct
-  public void initCookiesFromSecret() {
-
-    String cookiesContent = null;
-
-    if (COOKIES_SECRET_BASE64 != null && !COOKIES_SECRET_BASE64.isBlank()) {
-      try {
-        byte[] decodedBytes = java.util.Base64.getDecoder()
-          .decode(COOKIES_SECRET_BASE64.trim());
-        cookiesContent = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
-        log.info("✅ Cookies decoded from Base64. Length: {} bytes", cookiesContent.length());
-      } catch (IllegalArgumentException e) {
-        log.error("❌ Failed to decode Base64 cookies", e);
-        return;
-      }
-    }
-    // Plain text fallback
-    else if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
-      cookiesContent = COOKIES_SECRET_CONTENT.trim();
-      log.info("⚠️ Using plain text cookies. Length: {} bytes", cookiesContent.length());
-    }
-
-    if (cookiesContent == null || cookiesContent.isBlank()) {
-      log.warn("⚠️ No cookies found in environment variables");
-      return;
-    }
-
-    // 쿠키 형식 검증
-    long validLines = cookiesContent.lines()
-      .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
-      .count();
-
-    log.info("🔍 Cookie file contains {} valid lines", validLines);
-
-    if (validLines == 0) {
-      log.error("❌ No valid cookie lines found!");
-      return;
-    }
-
-    // 첫 번째 쿠키 라인 검증
-    String firstCookie = cookiesContent.lines()
-      .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
-      .findFirst()
-      .orElse("");
-
-    if (!firstCookie.isEmpty()) {
-      String[] parts = firstCookie.split("\t");
-      log.info("🔍 First cookie has {} tab-separated fields (expected: 7)", parts.length);
-
-      if (parts.length != 7) {
-        log.error("❌ Cookie format is INVALID! Got {} fields instead of 7", parts.length);
-        log.error("First line preview: {}",
-          firstCookie.substring(0, Math.min(150, firstCookie.length())));
-
-        // 공백으로 구분되어 있는지 체크
-        String[] spaceParts = firstCookie.split("\\s+");
-        if (spaceParts.length > parts.length) {
-          log.error("⚠️ Cookie appears to be SPACE-separated instead of TAB-separated!");
-        }
-        return;
-      }
-
-      log.info("✅ Cookie format is valid (7 tab-separated fields)");
-    }
-
-    try {
-      File tempCookieFile = File.createTempFile("ytdlp_cookies", ".txt",
-        new File(DOWNLOAD_DIR));
-      Files.writeString(tempCookieFile.toPath(), cookiesContent);
-
-      ACTUAL_COOKIES_PATH = tempCookieFile.getAbsolutePath();
-      log.info("✅ Cookies file generated at: {}", ACTUAL_COOKIES_PATH);
-      log.info("📦 File size: {} bytes", tempCookieFile.length());
-
-    } catch (IOException e) {
-      log.error("❌ Failed to create temporary cookies file", e);
-    }
-
-    // // 💡 디버깅 로직 추가: 환경 변수 내용이 주입되었는지 확인
-    // if (COOKIES_SECRET_CONTENT == null) {
-    //   log.error("DEBUG: COOKIES_SECRET_CONTENT is NULL.");
-    // } else if (COOKIES_SECRET_CONTENT.isBlank()) {
-    //   log.error("DEBUG: COOKIES_SECRET_CONTENT is BLANK (length 0).");
-    // } else {
-    //   log.info("DEBUG: COOKIES_SECRET_CONTENT loaded successfully. Length: {} bytes.",
-    //     COOKIES_SECRET_CONTENT.length());
-    // }
-
-    // if (COOKIES_SECRET_CONTENT != null && !COOKIES_SECRET_CONTENT.isBlank()) {
-    //   try {
-    //     // 3. 서버 실행 시 /downloads/ 폴더에 임시 파일 생성
-    //     File tempCookieFile = File.createTempFile("ytdlp_cookies", ".txt", new File
-    //     (DOWNLOAD_DIR));
-    //     Files.writeString(tempCookieFile.toPath(), COOKIES_SECRET_CONTENT);
-
-    //     // 4. yt-dlp 명령어에 전달할 실제 경로 설정
-    //     ACTUAL_COOKIES_PATH = tempCookieFile.getAbsolutePath();
-    //     log.info("Cookies file generated at: {}", ACTUAL_COOKIES_PATH);
-    //   } catch (IOException e) {
-    //     log.error("Failed to create temporary cookies file from secret", e);
-    //   }
-    // }
-  }
-
-  // 보조
+  // 보조 메서드
   private static String text(JsonNode n, String key) {
     return (n != null && n.has(key) && !n.get(key).isNull()) ? n.get(key).asText() : null;
   }
@@ -173,6 +73,110 @@ public class YtDlpService {
       }
     }
     return null;
+  }
+
+  @PostConstruct
+  public void initCookiesFromSecret() {
+    log.info("🚀 Starting cookie initialization (async)...");
+
+    CompletableFuture.runAsync(() -> {
+      try {
+        // YouTube 쿠키 초기화
+        if (COOKIES_YOUTUBE_BASE64 != null && !COOKIES_YOUTUBE_BASE64.isBlank()) {
+          YOUTUBE_COOKIES_PATH = createCookieFile(COOKIES_YOUTUBE_BASE64, "youtube");
+          log.info("✅ YouTube cookies initialized at: {}", YOUTUBE_COOKIES_PATH);
+        } else {
+          log.warn("⚠️ YouTube cookies not configured");
+        }
+
+        // Instagram 쿠키 초기화
+        if (COOKIES_INSTAGRAM_BASE64 != null && !COOKIES_INSTAGRAM_BASE64.isBlank()) {
+          INSTAGRAM_COOKIES_PATH = createCookieFile(COOKIES_INSTAGRAM_BASE64, "instagram");
+          log.info("✅ Instagram cookies initialized at: {}", INSTAGRAM_COOKIES_PATH);
+        } else {
+          log.warn("⚠️ Instagram cookies not configured");
+        }
+
+        cookiesInitialized.set(true);
+        log.info("✅ Cookie initialization completed");
+      } catch (Exception e) {
+        log.error("❌ Failed to initialize cookies (non-fatal)", e);
+      }
+    });
+
+    log.info("🚀 Cookie initialization started in background, continuing app startup...");
+  }
+
+  private String createCookieFile(String base64Content, String platform) throws IOException {
+    byte[] decodedBytes = java.util.Base64.getDecoder().decode(base64Content.trim());
+    String cookiesContent = new String(decodedBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+    log.info("🔍 Decoded {} cookies. Length: {} bytes", platform, cookiesContent.length());
+
+    // 쿠키 형식 검증
+    long validLines = cookiesContent.lines()
+      .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
+      .count();
+
+    log.info("🔍 {} cookie file contains {} valid lines", platform, validLines);
+
+    if (validLines == 0) {
+      log.error("❌ No valid {} cookie lines found!", platform);
+      return null;
+    }
+
+    // 첫 번째 쿠키 라인 검증
+    String firstCookie = cookiesContent.lines()
+      .filter(line -> !line.trim().isEmpty() && !line.startsWith("#"))
+      .findFirst()
+      .orElse("");
+
+    if (!firstCookie.isEmpty()) {
+      String[] parts = firstCookie.split("\t");
+      log.info("🔍 {} first cookie has {} tab-separated fields", platform, parts.length);
+
+      if (parts.length != 7) {
+        log.error("❌ {} cookie format is INVALID! Expected 7 fields, got {}",
+          platform, parts.length);
+        return null;
+      }
+    }
+
+    File tempCookieFile = File.createTempFile("ytdlp_cookies_" + platform, ".txt",
+      new File(DOWNLOAD_DIR));
+    Files.writeString(tempCookieFile.toPath(), cookiesContent);
+
+    log.info("✅ {} cookies file created: {} ({} bytes)",
+      platform, tempCookieFile.getAbsolutePath(), tempCookieFile.length());
+
+    return tempCookieFile.getAbsolutePath();
+  }
+
+  // 플랫폼별 쿠키 경로 반환
+  private String getCookiesPathForPlatform(Platform platform) {
+    // 쿠키 초기화 대기 (최대 5초)
+    if (!cookiesInitialized.get()) {
+      for (int i = 0; i < 50; i++) {
+        if (cookiesInitialized.get()) {
+          break;
+        }
+        try {
+          Thread.sleep(100);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    }
+
+    switch (platform) {
+      case YOUTUBE:
+        return YOUTUBE_COOKIES_PATH;
+      case INSTAGRAM:
+        return INSTAGRAM_COOKIES_PATH;
+      default:
+        return null;
+    }
   }
 
   /**
@@ -193,29 +197,29 @@ public class YtDlpService {
     List<String> command = new ArrayList<>();
     command.add(YT_DLP_PATH);
 
-    // 💡 쿠키 경로가 설정되어 있으면 커맨드에 추가합니다.
-    if (ACTUAL_COOKIES_PATH != null && !ACTUAL_COOKIES_PATH.isBlank()) {
+    // YouTube 쿠키 사용
+    String cookiesPath = getCookiesPathForPlatform(Platform.YOUTUBE);
+    if (cookiesPath != null && new File(cookiesPath).exists()) {
+      log.info("🍪 Using YouTube cookies: {}", cookiesPath);
       command.add("--cookies");
-      command.add(ACTUAL_COOKIES_PATH);
+      command.add(cookiesPath);
+    } else {
+      log.warn("⚠️ YouTube cookies not available, using android client workaround");
+      command.add("--extractor-args");
+      command.add("youtube:player_client=android");
     }
+
     // 2. OAuth2 적용 (서버 IP 차단 시 가장 효과적)
     // command.add("--username");
     // command.add("oauth2");
     // command.add("--password");
     // command.add("");
+
     // 💡 IP 차단 회피를 위해 사용자 에이전트 추가
     command.add("--user-agent");
     command.add(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
         + "Chrome/120.0.0.0 Safari/537.36");
-
-    // 1. 클라이언트 위장 (가장 중요)
-    // 쿠키가 없는 경우 서버 IP 차단을 피하기 위해 안드로이드 앱으로 위장합니다.
-    if (ACTUAL_COOKIES_PATH == null || ACTUAL_COOKIES_PATH.isBlank()) {
-      log.info("No cookies available, using android client workaround");
-      command.add("--extractor-args");
-      command.add("youtube:player_client=android");
-    }
 
     // 2. 프래그먼트 다운로드 안정화
     command.add("--no-part"); // .part 파일 생성 방지 (선택 사항)
@@ -419,17 +423,19 @@ public class YtDlpService {
     cmd.add("-J");
     cmd.add("--skip-download");
 
-    // 인스타/틱톡은 쿠키가 있으면 성공률이 올라감 (선택)
-    if ((platform == Platform.INSTAGRAM || platform == Platform.TIKTOK)
-      && ACTUAL_COOKIES_PATH != null && !ACTUAL_COOKIES_PATH.isBlank()) {
-      cmd.add("--cookies");
-      cmd.add(ACTUAL_COOKIES_PATH);
+    // 플랫폼별 쿠키 사용 (Instagram만)
+    if (platform == Platform.INSTAGRAM) {
+      String cookiesPath = getCookiesPathForPlatform(platform);
+      if (cookiesPath != null && new File(cookiesPath).exists()) {
+        log.info("🍪 Using {} cookies for metadata extraction", platform);
+        cmd.add("--cookies");
+        cmd.add(cookiesPath);
+      }
     }
 
     cmd.add(url);
 
     ProcessBuilder pb = new ProcessBuilder(cmd);
-//    pb.redirectErrorStream(true);
     pb.redirectErrorStream(false); // stderr는 따로 두기
     Process proc = pb.start();
 
@@ -496,16 +502,19 @@ public class YtDlpService {
     // 1) mp4 다운로드
     List<String> dl = new ArrayList<>();
     dl.add(YT_DLP_PATH);
-    // 인스타/틱톡 쿠키 필요 시
-    if ((platform == Platform.INSTAGRAM || platform == Platform.TIKTOK)
-      && ACTUAL_COOKIES_PATH != null && !ACTUAL_COOKIES_PATH.isBlank()) {
-      dl.add("--cookies");
-      dl.add(ACTUAL_COOKIES_PATH);
-    }
-    dl.add("-f");
-//    dl.add("bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio/mp4");
-    dl.add("bestaudio/best");
 
+    // Instagram만 쿠키 사용
+    if (platform == Platform.INSTAGRAM) {
+      String cookiesPath = getCookiesPathForPlatform(platform);
+      if (cookiesPath != null && new File(cookiesPath).exists()) {
+        log.info("🍪 Using {} cookies for download", platform);
+        dl.add("--cookies");
+        dl.add(cookiesPath);
+      }
+    }
+
+    dl.add("-f");
+    dl.add("bestaudio/best");
     dl.add("-o");
     dl.add(mp4Path);
     dl.add(url);
