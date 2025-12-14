@@ -3,6 +3,7 @@ package com.nubo.domain.video.service;
 import com.nubo.domain.video.type.Platform;
 import com.nubo.global.error.ErrorCode;
 import com.nubo.global.error.exception.ApiException;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
@@ -45,10 +46,13 @@ public class VideoUrlValidator {
     if (url == null || url.isBlank()) {
       throw new ApiException(ErrorCode.INVALID_VIDEO_URL);
     }
-    if (YOUTUBE_SHORTS.matcher(url).matches()) {
+
+    String normalizedUrl = normalizeUrl(url);
+
+    if (YOUTUBE_SHORTS.matcher(normalizedUrl).matches()) {
       return Platform.YOUTUBE;
     }
-    if (INSTAGRAM_REELS.matcher(url).matches()) {
+    if (INSTAGRAM_REELS.matcher(normalizedUrl).matches()) {
       return Platform.INSTAGRAM;
     }
 //    if (TIKTOK.matcher(url).matches()) {
@@ -56,5 +60,28 @@ public class VideoUrlValidator {
 //    }
 
     throw new ApiException(ErrorCode.INVALID_VIDEO_URL);
+  }
+
+  /**
+   * 공유 문자열 등에서 실제 URL만 추출하여 정규화한다.
+   *
+   * 예:
+   * "@xxx님의 Instagram 게시물 보기 https://www.instagram.com/reel/ABC/?utm=..."
+   * → "https://www.instagram.com/reel/ABC/?utm=..."
+   */
+  public String normalizeUrl(String raw) {
+    if (raw == null) {
+      return null;
+    }
+
+    Pattern urlPattern = Pattern.compile("(https?://[^\\s]+)");
+    Matcher matcher = urlPattern.matcher(raw);
+
+    if (matcher.find()) {
+      return matcher.group(1);
+    }
+
+    // URL을 찾지 못하면 원본 그대로 반환 (validate 단계에서 걸러짐)
+    return raw;
   }
 }

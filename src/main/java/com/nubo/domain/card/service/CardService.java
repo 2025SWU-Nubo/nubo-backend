@@ -32,6 +32,7 @@ import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.entity.Video;
 import com.nubo.domain.video.service.TranscribeService;
 import com.nubo.domain.video.service.VideoService;
+import com.nubo.domain.video.service.VideoUrlValidator;
 import com.nubo.domain.video.service.YtDlpService;
 import com.nubo.domain.video.type.Platform;
 import com.nubo.global.ai.OpenAiClient;
@@ -76,6 +77,7 @@ public class CardService {
   private final TranscribeService transcribeService;
   private final GrowthService growthService;
   private final FcmService fcmService;
+  private final VideoUrlValidator videoUrlValidator;
 
   // 문자열 유틸
   private static String truncate(String s, int max) {
@@ -116,7 +118,8 @@ public class CardService {
 
     // 0. 기본 준비
     User user = userService.getUserById(userId);
-    Platform platform = Platform.fromUrl(dto.getVideoUrl());
+    String normalizedUrl = videoUrlValidator.normalizeUrl(dto.getVideoUrl());
+    Platform platform = videoUrlValidator.validatePlatform(normalizedUrl, userId);
 
     String videoId = null;           // 복구/중복 판정용
     Video video = null;              // Video 엔티티
@@ -125,12 +128,12 @@ public class CardService {
 
     // 1. videoId 확보
     if (platform == Platform.YOUTUBE) {
-      videoId = ytDlpService.extractVideoIdOnly(dto.getVideoUrl());
+      videoId = ytDlpService.extractVideoIdOnly(normalizedUrl);
       if (videoId == null || videoId.isBlank()) {
         throw new ApiException(ErrorCode.INVALID_VIDEO_ID);
       }
     } else {
-      var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
+      var ex = ytDlpService.extractAllForPlatform(normalizedUrl, platform);
       audioBytes = ex.getAudioBytes();
       metadata = ex.getMetadata();
       videoId = (metadata != null) ? metadata.getVideoId() : null;
@@ -170,7 +173,7 @@ public class CardService {
     video = videoService.getVideoById(videoId).orElse(null);
     if (video == null) {
       if (metadata == null) {
-        var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
+        var ex = ytDlpService.extractAllForPlatform(normalizedUrl, platform);
         audioBytes = ex.getAudioBytes();
         metadata = ex.getMetadata();
       }
@@ -196,7 +199,7 @@ public class CardService {
     } else {
       if ((video.getTranscript() == null || video.getTranscript().isBlank())
         && audioBytes == null) {
-        var ex = ytDlpService.extractAllForPlatform(dto.getVideoUrl(), platform);
+        var ex = ytDlpService.extractAllForPlatform(normalizedUrl, platform);
         audioBytes = ex.getAudioBytes();
         if (metadata == null) {
           metadata = ex.getMetadata();
