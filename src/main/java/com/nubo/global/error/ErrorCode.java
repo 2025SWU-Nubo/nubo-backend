@@ -39,6 +39,7 @@ public enum ErrorCode {
 
   // USER
   ALREADY_DELETED(409, "US001", "user already deleted", LogLevel.WARN),
+  USER_NOT_FOUND(404, "US002", "user not found", LogLevel.WARN),
 
   // CARD
   DUPLICATE_CARD(409, "CD001", "card already exists", LogLevel.WARN),
@@ -49,8 +50,6 @@ public enum ErrorCode {
   // SECURITY
   INVALID_JWT_SECRET(500, "SC001", "JWT secret key must be at least 32 characters long",
     LogLevel.ERROR),
-  INVALID_JWT_TOKEN(401, "SC002", "Invalid or malformed JWT token", LogLevel.WARN),
-  UNAUTHENTICATED(401, "SC003", "User not authenticated", LogLevel.WARN),
   UNAUTHORIZED_CLIENT(401, "SC004", "User not authorized", LogLevel.WARN),
   ACCESS_DENIED(403, "SC005", "Access denied for this resource", LogLevel.WARN),
   INVALID_REFRESH_TOKEN(401, "SC006", "Invalid or malformed refresh token", LogLevel.WARN),

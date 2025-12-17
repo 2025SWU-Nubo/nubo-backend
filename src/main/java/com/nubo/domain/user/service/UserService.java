@@ -97,7 +97,7 @@ public class UserService {
    */
   public User getUserById(Long id) {
     return userRepository.findById(id)
-      .orElseThrow(() -> new ApiException(ErrorCode.UNAUTHORIZED_CLIENT));
+      .orElseThrow(() -> new ApiException(ErrorCode.USER_NOT_FOUND));
   }
 
   /**
