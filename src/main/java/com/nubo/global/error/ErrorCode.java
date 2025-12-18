@@ -48,8 +48,6 @@ public enum ErrorCode {
   AI_RESPONSE_INVALID(500, "CD004", "AI response is not valid JSON format", LogLevel.ERROR),
 
   // SECURITY
-  INVALID_JWT_SECRET(500, "SC001", "JWT secret key must be at least 32 characters long",
-    LogLevel.ERROR),
   UNAUTHORIZED_CLIENT(401, "SC004", "User not authorized", LogLevel.WARN),
   ACCESS_DENIED(403, "SC005", "Access denied for this resource", LogLevel.WARN),
   INVALID_REFRESH_TOKEN(401, "SC006", "Invalid or malformed refresh token", LogLevel.WARN),
@@ -59,11 +57,6 @@ public enum ErrorCode {
   INVALID_VIDEO_ID(400, "V001", "Video ID is missing or invalid", LogLevel.WARN),
   UNSUPPORTED_PLATFORM(400, "V002", "Unsupported video platform", LogLevel.WARN),
   INVALID_VIDEO_URL(400, "V003", "Video Url is invalid", LogLevel.WARN),
-
-  // NOTIFICATION
-  PUSH_SEND_FAILED(500, "N001", "Failed to send push notification", LogLevel.ERROR),
-  INVALID_FCM_TOKEN(400, "N002", "Invalid or expired FCM token", LogLevel.WARN),
-  NOTIFICATION_DISABLED(403, "N003", "User has disabled this notification type", LogLevel.WARN),
 
   // RECOMMENDATION
   ALREADY_SAVED_RECOMMENDATION(409, "RC001", "recommendation card already saved", LogLevel.WARN),
