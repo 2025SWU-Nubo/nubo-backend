@@ -14,6 +14,7 @@ import com.nubo.domain.card.dto.CardSummaryUpdateResponseDto;
 import com.nubo.domain.card.entity.Card;
 import com.nubo.domain.user.entity.User;
 import com.nubo.domain.video.entity.Video;
+import com.nubo.global.common.TimeUtil;
 import java.util.Arrays;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -115,8 +116,8 @@ public class CardMapper {
       .videoPlatform(card.getVideo().getPlatform())
       .aiCategoryName(card.getAiCategory().getDisplayName())
       .highlights(highlights)
-      .createdAt(card.getCreatedAt())
-      .updatedAt(card.getUpdatedAt())
+      .createdAt(TimeUtil.toKst(card.getCreatedAt()))
+      .updatedAt(TimeUtil.toKst(card.getUpdatedAt()))
       .stage(stage)
       .berryGained(berryGained)
       .stageUp(stageUp)
@@ -144,7 +145,7 @@ public class CardMapper {
       .cardId(card.getId())
       .summary(card.getSummary())
       .highlights(highlights)
-      .updatedAt(card.getUpdatedAt())
+      .updatedAt(TimeUtil.toKst(card.getUpdatedAt()))
       .build();
   }
 

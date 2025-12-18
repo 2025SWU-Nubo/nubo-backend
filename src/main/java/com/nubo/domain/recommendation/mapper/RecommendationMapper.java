@@ -7,6 +7,7 @@ import com.nubo.domain.recommendation.dto.RecommendationResponseDto;
 import com.nubo.domain.recommendation.entity.RecommendationCard;
 import com.nubo.domain.recommendation.entity.RecommendationGroup;
 import com.nubo.domain.recommendation.type.RecommendationGroupType;
+import com.nubo.global.common.TimeUtil;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -100,8 +101,8 @@ public class RecommendationMapper {
       .aiCategoryName(card.getAiCategory().getDisplayName())
       .matchPercent(matchPercent)
       .username(username)
-      .createdAt(card.getCreatedAt())
-      .updatedAt(card.getUpdatedAt())
+      .createdAt(TimeUtil.toKst(card.getCreatedAt()))
+      .updatedAt(TimeUtil.toKst(card.getUpdatedAt()))
       .build();
   }
 

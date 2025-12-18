@@ -16,6 +16,7 @@ import com.nubo.domain.board.type.BoardType;
 import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.CardSimpleResponseDto;
 import com.nubo.domain.user.entity.User;
+import com.nubo.global.common.TimeUtil;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +75,7 @@ public class BoardMapper {
       .isFavorite(favorite)
       .isOwner(isOwner)
       .isMine(isMine)
-      .updatedAt(board.getUpdatedAt())
+      .updatedAt(TimeUtil.toKst(board.getUpdatedAt()))
       .sectionCount(sectionCount)
       .cardCount(cardCount)
       .videoThumbnailUrl(thumbnailUrl)

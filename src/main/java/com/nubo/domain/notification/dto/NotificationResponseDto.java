@@ -2,6 +2,7 @@ package com.nubo.domain.notification.dto;
 
 import com.nubo.domain.notification.entity.Notification;
 import com.nubo.domain.notification.type.NotificationType;
+import com.nubo.global.common.TimeUtil;
 import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
@@ -29,7 +30,7 @@ public class NotificationResponseDto {
       .title(notification.getTitle())
       .body(notification.getBody())
       .read(notification.isRead())
-      .createdAt(notification.getCreatedAt())
+      .createdAt(TimeUtil.toKst(notification.getCreatedAt()))
       .cardId(notification.getCard() != null ? notification.getCard().getId() : null)
       .boardId(notification.getBoard() != null ? notification.getBoard().getId() : null)
       .invitationId(
