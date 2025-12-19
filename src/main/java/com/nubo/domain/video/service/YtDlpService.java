@@ -544,7 +544,8 @@ public class YtDlpService {
 
     // 2) ffmpeg로 wav 변환 (16kHz, mono)
     List<String> ff = List.of(
-      FFMPEG_PATH, "-y", "-i", mp4Path,
+      FFMPEG_PATH, "-y",
+      "-vn", "-i", mp4Path,
       "-ac", "1", "-ar", "16000", wavPath
     );
     Process p2 = new ProcessBuilder(ff).redirectErrorStream(true).start();
