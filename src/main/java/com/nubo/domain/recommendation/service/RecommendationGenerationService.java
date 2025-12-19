@@ -191,7 +191,7 @@ public class RecommendationGenerationService {
    */
   private void applyRandomDelay() {
     try {
-      int delayMs = ThreadLocalRandom.current().nextInt(15000, 25000);
+      int delayMs = ThreadLocalRandom.current().nextInt(30000, 60000);
       log.info("⏱️ yt-dlp 연속 호출 방지 딜레이: {}ms", delayMs);
       Thread.sleep(delayMs);
     } catch (InterruptedException e) {
