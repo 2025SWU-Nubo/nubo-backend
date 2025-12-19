@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -138,6 +139,7 @@ public class RecommendationGenerationService {
     // 2) 목표 개수 설정
     int targetCount = RECOMMENDATION_CARD_TARGET;
     int successCount = 0;
+    int attemptCount = 0;
 
     // 검색된 결과 전체를 순회
     for (YoutubeVideoResult r : bundle.getResults()) {
@@ -147,6 +149,11 @@ public class RecommendationGenerationService {
         recommendationGroupRepository.save(group);
         break;
       }
+
+      if (attemptCount > 0) {
+        applyRandomDelay();
+      }
+      attemptCount++;
 
       try {
         RecommendationCard createdCard = createRecommendedCard(
@@ -164,6 +171,7 @@ public class RecommendationGenerationService {
       } catch (Exception e) {
         // 개별 실패는 로그만 남기고 계속 진행 (성공 카운트는 안 올라감)
         log.error("추천 카드 생성 실패 (건너뜀) - videoId={}", r.getVideoId(), e);
+        applyRandomDelay();
       }
     }
   }
@@ -174,6 +182,21 @@ public class RecommendationGenerationService {
       generateCardsForGroup(groupId);
     } catch (Exception e) {
       log.error("[Async] 추천 카드 생성 실패 - groupId=" + groupId, e);
+    }
+  }
+
+  /**
+   * YouTube bot 차단 방지를 위한 랜덤 딜레이
+   * 3~8초 사이의 랜덤한 대기 시간 적용
+   */
+  private void applyRandomDelay() {
+    try {
+      int delayMs = ThreadLocalRandom.current().nextInt(3000, 8000);
+      log.info("⏱️ yt-dlp 연속 호출 방지 딜레이: {}ms", delayMs);
+      Thread.sleep(delayMs);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.warn("딜레이 중 인터럽트 발생", e);
     }
   }
 
