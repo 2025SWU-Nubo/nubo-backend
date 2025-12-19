@@ -35,28 +35,33 @@ public class RecommendationScheduler {
     // 0. 만료된 그룹 삭제
     recommendationGenerationService.cleanupExpiredGroups();
 
-    // 1. 공통 카테고리 그룹 생성
-    recommendationGenerationService.createCategoryGroups();
-
-    // 2. 유저 맞춤형 추천 그룹 생성
-    List<Long> userIds = userService.getAllActiveUserIds();
-
-    for (Long userId : userIds) {
-      Long cardCount = cardService.getCardCountByUser(userId);
-
-      if (cardCount >= MIN_CARD_FOR_KEYWORD_REC) {
-        List<String> keywords =
-          recommendationKeywordService.extractTopKeywords(userId, KEYWORD_EXTRACTION_LIMIT);
-
-        recommendationGenerationService.createKeywordGroups(userId, keywords);
-      }
-    }
-
-    // 3. 오늘 생성된 모든 그룹에 대해 카드 생성
-    List<RecommendationGroup> allGroups =
+    // 미완료 그룹 조회
+    List<RecommendationGroup> unprocessedGroups =
       recommendationGenerationService.getAllUnprocessedGroupsForToday();
 
-    for (RecommendationGroup g : allGroups) {
+    // 미완료 그룹 있을 때만
+    if (unprocessedGroups.isEmpty()) {
+      // 1. 공통 카테고리 그룹 생성
+      recommendationGenerationService.createCategoryGroups();
+
+      // 2. 유저 맞춤형 추천 그룹 생성
+      List<Long> userIds = userService.getAllActiveUserIds();
+
+      for (Long userId : userIds) {
+        Long cardCount = cardService.getCardCountByUser(userId);
+
+        if (cardCount >= MIN_CARD_FOR_KEYWORD_REC) {
+          List<String> keywords =
+            recommendationKeywordService.extractTopKeywords(userId, KEYWORD_EXTRACTION_LIMIT);
+
+          recommendationGenerationService.createKeywordGroups(userId, keywords);
+        }
+      }
+      unprocessedGroups = recommendationGenerationService.getAllUnprocessedGroupsForToday();
+    }
+
+    // 3. 미완료 그룹에 대해 카드 생성
+    for (RecommendationGroup g : unprocessedGroups) {
       recommendationGenerationService.generateCardsForGroupAsync(g.getId());
     }
 
