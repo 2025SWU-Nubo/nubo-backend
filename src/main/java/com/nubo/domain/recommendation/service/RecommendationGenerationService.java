@@ -4,8 +4,6 @@ import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.card.dto.AiCardMetaDto;
 import com.nubo.domain.card.dto.WhisperResponseDto;
 import com.nubo.domain.card.service.CardService;
-import com.nubo.domain.video.service.TranscribeService;
-import com.nubo.domain.video.service.YtDlpService;
 import com.nubo.domain.recommendation.dto.YoutubeSearchBundle;
 import com.nubo.domain.recommendation.dto.YoutubeVideoResult;
 import com.nubo.domain.recommendation.entity.RecommendationCard;
@@ -15,7 +13,9 @@ import com.nubo.domain.recommendation.repository.RecommendationGroupRepository;
 import com.nubo.domain.recommendation.type.RecommendationGroupType;
 import com.nubo.domain.video.dto.VideoMetadataDto;
 import com.nubo.domain.video.entity.Video;
+import com.nubo.domain.video.service.TranscribeService;
 import com.nubo.domain.video.service.VideoService;
+import com.nubo.domain.video.service.YtDlpService;
 import com.nubo.domain.video.type.Platform;
 import com.nubo.global.ai.OpenAiClient;
 import com.nubo.global.error.ErrorCode;
@@ -39,8 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecommendationGenerationService {
 
   private static final int KEYWORD_GROUP_LIMIT = 2;         // 키워드 기반 그룹 생성 수
-  private static final long GROUP_EXPIRE_DAYS = 1;          // 그룹 만료 기간
-  private static final int RECOMMENDATION_CARD_TARGET = 4;  // 추천카드 생성 목표 개수
+  private static final long GROUP_EXPIRE_DAYS = 2;          // 그룹 만료 기간
+  private static final int RECOMMENDATION_CARD_TARGET = 5;  // 추천카드 생성 목표 개수
 
   private final RecommendationGroupRepository recommendationGroupRepository;
   private final YtDlpService ytDlpService;
