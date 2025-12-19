@@ -206,7 +206,7 @@ public class YtDlpService {
     } else {
       log.warn("⚠️ YouTube cookies not available, using android client workaround");
       command.add("--extractor-args");
-      command.add("youtube:player_client=android");
+      command.add("youtube:player_client=ios,android");
     }
 
     // 2. OAuth2 적용 (서버 IP 차단 시 가장 효과적)
@@ -226,6 +226,10 @@ public class YtDlpService {
 
     // 3. IPv4 강제 (IPv6 대역이 차단된 경우 유효, 필요시 주석 해제)
     // command.add("--force-ipv4");
+
+    // 💡 추가: 자바스크립트 런타임 경로 명시
+    command.add("--js-runtimes");
+    command.add("node");
 
     command.add("-f");
     command.add("bestaudio/best");
