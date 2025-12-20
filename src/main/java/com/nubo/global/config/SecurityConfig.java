@@ -26,7 +26,8 @@ public class SecurityConfig {
       .csrf(csrf -> csrf.disable())
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
-        .requestMatchers("/", "/api/auth/**", "/favicon.ico", "/admin/run-recommendation-cards")
+        .requestMatchers("/", "/api/auth/**", "/favicon.ico",
+          "/api/home/recommendation/admin/run-recommendation-cards")
         .permitAll()
         .anyRequest().authenticated()
       )
