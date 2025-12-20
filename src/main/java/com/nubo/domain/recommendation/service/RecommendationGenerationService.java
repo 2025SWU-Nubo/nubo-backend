@@ -41,7 +41,7 @@ public class RecommendationGenerationService {
 
   private static final int KEYWORD_GROUP_LIMIT = 2;         // 키워드 기반 그룹 생성 수
   private static final long GROUP_EXPIRE_DAYS = 2;          // 그룹 만료 기간
-  private static final int RECOMMENDATION_CARD_TARGET = 5;  // 추천카드 생성 목표 개수
+  private static final int RECOMMENDATION_CARD_TARGET = 2;  // 추천카드 생성 목표 개수
 
   private final RecommendationGroupRepository recommendationGroupRepository;
   private final YtDlpService ytDlpService;
@@ -276,6 +276,13 @@ public class RecommendationGenerationService {
         thumbnailUrl = "https://www.instagram.com/p/" + metadata.getVideoId() + "/media/?size=l";
       }
 
+      // [추가] 중복 체크: 이미 이 그룹에 이 비디오로 생성된 카드가 있는지 확인
+      if (recommendationCardRepository.existsByGroupAndVideo(group, video)) {
+        log.info("[추천카드] 이미 존재하는 카드입니다. 건너뜁니다. - groupId={}, videoId={}",
+          group.getId(), video.getId());
+        return null; // 혹은 이미 존재하는 객체 반환
+      }
+      
       video = videoService.getOrCreateVideo(
         VideoMetadataDto.builder()
           .videoId(metadata.getVideoId())
