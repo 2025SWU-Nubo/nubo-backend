@@ -5,6 +5,7 @@ import com.nubo.domain.recommendation.dto.RecommendationCardDetailResponseDto;
 import com.nubo.domain.recommendation.dto.RecommendationCardSaveRequestDto;
 import com.nubo.domain.recommendation.dto.RecommendationResponseDto;
 import com.nubo.domain.recommendation.scheduler.RecommendationScheduler;
+import com.nubo.domain.recommendation.service.RecommendationGenerationService;
 import com.nubo.domain.recommendation.service.RecommendationService;
 import com.nubo.global.auth.UserUtil;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class RecommendationController {
   private final UserUtil userUtil;
   private final RecommendationService recommendationService;
   private final RecommendationScheduler recommendationScheduler;
+  private final RecommendationGenerationService recommendationGenerationService;
 
   /**
    * 오늘의 추천 컨텐츠 그룹 리스트 조회
@@ -69,5 +71,12 @@ public class RecommendationController {
   public String runRecommendationScheduler() {
     recommendationScheduler.generateRecommendationCardsDaily();
     return "Recommendation card generation started asynchronously.";
+  }
+
+  // 특정 그룹의 추천 카드 생성 수동 실행
+  @PostMapping("/admin/{groupId}")
+  public String runRecommendationByGroup(@PathVariable Long groupId) {
+    recommendationGenerationService.generateCardsForGroupAsync(groupId);
+    return "Recommendation card generation (by group) started asynchronously.";
   }
 }

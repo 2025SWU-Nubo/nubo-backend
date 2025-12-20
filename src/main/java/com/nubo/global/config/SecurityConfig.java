@@ -27,7 +27,7 @@ public class SecurityConfig {
       .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth -> auth
         .requestMatchers("/", "/api/auth/**", "/favicon.ico",
-          "/api/home/recommendation/admin/run-recommendation-cards")
+          "/api/home/recommendation/admin/**")
         .permitAll()
         .anyRequest().authenticated()
       )
