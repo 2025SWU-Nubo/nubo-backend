@@ -4,6 +4,9 @@ import com.nubo.domain.board.type.DefaultBoard;
 import com.nubo.domain.recommendation.dto.YoutubeSearchBundle;
 import com.nubo.domain.recommendation.dto.YoutubeVideoResult;
 import com.nubo.global.ai.OpenAiClient;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -88,6 +91,12 @@ public class YoutubeSearchService {
 
     String targetKeyword = keywords.get(ThreadLocalRandom.current().nextInt(keywords.size()));
 
+    // 검색 기간 설정 (한 달 전 기준)
+    // 한 달 전: minusMonths(1), 일주일 전: minusWeeks(1)
+    String publishedAfter = OffsetDateTime.now(ZoneOffset.UTC)
+      .minusMonths(1)
+      .format(DateTimeFormatter.ISO_INSTANT);
+
     UriComponentsBuilder uri = UriComponentsBuilder.fromHttpUrl(SEARCH_URL)
       .queryParam("part", "snippet")
       .queryParam("type", "video")
@@ -96,6 +105,7 @@ public class YoutubeSearchService {
       .queryParam("regionCode", "KR")
       .queryParam("maxResults", 30)
       .queryParam("q", targetKeyword)
+      .queryParam("publishedAfter", publishedAfter)
       .queryParam("key", apiKey);
 
     ResponseEntity<Map> response =

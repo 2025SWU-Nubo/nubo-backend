@@ -41,7 +41,7 @@ public class RecommendationGenerationService {
 
   private static final int KEYWORD_GROUP_LIMIT = 2;         // 키워드 기반 그룹 생성 수
   private static final long GROUP_EXPIRE_DAYS = 2;          // 그룹 만료 기간
-  private static final int RECOMMENDATION_CARD_TARGET = 2;  // 추천카드 생성 목표 개수
+  private static final int RECOMMENDATION_CARD_TARGET = 1;  // 추천카드 생성 목표 개수
 
   private final RecommendationGroupRepository recommendationGroupRepository;
   private final YtDlpService ytDlpService;
@@ -282,7 +282,7 @@ public class RecommendationGenerationService {
           group.getId(), video.getId());
         return null; // 혹은 이미 존재하는 객체 반환
       }
-      
+
       video = videoService.getOrCreateVideo(
         VideoMetadataDto.builder()
           .videoId(metadata.getVideoId())
