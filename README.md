@@ -74,6 +74,11 @@
 
 <br>
 
+## 📊 데이터베이스 설계
+<img width="1407" height="1400" alt="image" src="https://github.com/user-attachments/assets/055ec276-553e-4d8d-80dd-d29a261f5097" />
+
+<br>
+
 ## 📁 프로젝트 구조
 ```text
 src
